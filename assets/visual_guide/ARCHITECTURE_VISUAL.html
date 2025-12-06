@@ -1,0 +1,3758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="EROS Schedule Generator Architecture - 12-step LLM-enhanced PPV scheduling pipeline visualization">
+  <meta name="author" content="Kyle Merriman">
+  <meta name="theme-color" content="#6366f1">
+
+  <!-- OpenGraph Meta Tags -->
+  <meta property="og:title" content="EROS Schedule Generator | Architecture">
+  <meta property="og:description" content="12-step LLM-enhanced PPV scheduling pipeline for OnlyFans creators. Automated caption selection, persona matching, and revenue optimization.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://eros-scheduling.com/og-image.png">
+  <meta property="og:url" content="https://eros-scheduling.com/architecture">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="EROS Schedule Generator | Architecture">
+  <meta name="twitter:description" content="12-step LLM-enhanced PPV scheduling pipeline for OnlyFans creators.">
+
+  <title>EROS Schedule Generator | Architecture</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========================================
+       CSS CUSTOM PROPERTIES - Premium Palette
+       ======================================== */
+    :root {
+      /* Backgrounds - Deep Space */
+      --bg-base: #08080a;
+      --bg-subtle: #0e0e12;
+      --bg-muted: #141418;
+      --bg-elevated: #1a1a20;
+      --bg-elevated-hover: #222228;
+
+      /* Borders - Refined */
+      --border-subtle: rgba(255, 255, 255, 0.04);
+      --border-muted: rgba(255, 255, 255, 0.08);
+      --border-emphasis: rgba(255, 255, 255, 0.12);
+      --border-glow: rgba(99, 102, 241, 0.3);
+
+      /* Primary - Electric Indigo */
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-dark: #4f46e5;
+      --primary-muted: rgba(99, 102, 241, 0.12);
+      --primary-glow: rgba(99, 102, 241, 0.25);
+
+      /* Accent - Vivid Violet */
+      --accent: #8b5cf6;
+      --accent-light: #a78bfa;
+      --accent-muted: rgba(139, 92, 246, 0.12);
+      --accent-glow: rgba(139, 92, 246, 0.25);
+
+      /* Success - Emerald */
+      --success: #22c55e;
+      --success-light: #4ade80;
+      --success-muted: rgba(34, 197, 94, 0.12);
+      --success-glow: rgba(34, 197, 94, 0.25);
+
+      /* Warning */
+      --warning: #f59e0b;
+      --warning-muted: rgba(245, 158, 11, 0.12);
+
+      /* Text - Crystal Clear */
+      --text-primary: #fafafa;
+      --text-secondary: rgba(250, 250, 250, 0.72);
+      --text-tertiary: rgba(250, 250, 250, 0.48);
+      --text-muted: rgba(250, 250, 250, 0.32);
+
+      /* Typography */
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+      /* Spacing */
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-2xl: 28px;
+
+      /* Shadows - Layered Depth */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+      --shadow-glow-primary: 0 0 40px rgba(99, 102, 241, 0.15), 0 0 80px rgba(99, 102, 241, 0.08);
+      --shadow-glow-accent: 0 0 40px rgba(139, 92, 246, 0.15), 0 0 80px rgba(139, 92, 246, 0.08);
+      --shadow-glow-success: 0 0 40px rgba(34, 197, 94, 0.15), 0 0 80px rgba(34, 197, 94, 0.08);
+
+      /* Transitions */
+      --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ========================================
+       KEYFRAME ANIMATIONS
+       ======================================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes flowDot {
+      0% { transform: translateX(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateX(100%); opacity: 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes glow {
+      0%, 100% {
+        filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6)) drop-shadow(0 0 16px rgba(99, 102, 241, 0.3));
+      }
+      50% {
+        filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.8)) drop-shadow(0 0 24px rgba(99, 102, 241, 0.4));
+      }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Cyberpunk Neon Pulse Animation */
+    @keyframes neonPulse {
+      0%, 100% {
+        opacity: 0.7;
+        filter: drop-shadow(0 0 4px currentColor);
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 20px currentColor);
+      }
+    }
+
+    /* Node Bloom Effect on Particle Pass */
+    @keyframes nodeBloom {
+      0% {
+        transform: scale(1);
+        filter: none;
+      }
+      50% {
+        transform: scale(1.12);
+        filter: drop-shadow(0 0 16px var(--primary-light));
+      }
+      100% {
+        transform: scale(1);
+        filter: none;
+      }
+    }
+
+    /* Staggered Entry Animation */
+    @keyframes stepAppear {
+      0% {
+        opacity: 0;
+        transform: translateY(15px) scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Comet Trail Fade */
+    @keyframes cometGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 8px #a78bfa) drop-shadow(0 0 16px #8b5cf6);
+      }
+      50% {
+        filter: drop-shadow(0 0 12px #c4b5fd) drop-shadow(0 0 24px #a78bfa);
+      }
+    }
+
+    /* ========================================
+       BASE STYLES
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background-color: var(--bg-base);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background Grid Pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Gradient Orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100vh;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(139, 92, 246, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 0% 80%, rgba(34, 197, 94, 0.06), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Skip Link */
+    .skip-link {
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 14px 28px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: var(--text-primary);
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      z-index: 10000;
+      transition: top var(--transition-base);
+      text-decoration: none;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .skip-link:focus {
+      top: 16px;
+    }
+
+    /* ========================================
+       NAVIGATION - Glassmorphism
+       ======================================== */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(8, 8, 10, 0.75);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 24px;
+      transform: translateY(-100%);
+      transition: transform var(--transition-base);
+    }
+
+    .nav--visible {
+      transform: translateY(0);
+    }
+
+    .nav__inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .nav__progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
+      background-size: 200% 100%;
+      animation: gradientFlow 3s ease infinite;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .nav__link {
+      color: var(--text-tertiary);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .nav__link::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--primary-muted), var(--accent-muted));
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .nav__link:hover {
+      color: var(--text-primary);
+    }
+
+    .nav__link:hover::before {
+      opacity: 1;
+    }
+
+    .nav__link--active {
+      color: var(--primary-light);
+    }
+
+    .nav__link--active::before {
+      opacity: 1;
+      background: var(--primary-muted);
+    }
+
+    .nav__link:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .nav__logo {
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-right: 20px;
+      font-size: 0.9rem;
+    }
+
+    /* ========================================
+       HERO SECTION - Premium
+       ======================================== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Hero Gradient Overlay */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(ellipse 100% 70% at 50% 0%, rgba(99, 102, 241, 0.15), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 80% 20%, rgba(139, 92, 246, 0.1), transparent 40%),
+        radial-gradient(ellipse 60% 40% at 20% 30%, rgba(99, 102, 241, 0.08), transparent 35%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .hero__content {
+      max-width: 1100px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+      animation: fadeUp 1s ease-out;
+    }
+
+    .hero__title {
+      font-size: clamp(3.5rem, 10vw, 6rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      background: linear-gradient(
+        135deg,
+        var(--text-primary) 0%,
+        var(--text-primary) 40%,
+        var(--primary-light) 60%,
+        var(--accent-light) 80%,
+        var(--text-primary) 100%
+      );
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 8s ease-in-out infinite;
+      text-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+      position: relative;
+    }
+
+    .hero__title::after {
+      content: 'EROS SCHEDULE';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0;
+      filter: blur(40px);
+      z-index: -1;
+    }
+
+    .hero__subtitle {
+      font-family: var(--font-mono);
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-top: -20px;
+      position: relative;
+    }
+
+    .hero__subtitle::before,
+    .hero__subtitle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-emphasis));
+    }
+
+    .hero__subtitle::before {
+      right: 100%;
+      margin-right: 16px;
+    }
+
+    .hero__subtitle::after {
+      left: 100%;
+      margin-left: 16px;
+      background: linear-gradient(90deg, var(--border-emphasis), transparent);
+    }
+
+    /* Pipeline Container */
+    .hero__pipeline {
+      width: 100%;
+      max-width: 920px;
+      margin: 32px 0;
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(26, 26, 32, 0.6), rgba(14, 14, 18, 0.8));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl), var(--shadow-glow-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero__pipeline::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary-glow), var(--accent-glow), transparent);
+    }
+
+    .hero__pipeline::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03), transparent 40%);
+      pointer-events: none;
+    }
+
+    .hero__pipeline-svg {
+      width: 100%;
+      height: auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ========================================
+       PIPELINE VISUALIZATION - Cyberpunk Style
+       ======================================== */
+
+    /* Pipeline Step Groups with Staggered Entry */
+    .pipeline-step {
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.3s ease;
+      animation: stepAppear 0.4s ease-out backwards;
+    }
+
+    .pipeline-step:nth-child(1) { animation-delay: 0.1s; }
+    .pipeline-step:nth-child(2) { animation-delay: 0.15s; }
+    .pipeline-step:nth-child(3) { animation-delay: 0.2s; }
+    .pipeline-step:nth-child(4) { animation-delay: 0.25s; }
+    .pipeline-step:nth-child(5) { animation-delay: 0.3s; }
+    .pipeline-step:nth-child(6) { animation-delay: 0.35s; }
+    .pipeline-step:nth-child(7) { animation-delay: 0.4s; }
+    .pipeline-step:nth-child(8) { animation-delay: 0.45s; }
+    .pipeline-step:nth-child(9) { animation-delay: 0.5s; }
+    .pipeline-step:nth-child(10) { animation-delay: 0.55s; }
+
+    /* Phase-Based Hover Glows (Bloom Effect) */
+    .pipeline-step.phase-gather:hover {
+      filter: url(#glow-indigo);
+      transform: scale(1.1);
+    }
+
+    .pipeline-step.phase-process:hover {
+      filter: url(#glow-violet);
+      transform: scale(1.1);
+    }
+
+    .pipeline-step.phase-deliver:hover {
+      filter: url(#glow-emerald);
+      transform: scale(1.1);
+    }
+
+    .pipeline-step:focus {
+      outline: none;
+    }
+
+    .pipeline-step:focus-visible .step-shape {
+      stroke-width: 2.5;
+      stroke: var(--text-primary);
+    }
+
+    /* Step Shape (rect/polygon base) */
+    .step-shape {
+      fill: var(--bg-elevated);
+      transition: all var(--transition-fast);
+    }
+
+    /* Phase Border Colors */
+    .phase-gather .step-shape { stroke: var(--primary); stroke-width: 1.5; }
+    .phase-process .step-shape { stroke: var(--accent); stroke-width: 1.5; }
+    .phase-deliver .step-shape { stroke: var(--success); stroke-width: 1.5; }
+
+    /* Branch Steps (LLM-only) */
+    .pipeline-step--branch {
+      opacity: 0.7;
+      transition: opacity 0.3s ease, transform 0.2s ease, filter 0.3s ease;
+    }
+
+    .pipeline-step--branch:hover {
+      opacity: 1;
+      filter: url(#glow-violet);
+      transform: scale(1.08);
+    }
+
+    /* Step Number - Larger, Bolder */
+    .step-number {
+      fill: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .pipeline-step--branch .step-number {
+      font-size: 10px;
+    }
+
+    /* Step Label - Readable Size */
+    .step-label {
+      fill: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 10px;
+      font-weight: 500;
+      text-anchor: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .pipeline-step--branch .step-label {
+      font-size: 8px;
+      fill: var(--text-tertiary);
+    }
+
+    /* Connection Track with Depth */
+    .pipeline-track-bg {
+      fill: none;
+      stroke: #1a1a1f;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .pipeline-track {
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      animation: neonPulse 3s ease-in-out infinite;
+    }
+
+    /* Branch Connectors */
+    .branch-connector {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1;
+      stroke-dasharray: 4 3;
+      opacity: 0.5;
+    }
+
+    /* Flow Direction Arrows */
+    .flow-arrow {
+      fill: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    /* Comet Particle Animation */
+    .comet-particle {
+      animation: cometGlow 2s ease-in-out infinite;
+    }
+
+    .comet-tail {
+      opacity: 0.6;
+    }
+
+    .comet-core {
+      fill: url(#particle-core);
+    }
+
+    .comet-center {
+      fill: #ffffff;
+    }
+
+    /* Trail Particles */
+    .trail-dot {
+      fill: var(--accent-light);
+    }
+
+    .trail-dot:nth-child(1) { opacity: 0.5; }
+    .trail-dot:nth-child(2) { opacity: 0.3; }
+    .trail-dot:nth-child(3) { opacity: 0.15; }
+
+    /* Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+      .pipeline-step,
+      .pipeline-track,
+      .comet-particle {
+        animation: none;
+      }
+      .pipeline-step {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* ========================================
+       ASCII PIPELINE - Premium Terminal Design
+       ======================================== */
+
+    /* Particle Animation for Track */
+    @keyframes particleFlow {
+      0% {
+        left: 0%;
+        opacity: 0;
+      }
+      5% {
+        opacity: 1;
+      }
+      95% {
+        opacity: 1;
+      }
+      100% {
+        left: 100%;
+        opacity: 0;
+      }
+    }
+
+    @keyframes cursorBlink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    @keyframes textGlow {
+      0%, 100% {
+        text-shadow: 0 0 4px currentColor, 0 0 8px currentColor;
+      }
+      50% {
+        text-shadow: 0 0 8px currentColor, 0 0 16px currentColor, 0 0 24px currentColor;
+      }
+    }
+
+    @keyframes stepFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .ascii-pipeline {
+      width: 100%;
+      font-family: var(--font-mono);
+      position: relative;
+      z-index: 1;
+      padding: 16px 0;
+    }
+
+    /* Phase Labels */
+    .ascii-pipeline__phases {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 0 8px;
+    }
+
+    .ascii-phase {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ascii-phase__label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .ascii-phase__bracket {
+      font-size: 1.25rem;
+      font-weight: 300;
+      opacity: 0.4;
+    }
+
+    .ascii-phase--gather .ascii-phase__label {
+      color: var(--primary-light);
+      text-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+    }
+
+    .ascii-phase--gather .ascii-phase__bracket {
+      color: var(--primary);
+    }
+
+    .ascii-phase--process .ascii-phase__label {
+      color: var(--accent-light);
+      text-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+    }
+
+    .ascii-phase--deliver .ascii-phase__label {
+      color: var(--success-light);
+      text-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+    }
+
+    .ascii-phase--deliver .ascii-phase__bracket {
+      color: var(--success);
+    }
+
+    /* LLM Branch Row */
+    .ascii-pipeline__branches {
+      display: flex;
+      justify-content: space-around;
+      padding: 0 80px;
+      margin-bottom: 8px;
+      min-height: 70px;
+    }
+
+    .ascii-branch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .ascii-branch--quality {
+      margin-left: 12%;
+    }
+
+    .ascii-branch--enhance {
+      margin-right: 8%;
+    }
+
+    .ascii-branch__connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      line-height: 1;
+    }
+
+    .ascii-branch__connector .ascii-char {
+      color: var(--accent);
+      opacity: 0.5;
+      font-size: 0.875rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .ascii-branch__node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
+      border-radius: var(--radius-sm);
+      padding: 4px 2px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid transparent;
+    }
+
+    .ascii-branch__node:hover {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
+      border-color: var(--accent-glow);
+      transform: scale(1.05);
+    }
+
+    .ascii-branch__node:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .ascii-node__frame {
+      font-size: 0.6875rem;
+      color: var(--accent);
+      opacity: 0.6;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .ascii-node__content {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      line-height: 1.2;
+    }
+
+    .ascii-node__border {
+      font-size: 0.6875rem;
+      color: var(--accent);
+      opacity: 0.6;
+    }
+
+    .ascii-node__step {
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--accent-light);
+      margin-right: 4px;
+    }
+
+    .ascii-node__name {
+      font-size: 0.625rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+    }
+
+    /* Main Pipeline Container */
+    .ascii-pipeline__main {
+      position: relative;
+      padding: 24px 0 16px;
+    }
+
+    /* Track Line */
+    .ascii-pipeline__track {
+      position: absolute;
+      top: 50%;
+      left: 4%;
+      right: 4%;
+      height: 2px;
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .ascii-track__line {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg,
+        var(--primary) 0%,
+        var(--primary) 25%,
+        var(--accent) 45%,
+        var(--accent) 70%,
+        var(--success) 85%,
+        var(--success) 100%
+      );
+      opacity: 0.3;
+      border-radius: 1px;
+    }
+
+    .ascii-track__line::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: inherit;
+      filter: blur(4px);
+      opacity: 0.5;
+    }
+
+    .ascii-track__particle {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, var(--accent-light), #ffffff, var(--accent-light), transparent);
+      border-radius: 2px;
+      animation: particleFlow 4s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent);
+    }
+
+    .ascii-track__particle--delayed {
+      animation-delay: -2s;
+      opacity: 0.6;
+    }
+
+    /* Pipeline Steps Container */
+    .ascii-pipeline__steps {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Individual Step */
+    .ascii-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      animation: stepFadeIn 0.4s ease-out backwards;
+    }
+
+    .ascii-step:nth-child(1) { animation-delay: 0.05s; }
+    .ascii-step:nth-child(2) { animation-delay: 0.1s; }
+    .ascii-step:nth-child(3) { animation-delay: 0.15s; }
+    .ascii-step:nth-child(4) { animation-delay: 0.2s; }
+    .ascii-step:nth-child(5) { animation-delay: 0.25s; }
+    .ascii-step:nth-child(6) { animation-delay: 0.3s; }
+    .ascii-step:nth-child(7) { animation-delay: 0.35s; }
+    .ascii-step:nth-child(8) { animation-delay: 0.4s; }
+    .ascii-step:nth-child(9) { animation-delay: 0.45s; }
+    .ascii-step:nth-child(10) { animation-delay: 0.5s; }
+
+    .ascii-step:hover {
+      transform: translateY(-4px) scale(1.05);
+    }
+
+    .ascii-step:focus-visible {
+      outline: none;
+    }
+
+    .ascii-step:focus-visible .ascii-step__box {
+      box-shadow: 0 0 0 2px var(--text-primary);
+    }
+
+    /* Branch Indicator */
+    .ascii-step__branch-indicator {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: 0.6;
+    }
+
+    /* Step Box */
+    .ascii-step__box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border-radius: var(--radius-sm);
+      padding: 6px 4px;
+      min-width: 56px;
+      border: 1px solid transparent;
+      transition: all var(--transition-fast);
+      line-height: 1;
+    }
+
+    .ascii-step:hover .ascii-step__box {
+      background: linear-gradient(135deg, var(--bg-elevated-hover), var(--bg-elevated));
+    }
+
+    /* Step Box Parts */
+    .ascii-step__corner,
+    .ascii-step__top,
+    .ascii-step__bottom,
+    .ascii-step__side {
+      font-size: 0.6875rem;
+      opacity: 0.5;
+      transition: all var(--transition-fast);
+    }
+
+    .ascii-step__middle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 2px 0;
+    }
+
+    .ascii-step__num {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    /* Phase Colors */
+    .ascii-step--gather .ascii-step__corner,
+    .ascii-step--gather .ascii-step__top,
+    .ascii-step--gather .ascii-step__bottom,
+    .ascii-step--gather .ascii-step__side {
+      color: var(--primary);
+    }
+
+    .ascii-step--gather .ascii-step__num {
+      color: var(--primary-light);
+    }
+
+    .ascii-step--gather .ascii-step__box {
+      border-color: rgba(99, 102, 241, 0.2);
+    }
+
+    .ascii-step--gather:hover .ascii-step__box {
+      border-color: var(--primary-glow);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .ascii-step--gather:hover .ascii-step__corner,
+    .ascii-step--gather:hover .ascii-step__top,
+    .ascii-step--gather:hover .ascii-step__bottom,
+    .ascii-step--gather:hover .ascii-step__side {
+      opacity: 1;
+      text-shadow: 0 0 8px var(--primary);
+    }
+
+    .ascii-step--gather:hover .ascii-step__num {
+      text-shadow: 0 0 12px var(--primary);
+    }
+
+    .ascii-step--process .ascii-step__corner,
+    .ascii-step--process .ascii-step__top,
+    .ascii-step--process .ascii-step__bottom,
+    .ascii-step--process .ascii-step__side {
+      color: var(--accent);
+    }
+
+    .ascii-step--process .ascii-step__num {
+      color: var(--accent-light);
+    }
+
+    .ascii-step--process .ascii-step__box {
+      border-color: rgba(139, 92, 246, 0.2);
+    }
+
+    .ascii-step--process:hover .ascii-step__box {
+      border-color: var(--accent-glow);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .ascii-step--process:hover .ascii-step__corner,
+    .ascii-step--process:hover .ascii-step__top,
+    .ascii-step--process:hover .ascii-step__bottom,
+    .ascii-step--process:hover .ascii-step__side {
+      opacity: 1;
+      text-shadow: 0 0 8px var(--accent);
+    }
+
+    .ascii-step--process:hover .ascii-step__num {
+      text-shadow: 0 0 12px var(--accent);
+    }
+
+    .ascii-step--deliver .ascii-step__corner,
+    .ascii-step--deliver .ascii-step__top,
+    .ascii-step--deliver .ascii-step__bottom,
+    .ascii-step--deliver .ascii-step__side {
+      color: var(--success);
+    }
+
+    .ascii-step--deliver .ascii-step__num {
+      color: var(--success-light);
+    }
+
+    .ascii-step--deliver .ascii-step__box {
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .ascii-step--deliver:hover .ascii-step__box {
+      border-color: var(--success-glow);
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .ascii-step--deliver:hover .ascii-step__corner,
+    .ascii-step--deliver:hover .ascii-step__top,
+    .ascii-step--deliver:hover .ascii-step__bottom,
+    .ascii-step--deliver:hover .ascii-step__side {
+      opacity: 1;
+      text-shadow: 0 0 8px var(--success);
+    }
+
+    .ascii-step--deliver:hover .ascii-step__num {
+      text-shadow: 0 0 12px var(--success);
+    }
+
+    /* Entry/Exit Node Emphasis */
+    .ascii-step--entry .ascii-step__box,
+    .ascii-step--exit .ascii-step__box {
+      min-width: 64px;
+      padding: 8px 6px;
+    }
+
+    .ascii-step--entry .ascii-step__corner,
+    .ascii-step--entry .ascii-step__side,
+    .ascii-step--exit .ascii-step__corner,
+    .ascii-step--exit .ascii-step__side {
+      opacity: 0.7;
+      font-weight: 600;
+    }
+
+    .ascii-step--entry .ascii-step__num,
+    .ascii-step--exit .ascii-step__num {
+      font-size: 1rem;
+    }
+
+    /* Step Label */
+    .ascii-step__label {
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      transition: color var(--transition-fast);
+    }
+
+    .ascii-step:hover .ascii-step__label {
+      color: var(--text-secondary);
+    }
+
+    /* Step Arrow */
+    .ascii-step__arrow {
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .ascii-step--exit .ascii-step__arrow {
+      display: none;
+    }
+
+    /* Terminal Footer */
+    .ascii-pipeline__footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .ascii-footer__prompt {
+      color: var(--success);
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .ascii-footer__command {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      letter-spacing: 0.02em;
+    }
+
+    .ascii-footer__cursor {
+      color: var(--primary-light);
+      font-weight: 600;
+      font-size: 0.875rem;
+      animation: cursorBlink 1s step-end infinite;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 900px) {
+      .ascii-pipeline__phases {
+        padding: 0 4px;
+      }
+
+      .ascii-phase__label {
+        font-size: 0.5625rem;
+        letter-spacing: 0.1em;
+      }
+
+      .ascii-phase__bracket {
+        display: none;
+      }
+
+      .ascii-pipeline__branches {
+        padding: 0 20px;
+        min-height: 60px;
+      }
+
+      .ascii-branch--quality {
+        margin-left: 8%;
+      }
+
+      .ascii-branch--enhance {
+        margin-right: 4%;
+      }
+
+      .ascii-node__frame {
+        font-size: 0.5625rem;
+      }
+
+      .ascii-node__step,
+      .ascii-node__name {
+        font-size: 0.5rem;
+      }
+
+      .ascii-step__box {
+        min-width: 44px;
+        padding: 4px 2px;
+      }
+
+      .ascii-step__corner,
+      .ascii-step__top,
+      .ascii-step__bottom,
+      .ascii-step__side {
+        font-size: 0.5625rem;
+      }
+
+      .ascii-step__num {
+        font-size: 0.75rem;
+        min-width: 20px;
+      }
+
+      .ascii-step__label {
+        font-size: 0.5rem;
+      }
+
+      .ascii-step__arrow {
+        display: none;
+      }
+
+      .ascii-step--entry .ascii-step__box,
+      .ascii-step--exit .ascii-step__box {
+        min-width: 52px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .ascii-pipeline__phases {
+        display: none;
+      }
+
+      .ascii-pipeline__branches {
+        flex-direction: row;
+        gap: 24px;
+        padding: 0 8px;
+        margin-bottom: 12px;
+      }
+
+      .ascii-branch--quality,
+      .ascii-branch--enhance {
+        margin: 0;
+      }
+
+      .ascii-pipeline__steps {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .ascii-step {
+        flex: 0 0 calc(20% - 8px);
+        min-width: 48px;
+      }
+
+      .ascii-step__box {
+        min-width: 40px;
+      }
+
+      .ascii-step--entry .ascii-step__box,
+      .ascii-step--exit .ascii-step__box {
+        min-width: 48px;
+      }
+
+      .ascii-pipeline__track {
+        display: none;
+      }
+
+      .ascii-step__branch-indicator {
+        display: none;
+      }
+
+      .ascii-pipeline__footer {
+        margin-top: 16px;
+        padding-top: 12px;
+      }
+
+      .ascii-footer__prompt,
+      .ascii-footer__command,
+      .ascii-footer__cursor {
+        font-size: 0.75rem;
+      }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .ascii-step {
+        animation: none;
+      }
+
+      .ascii-track__particle {
+        animation: none;
+        opacity: 0;
+      }
+
+      .ascii-footer__cursor {
+        animation: none;
+        opacity: 1;
+      }
+
+      .ascii-branch__connector .ascii-char {
+        animation: none;
+      }
+    }
+
+    /* Stats Bar - Glassmorphism */
+    .hero__stats {
+      display: flex;
+      align-items: center;
+      gap: 56px;
+      padding: 28px 48px;
+      background: linear-gradient(135deg, rgba(26, 26, 32, 0.7), rgba(14, 14, 18, 0.8));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero__stats::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-emphasis), transparent);
+    }
+
+    .hero__stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hero__stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .hero__stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .hero__stat-divider {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(180deg, transparent, var(--border-muted), transparent);
+    }
+
+    /* Scroll Indicator - Animated */
+    .hero__scroll {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .hero__scroll-text {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .hero__scroll-icon {
+      width: 24px;
+      height: 40px;
+      border: 2px solid var(--border-muted);
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .hero__scroll-icon::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 8px;
+      background: var(--primary);
+      border-radius: 2px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* ========================================
+       SECTION DIVIDERS
+       ======================================== */
+    .section-divider {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-muted), transparent);
+    }
+
+    /* ========================================
+       SECTIONS
+       ======================================== */
+    .section {
+      padding: 120px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .section__header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 56px;
+    }
+
+    .section__number {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--primary-light);
+      padding: 10px 16px;
+      background: linear-gradient(135deg, var(--primary-muted), rgba(99, 102, 241, 0.06));
+      border: 1px solid var(--primary-glow);
+      border-radius: var(--radius-md);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+    }
+
+    .section__title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    /* ========================================
+       CARDS - Premium
+       ======================================== */
+    .card {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all var(--transition-base);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-emphasis), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-muted);
+      box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.05);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card__header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .card__step {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--primary-light);
+      padding: 5px 10px;
+      background: var(--primary-muted);
+      border: 1px solid var(--primary-glow);
+      border-radius: var(--radius-sm);
+    }
+
+    .card__title {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card__description {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .card__details {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .card__detail {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+    }
+
+    /* ========================================
+       GRIDS
+       ======================================== */
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .grid--2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid--3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid--4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      .grid--2, .grid--3, .grid--4 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ========================================
+       WORKFLOW DIAGRAM
+       ======================================== */
+    .workflow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .workflow__box {
+      flex: 1;
+      min-width: 160px;
+      padding: 24px;
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      text-align: center;
+      transition: all var(--transition-base);
+    }
+
+    .workflow__box:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .workflow__box--input {
+      border-color: var(--primary-glow);
+      border-left: 3px solid var(--primary);
+      box-shadow: var(--shadow-glow-primary);
+    }
+
+    .workflow__box--output {
+      border-color: var(--success-glow);
+      border-right: 3px solid var(--success);
+      box-shadow: var(--shadow-glow-success);
+    }
+
+    .workflow__box-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 12px;
+    }
+
+    .workflow__box-list {
+      list-style: none;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .workflow__box-list li {
+      padding: 5px 0;
+    }
+
+    .workflow__arrow {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      transition: color var(--transition-fast);
+    }
+
+    .workflow__arrow:hover {
+      color: var(--primary);
+    }
+
+    .workflow__arrow svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    /* Database Box - Premium */
+    .database-box {
+      margin-top: 40px;
+      padding: 32px;
+      background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .database-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .database-box__title {
+      font-family: var(--font-mono);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      letter-spacing: 0.15em;
+    }
+
+    .database-box__path {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text-tertiary);
+      margin-top: 6px;
+    }
+
+    .database-stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .database-stat {
+      text-align: center;
+    }
+
+    .database-stat__value {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .database-stat__label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* ========================================
+       PIPELINE STEPS GRID
+       ======================================== */
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .pipeline-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .pipeline-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ========================================
+       ALGORITHM CARDS - Enhanced
+       ======================================== */
+    .algorithm-card {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all var(--transition-base);
+    }
+
+    .algorithm-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-muted);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .algorithm-card__title {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+    }
+
+    .algorithm-card__formula {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--accent-light);
+      padding: 14px 16px;
+      background: linear-gradient(135deg, var(--bg-muted), var(--bg-subtle));
+      border: 1px solid var(--accent-muted);
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      overflow-x: auto;
+    }
+
+    .algorithm-card__description {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ========================================
+       VOLUME COMPARISON
+       ======================================== */
+    .volume-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+
+    @media (max-width: 768px) {
+      .volume-comparison {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .volume-panel {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all var(--transition-base);
+    }
+
+    .volume-panel:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .volume-panel--paid {
+      border-top: 3px solid var(--primary);
+      box-shadow: var(--shadow-glow-primary);
+    }
+
+    .volume-panel--free {
+      border-top: 3px solid var(--success);
+      box-shadow: var(--shadow-glow-success);
+    }
+
+    .volume-panel__title {
+      font-family: var(--font-mono);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+    }
+
+    .volume-panel--paid .volume-panel__title {
+      color: var(--primary-light);
+    }
+
+    .volume-panel--free .volume-panel__title {
+      color: var(--success-light);
+    }
+
+    .volume-panel__list {
+      list-style: none;
+    }
+
+    .volume-panel__list li {
+      padding: 10px 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .volume-panel__list li:last-child {
+      border-bottom: none;
+    }
+
+    /* Factor Diagram */
+    .factors-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 600px) {
+      .factors-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .factor-card {
+      padding: 20px;
+      background: linear-gradient(135deg, var(--bg-subtle), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      text-align: center;
+      transition: all var(--transition-base);
+    }
+
+    .factor-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-muted);
+      box-shadow: var(--shadow-md);
+    }
+
+    .factor-card__number {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--primary);
+      margin-bottom: 6px;
+      letter-spacing: 0.1em;
+    }
+
+    .factor-card__name {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ========================================
+       TABLES - Premium
+       ======================================== */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .table th,
+    .table td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .table th {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: var(--bg-muted);
+    }
+
+    .table td {
+      color: var(--text-secondary);
+    }
+
+    .table td:first-child {
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .table tbody tr {
+      transition: background var(--transition-fast);
+    }
+
+    .table tbody tr:hover {
+      background: var(--bg-subtle);
+    }
+
+    .table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ========================================
+       CODE BLOCKS - Premium Terminal
+       ======================================== */
+    .code-block {
+      position: relative;
+      background: linear-gradient(135deg, var(--bg-muted), var(--bg-subtle));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .code-block__header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--bg-subtle), var(--bg-base));
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .code-block__dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .code-block__dot--red { background: linear-gradient(135deg, #ff6b6b, #ff5f56); }
+    .code-block__dot--yellow { background: linear-gradient(135deg, #ffd93d, #ffbd2e); }
+    .code-block__dot--green { background: linear-gradient(135deg, #6bcf63, #27ca40); }
+
+    .code-block__title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      margin-left: 10px;
+    }
+
+    .code-block__copy {
+      margin-left: auto;
+      padding: 8px 14px;
+      background: transparent;
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius-sm);
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .code-block__copy:hover {
+      color: var(--text-primary);
+      border-color: var(--border-emphasis);
+      background: var(--primary-muted);
+    }
+
+    .code-block__copy:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .code-block__copy--copied {
+      color: var(--success-light);
+      border-color: var(--success);
+    }
+
+    .code-block__content {
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+
+    .code-block__content code {
+      display: block;
+      white-space: pre;
+    }
+
+    /* ========================================
+       TOOLTIP - Glassmorphism
+       ======================================== */
+    .tooltip {
+      position: fixed;
+      z-index: 10000;
+      padding: 16px 20px;
+      background: rgba(26, 26, 32, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+      max-width: 260px;
+    }
+
+    .tooltip--visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tooltip__step {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--primary-light);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 6px;
+    }
+
+    .tooltip__title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .tooltip__desc {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ========================================
+       MODE PANELS (Section 06) - Enhanced
+       ======================================== */
+    .mode-panel {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all var(--transition-base);
+    }
+
+    .mode-panel:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mode-panel--quick {
+      border-top: 3px solid var(--primary);
+      box-shadow: var(--shadow-glow-primary);
+    }
+
+    .mode-panel--full {
+      border-top: 3px solid var(--accent);
+      box-shadow: var(--shadow-glow-accent);
+    }
+
+    .mode-panel__title {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .mode-panel__subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+    }
+
+    .mode-panel__list {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+
+    .mode-panel__list li {
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mode-panel__list li:last-child {
+      border-bottom: none;
+    }
+
+    .mode-panel__stats {
+      display: flex;
+      gap: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-muted);
+    }
+
+    .mode-panel__stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mode-panel__stat-value {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .mode-panel__stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* ========================================
+       AGENT ARCHITECTURE (Section 07)
+       ======================================== */
+    .agent-legend {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .agent-legend__item {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+    }
+
+    .agent-legend__item--haiku {
+      background: var(--success-muted);
+      color: var(--success-light);
+      border-color: var(--success-glow);
+    }
+
+    .agent-legend__item--sonnet {
+      background: var(--primary-muted);
+      color: var(--primary-light);
+      border-color: var(--primary-glow);
+    }
+
+    .agent-legend__item--opus {
+      background: var(--accent-muted);
+      color: var(--accent-light);
+      border-color: var(--accent-glow);
+    }
+
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .agent-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .agent-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .agent-card {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-muted));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: all var(--transition-base);
+    }
+
+    .agent-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-muted);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .agent-card--haiku {
+      border-left: 3px solid var(--success);
+    }
+
+    .agent-card--haiku:hover {
+      box-shadow: var(--shadow-lg), var(--shadow-glow-success);
+    }
+
+    .agent-card--sonnet {
+      border-left: 3px solid var(--primary);
+    }
+
+    .agent-card--sonnet:hover {
+      box-shadow: var(--shadow-lg), var(--shadow-glow-primary);
+    }
+
+    .agent-card--opus {
+      border-left: 3px solid var(--accent);
+    }
+
+    .agent-card--opus:hover {
+      box-shadow: var(--shadow-lg), var(--shadow-glow-accent);
+    }
+
+    .agent-card__model {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+
+    .agent-card--haiku .agent-card__model {
+      color: var(--success-light);
+    }
+
+    .agent-card--sonnet .agent-card__model {
+      color: var(--primary-light);
+    }
+
+    .agent-card--opus .agent-card__model {
+      color: var(--accent-light);
+    }
+
+    .agent-card__title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+
+    .agent-card__desc {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ========================================
+       ALGORITHM CARD BREAKDOWN
+       ======================================== */
+    .algorithm-card__breakdown {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .algorithm-card__factor {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      transition: background var(--transition-fast);
+    }
+
+    .algorithm-card__factor:hover {
+      background: var(--bg-muted);
+    }
+
+    .algorithm-card__factor-name {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+    }
+
+    .algorithm-card__factor-value {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-light);
+    }
+
+    /* ========================================
+       PIPELINE LLM NODE STYLES
+       ======================================== */
+    .pipeline-node--llm {
+      opacity: 0.95;
+    }
+
+    .pipeline-path--branch {
+      opacity: 0.75;
+    }
+
+    /* ========================================
+       FOOTER - Premium Branding
+       ======================================== */
+    .footer {
+      padding: 60px 24px;
+      background: linear-gradient(180deg, transparent, var(--bg-subtle));
+      border-top: 1px solid var(--border-subtle);
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer__inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer__logo {
+      font-family: var(--font-mono);
+      font-size: 1.125rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .footer__divider {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-muted), transparent);
+    }
+
+    .footer__text {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .footer__version {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      background: var(--bg-muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+
+    /* ========================================
+       ACCESSIBILITY
+       ======================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    /* Focus States */
+    :focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    /* Screen Reader Only */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+    @media (max-width: 768px) {
+      .hero__stats {
+        flex-direction: column;
+        gap: 20px;
+        padding: 24px 32px;
+      }
+
+      .hero__stat-divider {
+        width: 56px;
+        height: 1px;
+      }
+
+      .nav__inner {
+        gap: 6px;
+      }
+
+      .nav__link {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+      }
+
+      .section {
+        padding: 80px 20px;
+      }
+
+      .workflow {
+        flex-direction: column;
+      }
+
+      .workflow__arrow {
+        transform: rotate(90deg);
+      }
+
+      .hero__subtitle::before,
+      .hero__subtitle::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Section navigation">
+    <div class="nav__progress" aria-hidden="true"></div>
+    <div class="nav__inner">
+      <a href="#hero" class="nav__link nav__logo" data-section="hero" aria-label="Return to top">EROS</a>
+      <a href="#overview" class="nav__link" data-section="overview" aria-label="Section 1: System Overview">01</a>
+      <a href="#pipeline" class="nav__link" data-section="pipeline" aria-label="Section 2: 12-Step Pipeline">02</a>
+      <a href="#algorithms" class="nav__link" data-section="algorithms" aria-label="Section 3: Algorithms">03</a>
+      <a href="#volume" class="nav__link" data-section="volume" aria-label="Section 4: Volume Strategy">04</a>
+      <a href="#reference" class="nav__link" data-section="reference" aria-label="Section 5: Quick Reference">05</a>
+      <a href="#modes" class="nav__link" data-section="modes" aria-label="Section 6: Execution Modes">06</a>
+      <a href="#agents" class="nav__link" data-section="agents" aria-label="Section 7: Agent Architecture">07</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero" id="hero" role="banner">
+    <div class="hero__content">
+      <h1 class="hero__title">EROS SCHEDULE</h1>
+      <p class="hero__subtitle">Generator Architecture</p>
+
+      <!-- Interactive Pipeline - Premium ASCII-Inspired Design -->
+      <div class="hero__pipeline" role="img" aria-label="10-Step Pipeline with 2 LLM Branches: Analyze, Content, Persona, Structure, Quality (LLM), Assign, Follow-up, Enhance (LLM), Drip, Page Type, Validate, Return">
+
+        <!-- ASCII Pipeline Visualization -->
+        <div class="ascii-pipeline" aria-hidden="true">
+
+          <!-- Phase Labels Row -->
+          <div class="ascii-pipeline__phases">
+            <div class="ascii-phase ascii-phase--gather">
+              <span class="ascii-phase__label">GATHER</span>
+              <span class="ascii-phase__bracket">[</span>
+            </div>
+            <div class="ascii-phase ascii-phase--process">
+              <span class="ascii-phase__label">PROCESS</span>
+            </div>
+            <div class="ascii-phase ascii-phase--deliver">
+              <span class="ascii-phase__bracket">]</span>
+              <span class="ascii-phase__label">DELIVER</span>
+            </div>
+          </div>
+
+          <!-- LLM Branch Row (Above Main Flow) -->
+          <div class="ascii-pipeline__branches">
+            <div class="ascii-branch ascii-branch--quality">
+              <div class="ascii-branch__connector">
+                <span class="ascii-char">|</span>
+              </div>
+              <div class="ascii-branch__node" tabindex="0" role="button" aria-label="Step 4B: LLM Quality Scoring (Optional)">
+                <span class="ascii-node__frame ascii-node__frame--top">.---------.</span>
+                <span class="ascii-node__content">
+                  <span class="ascii-node__border">|</span>
+                  <span class="ascii-node__step">4B</span>
+                  <span class="ascii-node__name">QUALITY</span>
+                  <span class="ascii-node__border">|</span>
+                </span>
+                <span class="ascii-node__frame ascii-node__frame--bottom">'---LLM---'</span>
+              </div>
+            </div>
+            <div class="ascii-branch ascii-branch--enhance">
+              <div class="ascii-branch__connector">
+                <span class="ascii-char">|</span>
+              </div>
+              <div class="ascii-branch__node" tabindex="0" role="button" aria-label="Step 7B: LLM Caption Enhancement (Optional)">
+                <span class="ascii-node__frame ascii-node__frame--top">.---------.</span>
+                <span class="ascii-node__content">
+                  <span class="ascii-node__border">|</span>
+                  <span class="ascii-node__step">7B</span>
+                  <span class="ascii-node__name">ENHANCE</span>
+                  <span class="ascii-node__border">|</span>
+                </span>
+                <span class="ascii-node__frame ascii-node__frame--bottom">'---LLM---'</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Pipeline Flow -->
+          <div class="ascii-pipeline__main">
+            <!-- Connection Line with Animated Particle -->
+            <div class="ascii-pipeline__track">
+              <div class="ascii-track__line"></div>
+              <div class="ascii-track__particle"></div>
+              <div class="ascii-track__particle ascii-track__particle--delayed"></div>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div class="ascii-pipeline__steps" role="list" aria-label="Pipeline processing steps">
+
+              <!-- Step 1: ANALYZE -->
+              <div class="ascii-step ascii-step--gather ascii-step--entry" tabindex="0" role="listitem" aria-label="Step 1: Analyze creator data from database" data-step="1">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">(</span>
+                  <span class="ascii-step__top">========</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">)</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">||</span>
+                    <span class="ascii-step__num">01</span>
+                    <span class="ascii-step__side">||</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">(</span>
+                  <span class="ascii-step__bottom">========</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">)</span>
+                </div>
+                <span class="ascii-step__label">ANALYZE</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 2: CONTENT -->
+              <div class="ascii-step ascii-step--gather" tabindex="0" role="listitem" aria-label="Step 2: Match content from vault availability" data-step="2">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">02</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">CONTENT</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 3: PERSONA -->
+              <div class="ascii-step ascii-step--gather" tabindex="0" role="listitem" aria-label="Step 3: Match creator persona for voice boost" data-step="3">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">03</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">PERSONA</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 4: STRUCTURE -->
+              <div class="ascii-step ascii-step--process ascii-step--has-branch" tabindex="0" role="listitem" aria-label="Step 4: Build weekly time slot structure" data-step="4">
+                <div class="ascii-step__branch-indicator">+</div>
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">04</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">STRUCT</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 5: ASSIGN -->
+              <div class="ascii-step ascii-step--process" tabindex="0" role="listitem" aria-label="Step 5: Assign captions using Vose Alias selection" data-step="5">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">05</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">ASSIGN</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 6: FOLLOW-UP -->
+              <div class="ascii-step ascii-step--process" tabindex="0" role="listitem" aria-label="Step 6: Generate follow-up bump messages" data-step="6">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">06</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">FOLLOW</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 7: DRIP -->
+              <div class="ascii-step ascii-step--process ascii-step--has-branch" tabindex="0" role="listitem" aria-label="Step 7: Apply drip timing windows" data-step="7">
+                <div class="ascii-step__branch-indicator">+</div>
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">07</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">DRIP</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 8: PAGE TYPE -->
+              <div class="ascii-step ascii-step--deliver" tabindex="0" role="listitem" aria-label="Step 8: Apply page type pricing rules" data-step="8">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">08</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">PAGE</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 9: VALIDATE -->
+              <div class="ascii-step ascii-step--deliver" tabindex="0" role="listitem" aria-label="Step 9: Validate all business rules" data-step="9">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">[</span>
+                  <span class="ascii-step__top">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">]</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">|</span>
+                    <span class="ascii-step__num">09</span>
+                    <span class="ascii-step__side">|</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">[</span>
+                  <span class="ascii-step__bottom">------</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">]</span>
+                </div>
+                <span class="ascii-step__label">VALID</span>
+                <span class="ascii-step__arrow">--></span>
+              </div>
+
+              <!-- Step 10: RETURN -->
+              <div class="ascii-step ascii-step--deliver ascii-step--exit" tabindex="0" role="listitem" aria-label="Step 10: Return completed schedule package" data-step="10">
+                <div class="ascii-step__box">
+                  <span class="ascii-step__corner ascii-step__corner--tl">(</span>
+                  <span class="ascii-step__top">========</span>
+                  <span class="ascii-step__corner ascii-step__corner--tr">)</span>
+                  <span class="ascii-step__middle">
+                    <span class="ascii-step__side">||</span>
+                    <span class="ascii-step__num">10</span>
+                    <span class="ascii-step__side">||</span>
+                  </span>
+                  <span class="ascii-step__corner ascii-step__corner--bl">(</span>
+                  <span class="ascii-step__bottom">========</span>
+                  <span class="ascii-step__corner ascii-step__corner--br">)</span>
+                </div>
+                <span class="ascii-step__label">RETURN</span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Terminal-Style Footer -->
+          <div class="ascii-pipeline__footer">
+            <span class="ascii-footer__prompt">$</span>
+            <span class="ascii-footer__command">eros generate</span>
+            <span class="ascii-footer__cursor">_</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Stats Bar - Revenue Removed -->
+      <div class="hero__stats">
+        <div class="hero__stat">
+          <span class="hero__stat-value">36</span>
+          <span class="hero__stat-label">Creators</span>
+        </div>
+        <div class="hero__stat-divider" aria-hidden="true"></div>
+        <div class="hero__stat">
+          <span class="hero__stat-value">19.5K</span>
+          <span class="hero__stat-label">Captions</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll Indicator -->
+    <div class="hero__scroll" aria-hidden="true">
+      <span class="hero__scroll-text">Scroll</span>
+      <div class="hero__scroll-icon"></div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" role="main">
+
+    <!-- Section 1: System Overview -->
+    <section class="section" id="overview" aria-labelledby="overview-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">01</span>
+        <h2 class="section__title" id="overview-title">System Overview</h2>
+      </div>
+
+      <div class="workflow">
+        <div class="workflow__box workflow__box--input">
+          <h3 class="workflow__box-title">Input</h3>
+          <ul class="workflow__box-list">
+            <li>Creator Name</li>
+            <li>Target Week</li>
+            <li>Volume Level</li>
+            <li>Page Type</li>
+          </ul>
+        </div>
+
+        <div class="workflow__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+
+        <div class="workflow__box">
+          <h3 class="workflow__box-title">Process</h3>
+          <ul class="workflow__box-list">
+            <li>12-Step Pipeline</li>
+            <li>Caption Selection</li>
+            <li>Persona Matching</li>
+          </ul>
+        </div>
+
+        <div class="workflow__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+
+        <div class="workflow__box">
+          <h3 class="workflow__box-title">Validate</h3>
+          <ul class="workflow__box-list">
+            <li>Business Rules</li>
+            <li>Spacing Check</li>
+            <li>Freshness Audit</li>
+          </ul>
+        </div>
+
+        <div class="workflow__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+
+        <div class="workflow__box workflow__box--output">
+          <h3 class="workflow__box-title">Output</h3>
+          <ul class="workflow__box-list">
+            <li>Markdown Schedule</li>
+            <li>7-Day Plan</li>
+            <li>Export File</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="database-box">
+        <h3 class="database-box__title">DATABASE</h3>
+        <p class="database-box__path">eros_sd_main.db</p>
+        <div class="database-stats">
+          <div class="database-stat">
+            <div class="database-stat__value">36</div>
+            <div class="database-stat__label">creators</div>
+          </div>
+          <div class="database-stat">
+            <div class="database-stat__value">19,590</div>
+            <div class="database-stat__label">captions</div>
+          </div>
+          <div class="database-stat">
+            <div class="database-stat__value">66,826</div>
+            <div class="database-stat__label">messages</div>
+          </div>
+          <div class="database-stat">
+            <div class="database-stat__value">35</div>
+            <div class="database-stat__label">personas</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 2: 12-Step Pipeline -->
+    <section class="section" id="pipeline" aria-labelledby="pipeline-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">02</span>
+        <h2 class="section__title" id="pipeline-title">12-Step Pipeline</h2>
+      </div>
+
+      <div class="pipeline-grid">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 1</span>
+            <h3 class="card__title">Analyze</h3>
+          </div>
+          <p class="card__description">Load creator profile from database including page type, fan count, and historical performance metrics.</p>
+          <div class="card__details">
+            <span class="card__detail">Query: get_creator_profile.sql</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 2</span>
+            <h3 class="card__title">Match Content</h3>
+          </div>
+          <p class="card__description">Filter captions by vault availability and freshness score. Only captions with freshness >= 30 qualify.</p>
+          <div class="card__details">
+            <span class="card__detail">Threshold: freshness >= 30</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 3</span>
+            <h3 class="card__title">Match Persona</h3>
+          </div>
+          <p class="card__description">Apply voice boost multiplier based on creator persona matching. Boost range: 1.0x to 1.4x.</p>
+          <div class="card__details">
+            <span class="card__detail">Boost: 1.0x - 1.4x multiplier</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 4</span>
+            <h3 class="card__title">Build Structure</h3>
+          </div>
+          <p class="card__description">Create 7-day time slot matrix based on volume level (Low/Mid/High/Ultra) and optimal posting hours.</p>
+          <div class="card__details">
+            <span class="card__detail">Slots: 2-6 PPV per day</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3);">Step 4B</span>
+            <h3 class="card__title">Quality Scoring</h3>
+          </div>
+          <p class="card__description">LLM-enhanced caption quality assessment using 4-factor scoring: Authenticity (35%), Hook (25%), CTA (20%), Conversion (20%).</p>
+          <div class="card__details">
+            <span class="card__detail">Mode: LLM-only (Full mode)</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3);">Step 5</span>
+            <h3 class="card__title">Assign Captions</h3>
+          </div>
+          <p class="card__description">Use Vose Alias weighted random selection algorithm to assign captions to time slots based on performance scores.</p>
+          <div class="card__details">
+            <span class="card__detail">Algorithm: Vose Alias O(1)</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 6</span>
+            <h3 class="card__title">Generate Follow-ups</h3>
+          </div>
+          <p class="card__description">Create bump messages scheduled 15-45 minutes after high-performing PPV drops to maximize conversions.</p>
+          <div class="card__details">
+            <span class="card__detail">Delay: 15-45 min after PPV</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 7</span>
+            <h3 class="card__title">Apply Drip Windows</h3>
+          </div>
+          <p class="card__description">Mark no-PPV zones during drip feed periods (typically 14:00-22:00) when enabled for the creator.</p>
+          <div class="card__details">
+            <span class="card__detail">Window: 14:00-22:00 EST</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3);">Step 7B</span>
+            <h3 class="card__title">Caption Enhancement</h3>
+          </div>
+          <p class="card__description">LLM-enhanced authenticity tweaks for persona matching. Maximum 15% length change to preserve original voice.</p>
+          <div class="card__details">
+            <span class="card__detail">Mode: LLM-only (Full mode)</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 8</span>
+            <h3 class="card__title">Apply Page Type</h3>
+          </div>
+          <p class="card__description">Adjust pricing based on page type: paid pages get +10% pricing, free pages get -10% for competitive positioning.</p>
+          <div class="card__details">
+            <span class="card__detail">Paid: +10% | Free: -10%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step">Step 9</span>
+            <h3 class="card__title">Validate</h3>
+          </div>
+          <p class="card__description">Final validation check: spacing >= 3 hours, freshness compliance, content rotation, persona boost rates.</p>
+          <div class="card__details">
+            <span class="card__detail">Pass rate target: 100%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__step" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">Step 10</span>
+            <h3 class="card__title">Return</h3>
+          </div>
+          <p class="card__description">Package schedule with metadata including generation stats, validation results, and performance estimates.</p>
+          <div class="card__details">
+            <span class="card__detail">Output: ScheduleResult object</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 3: Algorithms -->
+    <section class="section" id="algorithms" aria-labelledby="algorithms-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">03</span>
+        <h2 class="section__title" id="algorithms-title">Algorithms</h2>
+      </div>
+
+      <div class="grid grid--2" style="margin-bottom: 20px;">
+        <div class="algorithm-card">
+          <h3 class="algorithm-card__title">Vose Alias Method</h3>
+          <div class="algorithm-card__formula">O(n) setup, O(1) selection</div>
+          <p class="algorithm-card__description">Weighted random selection algorithm for caption assignment. Ensures high-performing captions are selected proportionally more often while maintaining variety.</p>
+        </div>
+
+        <div class="algorithm-card">
+          <h3 class="algorithm-card__title">Freshness Decay</h3>
+          <div class="algorithm-card__formula">F(t) = 100 * e^(-0.015 * days)</div>
+          <p class="algorithm-card__description">Exponential decay function preventing caption overuse. Captions below freshness score of 30 are excluded from selection pool.</p>
+        </div>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="algorithm-card">
+          <h3 class="algorithm-card__title">Persona Boost</h3>
+          <div class="algorithm-card__formula">boost = 1.0 + (match_score * 0.4)</div>
+          <p class="algorithm-card__description">Voice matching multiplier ranging from 1.0x to 1.4x. Higher persona alignment with creator's tone increases conversion probability by 20-40%.</p>
+        </div>
+
+        <div class="algorithm-card">
+          <h3 class="algorithm-card__title">Quality Scoring</h3>
+          <div class="algorithm-card__formula">weight = (perf*0.4 + fresh*0.2 + qual*0.4) * persona * quality_mod</div>
+          <p class="algorithm-card__description">LLM-enhanced 4-factor quality assessment for caption ranking.</p>
+          <div class="algorithm-card__breakdown">
+            <div class="algorithm-card__factor">
+              <span class="algorithm-card__factor-name">Authenticity</span>
+              <span class="algorithm-card__factor-value">35%</span>
+            </div>
+            <div class="algorithm-card__factor">
+              <span class="algorithm-card__factor-name">Hook</span>
+              <span class="algorithm-card__factor-value">25%</span>
+            </div>
+            <div class="algorithm-card__factor">
+              <span class="algorithm-card__factor-name">CTA</span>
+              <span class="algorithm-card__factor-value">20%</span>
+            </div>
+            <div class="algorithm-card__factor">
+              <span class="algorithm-card__factor-name">Conversion</span>
+              <span class="algorithm-card__factor-value">20%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 4: Volume Strategy -->
+    <section class="section" id="volume" aria-labelledby="volume-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">04</span>
+        <h2 class="section__title" id="volume-title">Volume Strategy</h2>
+      </div>
+
+      <div class="volume-comparison">
+        <div class="volume-panel volume-panel--paid">
+          <h3 class="volume-panel__title">Paid Page</h3>
+          <ul class="volume-panel__list">
+            <li>Premium pricing (+10% base)</li>
+            <li>Lower volume, higher value</li>
+            <li>Exclusive content focus</li>
+            <li>VIP messaging tone</li>
+            <li>Subscriber-only benefits</li>
+          </ul>
+        </div>
+
+        <div class="volume-panel volume-panel--free">
+          <h3 class="volume-panel__title">Free Page</h3>
+          <ul class="volume-panel__list">
+            <li>Competitive pricing (-10% base)</li>
+            <li>Higher volume, lower barrier</li>
+            <li>Teaser content strategy</li>
+            <li>Conversion-focused messaging</li>
+            <li>Upsell to paid content</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="factors-grid">
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 1</div>
+          <div class="factor-card__name">Fan Count</div>
+        </div>
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 2</div>
+          <div class="factor-card__name">Conversion Rate</div>
+        </div>
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 3</div>
+          <div class="factor-card__name">Avg Order Value</div>
+        </div>
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 4</div>
+          <div class="factor-card__name">Engagement Score</div>
+        </div>
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 5</div>
+          <div class="factor-card__name">Content Inventory</div>
+        </div>
+        <div class="factor-card">
+          <div class="factor-card__number">Factor 6</div>
+          <div class="factor-card__name">Page Type</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 40px;">
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Volume Level</th>
+                <th scope="col">Fan Count</th>
+                <th scope="col">PPV/Day</th>
+                <th scope="col">Bump/Day</th>
+                <th scope="col">Weekly Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Low</td>
+                <td>&lt;1,000</td>
+                <td>2-3</td>
+                <td>2-3</td>
+                <td>14-21</td>
+              </tr>
+              <tr>
+                <td>Mid</td>
+                <td>1,000-5,000</td>
+                <td>3-4</td>
+                <td>3-4</td>
+                <td>21-28</td>
+              </tr>
+              <tr>
+                <td>High</td>
+                <td>5,000-15,000</td>
+                <td>4-5</td>
+                <td>4-5</td>
+                <td>28-35</td>
+              </tr>
+              <tr>
+                <td>Ultra</td>
+                <td>15,000+</td>
+                <td>5-6</td>
+                <td>5-6</td>
+                <td>35-42</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 5: Quick Reference -->
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">05</span>
+        <h2 class="section__title" id="reference-title">Quick Reference</h2>
+      </div>
+
+      <div class="grid grid--2" style="margin-bottom: 40px;">
+        <div>
+          <h3 style="font-size: 1.0625rem; font-weight: 600; margin-bottom: 20px; color: var(--text-primary);">Key Files</h3>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col">File</th>
+                  <th scope="col">Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>generate_schedule.py</td>
+                  <td>Main 12-step pipeline (2,153 lines)</td>
+                </tr>
+                <tr>
+                  <td>validate_schedule.py</td>
+                  <td>Business rule validation (603 lines)</td>
+                </tr>
+                <tr>
+                  <td>volume_optimizer.py</td>
+                  <td>6-factor volume optimization</td>
+                </tr>
+                <tr>
+                  <td>match_persona.py</td>
+                  <td>Voice profile matching</td>
+                </tr>
+                <tr>
+                  <td>prepare_llm_context.py</td>
+                  <td>Native LLM integration</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-size: 1.0625rem; font-weight: 600; margin-bottom: 20px; color: var(--text-primary);">Business Rules</h3>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col">Rule</th>
+                  <th scope="col">Requirement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PPV Spacing</td>
+                  <td>Minimum 3 hours between sends</td>
+                </tr>
+                <tr>
+                  <td>Freshness</td>
+                  <td>Score must be >= 30</td>
+                </tr>
+                <tr>
+                  <td>Content Rotation</td>
+                  <td>No same type 3x consecutive</td>
+                </tr>
+                <tr>
+                  <td>Persona Match</td>
+                  <td>75%+ coverage target</td>
+                </tr>
+                <tr>
+                  <td>Quality Threshold</td>
+                  <td>>= 0.30 required</td>
+                </tr>
+                <tr>
+                  <td>Enhancement Safety</td>
+                  <td>Max 15% length change</td>
+                </tr>
+                <tr>
+                  <td>Validation</td>
+                  <td>100% pass rate required</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block__header">
+          <span class="code-block__dot code-block__dot--red"></span>
+          <span class="code-block__dot code-block__dot--yellow"></span>
+          <span class="code-block__dot code-block__dot--green"></span>
+          <span class="code-block__title">Terminal</span>
+          <button class="code-block__copy" aria-label="Copy to clipboard">Copy</button>
+        </div>
+        <div class="code-block__content">
+          <code># Generate a 7-day schedule
+python3 ~/.claude/skills/eros-schedule-generator/scripts/generate_schedule.py \
+  --creator missalexa --week 2025-W50
+
+# Full semantic analysis mode
+python3 ~/.claude/skills/eros-schedule-generator/scripts/prepare_llm_context.py \
+  --creator missalexa --week 2025-W50 --mode full
+
+# Validate an existing schedule
+python3 ~/.claude/skills/eros-schedule-generator/scripts/validate_schedule.py \
+  --schedule ./output/missalexa_2025-W50.md</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 6: Execution Modes -->
+    <section class="section" id="modes" aria-labelledby="modes-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">06</span>
+        <h2 class="section__title" id="modes-title">Execution Modes</h2>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="mode-panel mode-panel--quick">
+          <h3 class="mode-panel__title">Quick Mode</h3>
+          <p class="mode-panel__subtitle">Pattern-based generation</p>
+          <ul class="mode-panel__list">
+            <li>10 core steps (no LLM branches)</li>
+            <li>Database-driven scoring only</li>
+            <li>Regex-based persona matching</li>
+            <li>Fast execution (~5-10 seconds)</li>
+            <li>No API costs</li>
+          </ul>
+          <div class="mode-panel__stats">
+            <div class="mode-panel__stat">
+              <span class="mode-panel__stat-value">~8s</span>
+              <span class="mode-panel__stat-label">Avg Time</span>
+            </div>
+            <div class="mode-panel__stat">
+              <span class="mode-panel__stat-value">$0</span>
+              <span class="mode-panel__stat-label">Cost</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-panel mode-panel--full">
+          <h3 class="mode-panel__title">Full Mode</h3>
+          <p class="mode-panel__subtitle">LLM-enhanced generation</p>
+          <ul class="mode-panel__list">
+            <li>12 steps with LLM branches (4B, 7B)</li>
+            <li>Semantic quality scoring</li>
+            <li>Caption enhancement with persona fit</li>
+            <li>Deep context analysis</li>
+            <li>Higher conversion optimization</li>
+          </ul>
+          <div class="mode-panel__stats">
+            <div class="mode-panel__stat">
+              <span class="mode-panel__stat-value">~45s</span>
+              <span class="mode-panel__stat-label">Avg Time</span>
+            </div>
+            <div class="mode-panel__stat">
+              <span class="mode-panel__stat-value">~$0.02</span>
+              <span class="mode-panel__stat-label">Cost</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 40px;">
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Feature</th>
+                <th scope="col">Quick Mode</th>
+                <th scope="col">Full Mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Pipeline Steps</td>
+                <td>10 (linear)</td>
+                <td>12 (with branches)</td>
+              </tr>
+              <tr>
+                <td>Quality Scoring</td>
+                <td>Database metrics only</td>
+                <td>LLM 4-factor analysis</td>
+              </tr>
+              <tr>
+                <td>Caption Enhancement</td>
+                <td>None</td>
+                <td>Persona-matched tweaks</td>
+              </tr>
+              <tr>
+                <td>Persona Matching</td>
+                <td>Regex patterns</td>
+                <td>Semantic analysis</td>
+              </tr>
+              <tr>
+                <td>Best For</td>
+                <td>High-volume, quick drafts</td>
+                <td>Premium creators, optimization</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Divider -->
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Section 7: Agent Architecture -->
+    <section class="section" id="agents" aria-labelledby="agents-title">
+      <div class="section__header">
+        <span class="section__number" aria-hidden="true">07</span>
+        <h2 class="section__title" id="agents-title">Agent Architecture</h2>
+      </div>
+
+      <div class="agent-legend">
+        <span class="agent-legend__item agent-legend__item--haiku">Haiku (Fast)</span>
+        <span class="agent-legend__item agent-legend__item--sonnet">Sonnet (Balanced)</span>
+        <span class="agent-legend__item agent-legend__item--opus">Opus (Strategic)</span>
+      </div>
+
+      <div class="agent-grid">
+        <div class="agent-card agent-card--haiku">
+          <div class="agent-card__model">Haiku</div>
+          <h3 class="agent-card__title">timezone-optimizer</h3>
+          <p class="agent-card__desc">Optimizes posting times based on creator timezone and audience distribution patterns.</p>
+        </div>
+
+        <div class="agent-card agent-card--haiku">
+          <div class="agent-card__model">Haiku</div>
+          <h3 class="agent-card__title">page-type-optimizer</h3>
+          <p class="agent-card__desc">Adjusts pricing and volume based on paid vs free page dynamics.</p>
+        </div>
+
+        <div class="agent-card agent-card--sonnet">
+          <div class="agent-card__model">Sonnet</div>
+          <h3 class="agent-card__title">pricing-strategist</h3>
+          <p class="agent-card__desc">Dynamic pricing optimization based on content type, performance history, and market rates.</p>
+        </div>
+
+        <div class="agent-card agent-card--sonnet">
+          <div class="agent-card__model">Sonnet</div>
+          <h3 class="agent-card__title">content-rotation-architect</h3>
+          <p class="agent-card__desc">Ensures variety in content sequencing to prevent audience fatigue and maximize engagement.</p>
+        </div>
+
+        <div class="agent-card agent-card--sonnet">
+          <div class="agent-card__model">Sonnet</div>
+          <h3 class="agent-card__title">revenue-forecaster</h3>
+          <p class="agent-card__desc">Projects weekly revenue based on schedule composition and historical conversion data.</p>
+        </div>
+
+        <div class="agent-card agent-card--sonnet">
+          <div class="agent-card__model">Sonnet</div>
+          <h3 class="agent-card__title">validation-guardian</h3>
+          <p class="agent-card__desc">Enforces business rules and flags potential issues before schedule finalization.</p>
+        </div>
+
+        <div class="agent-card agent-card--opus">
+          <div class="agent-card__model">Opus</div>
+          <h3 class="agent-card__title">multi-touch-sequencer</h3>
+          <p class="agent-card__desc">Orchestrates complex multi-message campaigns and follow-up sequences for maximum conversion.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__logo">EROS</div>
+      <div class="footer__divider" aria-hidden="true"></div>
+      <p class="footer__text">Schedule Generator Architecture</p>
+      <span class="footer__version">v2.0</span>
+    </div>
+  </footer>
+
+  <!-- Tooltip Element -->
+  <div class="tooltip" id="pipeline-tooltip" role="tooltip" aria-hidden="true">
+    <div class="tooltip__step"></div>
+    <div class="tooltip__title"></div>
+    <div class="tooltip__desc"></div>
+  </div>
+
+  <!-- Screen Reader Announcements -->
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="sr-announcements"></div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // Pipeline step data
+      const PIPELINE_STEPS = {
+        1: { title: 'Analyze', desc: 'Load creator profile from database including page type, fan count, and metrics.' },
+        2: { title: 'Match Content', desc: 'Filter captions by vault availability and freshness score >= 30.' },
+        3: { title: 'Match Persona', desc: 'Apply voice boost multiplier (1.0x - 1.4x) based on persona match.' },
+        4: { title: 'Build Structure', desc: 'Create 7-day time slot matrix based on volume level.' },
+        '4B': { title: 'Quality Scoring', desc: 'LLM-enhanced caption quality assessment using 4-factor scoring.' },
+        5: { title: 'Assign Captions', desc: 'Use Vose Alias weighted selection for caption assignment.' },
+        6: { title: 'Generate Follow-ups', desc: 'Create bump messages 15-45 min after high-performing PPV.' },
+        7: { title: 'Apply Drip Windows', desc: 'Mark no-PPV zones during drip feed periods (14:00-22:00).' },
+        '7B': { title: 'Caption Enhancement', desc: 'LLM-enhanced authenticity tweaks for persona matching.' },
+        8: { title: 'Apply Page Type', desc: 'Adjust pricing: paid +10%, free -10%.' },
+        9: { title: 'Validate', desc: 'Final check: spacing, freshness, rotation, persona boost rates.' },
+        10: { title: 'Return', desc: 'Package schedule with metadata and export.' }
+      };
+
+      // DOM Elements
+      const nav = document.querySelector('.nav');
+      const navProgress = document.querySelector('.nav__progress');
+      const navLinks = document.querySelectorAll('.nav__link');
+      const sections = document.querySelectorAll('.section');
+      const pipelineNodes = document.querySelectorAll('.pipeline-node');
+      const tooltip = document.querySelector('.tooltip');
+      const copyButtons = document.querySelectorAll('.code-block__copy');
+
+      // Navigation visibility
+      let lastScrollY = 0;
+      const heroHeight = window.innerHeight;
+
+      function handleScroll() {
+        const scrollY = window.scrollY;
+
+        // Show nav after scrolling past hero
+        if (scrollY > heroHeight * 0.5) {
+          nav.classList.add('nav--visible');
+        } else {
+          nav.classList.remove('nav--visible');
+        }
+
+        // Update progress bar
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = (scrollY / docHeight) * 100;
+        navProgress.style.width = progress + '%';
+
+        // Update active nav link
+        sections.forEach((section, index) => {
+          const rect = section.getBoundingClientRect();
+          if (rect.top <= 150 && rect.bottom >= 150) {
+            navLinks.forEach(link => link.classList.remove('nav__link--active'));
+            const activeLink = document.querySelector(`[data-section="${section.id}"]`);
+            if (activeLink) activeLink.classList.add('nav__link--active');
+          }
+        });
+
+        lastScrollY = scrollY;
+      }
+
+      // Intersection Observer for section animations
+      const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '-50px' });
+
+      sections.forEach(section => sectionObserver.observe(section));
+
+      // Pipeline tooltips
+      let activeNode = null;
+
+      function showTooltip(node, event) {
+        const step = node.dataset.step;
+        const data = PIPELINE_STEPS[step];
+
+        tooltip.querySelector('.tooltip__step').textContent = `Step ${step}`;
+        tooltip.querySelector('.tooltip__title').textContent = data.title;
+        tooltip.querySelector('.tooltip__desc').textContent = data.desc;
+
+        const rect = node.getBoundingClientRect();
+        tooltip.style.left = rect.left + rect.width / 2 - 130 + 'px';
+        tooltip.style.top = rect.bottom + 16 + 'px';
+        tooltip.classList.add('tooltip--visible');
+        tooltip.setAttribute('aria-hidden', 'false');
+
+        // Associate tooltip with node
+        node.setAttribute('aria-describedby', 'pipeline-tooltip');
+        activeNode = node;
+      }
+
+      function hideTooltip() {
+        tooltip.classList.remove('tooltip--visible');
+        tooltip.setAttribute('aria-hidden', 'true');
+
+        // Remove association
+        if (activeNode) {
+          activeNode.removeAttribute('aria-describedby');
+          activeNode = null;
+        }
+      }
+
+      pipelineNodes.forEach(node => {
+        node.addEventListener('mouseenter', (e) => showTooltip(node, e));
+        node.addEventListener('mouseleave', hideTooltip);
+        node.addEventListener('focus', (e) => showTooltip(node, e));
+        node.addEventListener('blur', hideTooltip);
+      });
+
+      // Screen reader announcement helper
+      const srAnnouncements = document.getElementById('sr-announcements');
+      function announce(message) {
+        srAnnouncements.textContent = message;
+        setTimeout(() => { srAnnouncements.textContent = ''; }, 1000);
+      }
+
+      // Copy to clipboard
+      copyButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+          const codeBlock = button.closest('.code-block');
+          const code = codeBlock.querySelector('code').textContent;
+
+          try {
+            await navigator.clipboard.writeText(code);
+            button.textContent = 'Copied!';
+            button.classList.add('code-block__copy--copied');
+            announce('Code copied to clipboard');
+
+            setTimeout(() => {
+              button.textContent = 'Copy';
+              button.classList.remove('code-block__copy--copied');
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy:', err);
+            announce('Failed to copy code');
+          }
+        });
+      });
+
+      // Keyboard navigation (only when no element is focused or body is focused)
+      document.addEventListener('keydown', (e) => {
+        // Skip if user is in an interactive element
+        const activeElement = document.activeElement;
+        const isInteractive = activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.tagName === 'SELECT' ||
+          activeElement.tagName === 'BUTTON' ||
+          activeElement.isContentEditable
+        );
+
+        if (isInteractive) return;
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          const visibleSections = Array.from(sections).filter(s => {
+            const rect = s.getBoundingClientRect();
+            return rect.top < window.innerHeight && rect.bottom > 0;
+          });
+
+          if (visibleSections.length > 0) {
+            const currentIndex = Array.from(sections).indexOf(visibleSections[0]);
+            const nextSection = sections[Math.min(currentIndex + 1, sections.length - 1)];
+            nextSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          const visibleSections = Array.from(sections).filter(s => {
+            const rect = s.getBoundingClientRect();
+            return rect.top < window.innerHeight && rect.bottom > 0;
+          });
+
+          if (visibleSections.length > 0) {
+            const currentIndex = Array.from(sections).indexOf(visibleSections[0]);
+            const prevSection = sections[Math.max(currentIndex - 1, 0)];
+            prevSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      });
+
+      // Smooth scroll for nav links
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetId = link.getAttribute('href').slice(1);
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      });
+
+      // Initialize
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll();
+
+      // Reduced motion support
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.style.scrollBehavior = 'auto';
+
+        // Pause SVG animations
+        const svgAnimations = document.querySelectorAll('animateMotion');
+        svgAnimations.forEach(anim => {
+          anim.setAttribute('dur', 'indefinite');
+          anim.setAttribute('repeatCount', '0');
+        });
+
+        // Also pause the animated dot
+        const pipelineDots = document.querySelectorAll('.pipeline-dot, .pipeline-dot-trail');
+        pipelineDots.forEach(dot => {
+          dot.style.display = 'none';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

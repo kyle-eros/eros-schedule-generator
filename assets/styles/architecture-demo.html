@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EROS Architecture Visualization - Design System Demo</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="architecture-design-system.css">
+</head>
+<body>
+
+  <!-- ========================================
+       HERO SECTION
+       ======================================== -->
+  <section class="section section--hero" id="hero">
+    <div class="section__header">
+      <h1 class="text-hero">EROS SCHEDULE</h1>
+      <h2 class="h2" style="margin-top: var(--space-4);">GENERATOR ARCHITECTURE</h2>
+    </div>
+
+    <div class="stat-grid" style="max-width: 800px; margin-top: var(--space-8);">
+      <div class="stat-badge stat-badge--large">
+        <span class="stat-badge__value">9</span>
+        <span class="stat-badge__label">Step Pipeline</span>
+      </div>
+      <div class="stat-badge stat-badge--large">
+        <span class="stat-badge__value">36</span>
+        <span class="stat-badge__label">Creators</span>
+      </div>
+      <div class="stat-badge stat-badge--large">
+        <span class="stat-badge__value">19,590</span>
+        <span class="stat-badge__label">Captions</span>
+      </div>
+      <div class="stat-badge stat-badge--large">
+        <span class="stat-badge__value">$438K+</span>
+        <span class="stat-badge__label">Portfolio</span>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 1: WORKFLOW OVERVIEW
+       ======================================== -->
+  <section class="section" id="workflow">
+    <div class="section__header">
+      <span class="section__number">01</span>
+      <h2 class="section__title">System Workflow Overview</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="grid grid--4 gap-6">
+        <div class="workflow-box workflow-box--input">
+          <h4 class="workflow-box__title">Input</h4>
+          <ul class="workflow-box__list">
+            <li>Creator Name</li>
+            <li>Target Week</li>
+            <li>Volume Level</li>
+          </ul>
+        </div>
+
+        <div class="workflow-box workflow-box--process">
+          <h4 class="workflow-box__title">Process</h4>
+          <ul class="workflow-box__list">
+            <li>9-Step Pipeline</li>
+            <li>Caption Select</li>
+            <li>Persona Match</li>
+          </ul>
+        </div>
+
+        <div class="workflow-box workflow-box--process">
+          <h4 class="workflow-box__title">Validate</h4>
+          <ul class="workflow-box__list">
+            <li>Business Rules</li>
+            <li>Spacing Check</li>
+            <li>Freshness Audit</li>
+          </ul>
+        </div>
+
+        <div class="workflow-box workflow-box--output">
+          <h4 class="workflow-box__title">Output</h4>
+          <ul class="workflow-box__list">
+            <li>Markdown</li>
+            <li>Schedule</li>
+            <li>File</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Flow connector example -->
+      <div class="flex flex--center mt-8 mb-8">
+        <svg class="flow-connector flow-connector--vertical" viewBox="0 0 40 60" width="40" height="60">
+          <path class="flow-connector__line" d="M20,5 L20,45"/>
+          <polygon class="flow-connector__arrow" points="20,55 15,45 25,45"/>
+        </svg>
+      </div>
+
+      <!-- Database box -->
+      <div style="max-width: 400px; margin: 0 auto;">
+        <div class="workflow-box workflow-box--database">
+          <h4 class="workflow-box__title">Database</h4>
+          <p style="font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-tertiary); text-align: center; margin-bottom: var(--space-4);">eros_sd_main.db</p>
+          <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="stat-badge--inline" style="text-align: center;">
+              <span style="color: var(--primary-300); font-weight: bold;">36</span>
+              <span style="color: var(--text-muted); font-size: var(--text-xs);">creators</span>
+            </div>
+            <div class="stat-badge--inline" style="text-align: center;">
+              <span style="color: var(--primary-300); font-weight: bold;">19,590</span>
+              <span style="color: var(--text-muted); font-size: var(--text-xs);">captions</span>
+            </div>
+            <div class="stat-badge--inline" style="text-align: center;">
+              <span style="color: var(--primary-300); font-weight: bold;">66,826</span>
+              <span style="color: var(--text-muted); font-size: var(--text-xs);">messages</span>
+            </div>
+            <div class="stat-badge--inline" style="text-align: center;">
+              <span style="color: var(--primary-300); font-weight: bold;">35</span>
+              <span style="color: var(--text-muted); font-size: var(--text-xs);">personas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 2: 9-STEP PIPELINE
+       ======================================== -->
+  <section class="section" id="pipeline">
+    <div class="section__header">
+      <span class="section__number">02</span>
+      <h2 class="section__title">9-Step Pipeline Visualization</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="flex flex--column gap-6">
+
+        <div class="pipeline-step" data-step="1">
+          <div class="pipeline-step__badge">1</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Analyze</h3>
+            <p class="pipeline-step__description">Load creator profile from database</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Tables: creators, creator_personas</span>
+              <span class="pipeline-step__tag">Output: CreatorProfile object</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="2">
+          <div class="pipeline-step__badge">2</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Match Content</h3>
+            <p class="pipeline-step__description">Filter captions by vault availability and freshness score >= 30</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Formula: freshness = 100 * (0.5 ^ (days / 14))</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="3">
+          <div class="pipeline-step__badge">3</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Match Persona</h3>
+            <p class="pipeline-step__description">Apply persona boost multiplier (1.0x - 1.4x max)</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Tone: 1.20x</span>
+              <span class="pipeline-step__tag">Emoji: 1.05x</span>
+              <span class="pipeline-step__tag">Slang: 1.05x</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="4">
+          <div class="pipeline-step__badge">4</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Build Structure</h3>
+            <p class="pipeline-step__description">Create weekly time slots with 4-hour minimum spacing</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Low: 2-3 PPV/day</span>
+              <span class="pipeline-step__tag">Mid: 3-4 PPV/day</span>
+              <span class="pipeline-step__tag">High: 4-5 PPV/day</span>
+              <span class="pipeline-step__tag">Ultra: 5-6 PPV/day</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step pipeline-step--active" data-step="5">
+          <div class="pipeline-step__badge">5</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Assign Captions</h3>
+            <p class="pipeline-step__description">Use Vose Alias Method for O(1) weighted random selection</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Weight = performance * freshness * persona_boost</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="6">
+          <div class="pipeline-step__badge">6</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Generate Follow-Ups</h3>
+            <p class="pipeline-step__description">Create bump messages 15-45 minutes after each PPV</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Purpose: Re-engage non-purchasers</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="7">
+          <div class="pipeline-step__badge">7</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Apply Drip Windows</h3>
+            <p class="pipeline-step__description">Mark no-PPV zones if drip mode enabled (14:00 - 22:00)</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Prevents PPV fatigue</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="8">
+          <div class="pipeline-step__badge">8</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Apply Page Type</h3>
+            <p class="pipeline-step__description">Adjust pricing based on page type</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">Paid Page: +10%</span>
+              <span class="pipeline-step__tag">Free Page: -10%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-step" data-step="9">
+          <div class="pipeline-step__badge">9</div>
+          <div class="pipeline-step__content">
+            <h3 class="pipeline-step__title">Validate</h3>
+            <p class="pipeline-step__description">Final validation against all business rules</p>
+            <div class="pipeline-step__details">
+              <span class="pipeline-step__tag">PPV spacing >= 3 hours</span>
+              <span class="pipeline-step__tag">No duplicates</span>
+              <span class="pipeline-step__tag">Freshness >= 30</span>
+              <span class="pipeline-step__tag">Content rotation</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 3: ALGORITHMS
+       ======================================== -->
+  <section class="section" id="algorithms">
+    <div class="section__header">
+      <span class="section__number">03</span>
+      <h2 class="section__title">Key Algorithms</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="grid grid--2 gap-8">
+
+        <!-- Vose Alias Algorithm -->
+        <div class="algo-chart">
+          <div class="algo-chart__title">VOSE ALIAS METHOD</div>
+          <p style="color: var(--text-secondary); text-align: center; margin-bottom: var(--space-6);">O(1) weighted random selection from caption pool</p>
+
+          <div class="formula" style="display: flex; justify-content: center; width: 100%;">
+            <span class="formula__label">Preprocessing:</span>
+            <code class="formula__expression">O(n)</code>
+            <span class="formula__label" style="margin-left: var(--space-4);">Selection:</span>
+            <code class="formula__expression">O(1)</code>
+          </div>
+
+          <div class="code-block mt-8">
+            <div class="code-block__header">
+              <span class="code-block__dot code-block__dot--red"></span>
+              <span class="code-block__dot code-block__dot--yellow"></span>
+              <span class="code-block__dot code-block__dot--green"></span>
+              <span class="code-block__title">algorithm</span>
+            </div>
+            <pre class="code-block__content"><code><span class="token-comment"># Weights: [0.4, 0.1, 0.3, 0.2]</span>
+
+<span class="token-comment"># Build probability and alias tables</span>
+<span class="token-keyword">prob</span>:  [1.0, 0.4, 1.0, 0.8]
+<span class="token-keyword">alias</span>: [ - ,  0 ,  - ,  2 ]
+
+<span class="token-comment"># Selection (constant time!)</span>
+<span class="token-number">1.</span> Pick random index i
+<span class="token-number">2.</span> Pick random float r in [0,1]
+<span class="token-number">3.</span> <span class="token-keyword">if</span> r < prob[i]: <span class="token-keyword">return</span> i
+   <span class="token-keyword">else</span>: <span class="token-keyword">return</span> alias[i]</code></pre>
+          </div>
+        </div>
+
+        <!-- Freshness Decay -->
+        <div class="algo-chart">
+          <div class="algo-chart__title">FRESHNESS DECAY</div>
+          <p style="color: var(--text-secondary); text-align: center; margin-bottom: var(--space-6);">14-day half-life exponential decay</p>
+
+          <div class="formula" style="display: flex; justify-content: center; width: 100%;">
+            <code class="formula__expression">freshness = 100 * (0.5 ^ (days / 14))</code>
+          </div>
+
+          <!-- ASCII chart representation -->
+          <div class="algo-chart__graph mt-6" style="flex-direction: column; align-items: stretch; height: auto;">
+            <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 150px; padding-bottom: var(--space-4); border-bottom: 1px solid rgba(0, 212, 255, 0.2);">
+              <div class="algo-chart__bar" style="height: 100%;">
+                <span class="algo-chart__bar-value">100</span>
+                <span class="algo-chart__bar-label">0d</span>
+              </div>
+              <div class="algo-chart__bar" style="height: 75%;">
+                <span class="algo-chart__bar-value">75</span>
+                <span class="algo-chart__bar-label">7d</span>
+              </div>
+              <div class="algo-chart__bar" style="height: 50%;">
+                <span class="algo-chart__bar-value">50</span>
+                <span class="algo-chart__bar-label">14d</span>
+              </div>
+              <div class="algo-chart__bar" style="height: 35%; background: linear-gradient(to top, var(--warning-500), var(--warning-400));">
+                <span class="algo-chart__bar-value" style="color: var(--warning-300);">35</span>
+                <span class="algo-chart__bar-label">21d</span>
+              </div>
+              <div class="algo-chart__bar" style="height: 25%; background: linear-gradient(to top, var(--error-500), var(--error-400));">
+                <span class="algo-chart__bar-value" style="color: var(--error-300);">25</span>
+                <span class="algo-chart__bar-label">28d</span>
+              </div>
+            </div>
+            <p style="text-align: center; margin-top: var(--space-4); color: var(--text-tertiary); font-size: var(--text-sm);">Minimum threshold: <span style="color: var(--warning-400);">30</span> (reached at ~24 days)</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Persona Boost section -->
+      <div class="algo-chart mt-8">
+        <div class="algo-chart__title">PERSONA BOOST CALCULATION</div>
+
+        <div class="grid grid--3 gap-6 mt-6">
+          <div class="workflow-box">
+            <h4 class="workflow-box__title" style="color: var(--primary-300);">Tone Match</h4>
+            <div style="text-align: center; padding: var(--space-4);">
+              <span style="font-size: var(--text-3xl); font-weight: bold; color: var(--primary-300);">1.20x</span>
+              <p style="color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-2);">Miss: 1.00x</p>
+            </div>
+          </div>
+
+          <div class="workflow-box">
+            <h4 class="workflow-box__title" style="color: var(--accent-300);">Emoji Match</h4>
+            <div style="text-align: center; padding: var(--space-4);">
+              <span style="font-size: var(--text-3xl); font-weight: bold; color: var(--accent-300);">1.05x</span>
+              <p style="color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-2);">Miss: 1.00x</p>
+            </div>
+          </div>
+
+          <div class="workflow-box">
+            <h4 class="workflow-box__title" style="color: var(--success-300);">Slang Match</h4>
+            <div style="text-align: center; padding: var(--space-4);">
+              <span style="font-size: var(--text-3xl); font-weight: bold; color: var(--success-300);">1.05x</span>
+              <p style="color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-2);">Miss: 1.00x</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="formula mt-6" style="display: flex; justify-content: center; width: 100%;">
+          <span class="formula__label">Example:</span>
+          <code class="formula__expression">1.2 x 1.05 x 1.05 = <span style="color: var(--success-300);">1.323x boost</span></code>
+          <span class="formula__label" style="margin-left: var(--space-4);">Max:</span>
+          <code class="formula__expression">1.40x</code>
+        </div>
+
+        <p style="text-align: center; margin-top: var(--space-4); color: var(--success-300); font-weight: var(--font-medium);">20-40% conversion rate improvement with proper persona matching</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 4: VOLUME LEVELS TABLE
+       ======================================== -->
+  <section class="section" id="volume">
+    <div class="section__header">
+      <span class="section__number">04</span>
+      <h2 class="section__title">Volume Levels</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="table-container">
+        <table class="table">
+          <thead class="table__head">
+            <tr>
+              <th>Fan Count</th>
+              <th>Level</th>
+              <th>PPV/Day</th>
+              <th>Bump/Day</th>
+              <th>Weekly Total</th>
+            </tr>
+          </thead>
+          <tbody class="table__body">
+            <tr>
+              <td>< 1,000</td>
+              <td class="table__cell--highlight">Low</td>
+              <td>2-3</td>
+              <td>2-3</td>
+              <td>14-21</td>
+            </tr>
+            <tr>
+              <td>1,000 - 5,000</td>
+              <td class="table__cell--highlight">Mid</td>
+              <td>3-4</td>
+              <td>3-4</td>
+              <td>21-28</td>
+            </tr>
+            <tr>
+              <td>5,000 - 15,000</td>
+              <td class="table__cell--highlight">High</td>
+              <td>4-5</td>
+              <td>4-5</td>
+              <td>28-35</td>
+            </tr>
+            <tr>
+              <td>15,000+</td>
+              <td class="table__cell--success">Ultra</td>
+              <td>5-6</td>
+              <td>5-6</td>
+              <td>35-42</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 5: COMMAND LINE USAGE
+       ======================================== -->
+  <section class="section" id="usage">
+    <div class="section__header">
+      <span class="section__number">05</span>
+      <h2 class="section__title">Quick Execution Reference</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="grid grid--2 gap-8">
+
+        <div class="code-block code-block--scanlines">
+          <div class="code-block__header">
+            <span class="code-block__dot code-block__dot--red"></span>
+            <span class="code-block__dot code-block__dot--yellow"></span>
+            <span class="code-block__dot code-block__dot--green"></span>
+            <span class="code-block__title">Quick Draft (Pattern-only)</span>
+          </div>
+          <pre class="code-block__content"><code><span class="token-function">python3</span> ~/.claude/skills/eros-schedule-generator/scripts/<span class="token-string">generate_schedule.py</span> \
+  <span class="token-keyword">--creator</span> missalexa \
+  <span class="token-keyword">--week</span> <span class="token-number">2025-W50</span></code></pre>
+        </div>
+
+        <div class="code-block code-block--scanlines">
+          <div class="code-block__header">
+            <span class="code-block__dot code-block__dot--red"></span>
+            <span class="code-block__dot code-block__dot--yellow"></span>
+            <span class="code-block__dot code-block__dot--green"></span>
+            <span class="code-block__title">Full Semantic Analysis</span>
+          </div>
+          <pre class="code-block__content"><code><span class="token-function">python3</span> ~/.claude/skills/eros-schedule-generator/scripts/<span class="token-string">prepare_llm_context.py</span> \
+  <span class="token-keyword">--creator</span> missalexa \
+  <span class="token-keyword">--week</span> <span class="token-number">2025-W50</span> \
+  <span class="token-keyword">--mode</span> full</code></pre>
+        </div>
+
+      </div>
+
+      <!-- Performance Targets -->
+      <h3 class="h3 mt-12 mb-6">Performance Targets</h3>
+      <div class="table-container">
+        <table class="table">
+          <thead class="table__head">
+            <tr>
+              <th>Metric</th>
+              <th>Target</th>
+              <th>How to Measure</th>
+            </tr>
+          </thead>
+          <tbody class="table__body">
+            <tr>
+              <td>Persona boost coverage</td>
+              <td class="table__cell--success">75%+</td>
+              <td class="table__cell--code">Count persona_boost > 1.0</td>
+            </tr>
+            <tr>
+              <td>Validation pass rate</td>
+              <td class="table__cell--success">100%</td>
+              <td class="table__cell--code">All schedules pass rules</td>
+            </tr>
+            <tr>
+              <td>PPV spacing compliance</td>
+              <td class="table__cell--success">100%</td>
+              <td class="table__cell--code">No spacing < 3 hours</td>
+            </tr>
+            <tr>
+              <td>Freshness compliance</td>
+              <td class="table__cell--success">100%</td>
+              <td class="table__cell--code">All captions >= 30</td>
+            </tr>
+            <tr>
+              <td>Content rotation</td>
+              <td class="table__cell--success">100%</td>
+              <td class="table__cell--code">No 3x same type</td>
+            </tr>
+            <tr>
+              <td>Generation time</td>
+              <td class="table__cell--highlight"><30 sec</td>
+              <td class="table__cell--code">Quick mode timing</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       SECTION 6: LEGEND
+       ======================================== -->
+  <section class="section" id="legend">
+    <div class="section__header">
+      <span class="section__number">06</span>
+      <h2 class="section__title">File Reference Legend</h2>
+    </div>
+
+    <div class="section__content">
+      <div class="legend">
+        <div class="legend__item">
+          <span class="legend__symbol legend__symbol--box"></span>
+          <span class="legend__label">Standard component (files, modules)</span>
+        </div>
+        <div class="legend__item">
+          <span class="legend__symbol legend__symbol--box-filled"></span>
+          <span class="legend__label">Critical/Primary component (database, main engine)</span>
+        </div>
+        <div class="legend__item">
+          <span class="legend__symbol legend__symbol--circle"></span>
+          <span class="legend__label">External interface (input, output)</span>
+        </div>
+        <div class="legend__item">
+          <span class="legend__symbol legend__symbol--arrow"></span>
+          <span class="legend__label">Data flow direction</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================
+       FOOTER
+       ======================================== -->
+  <footer class="section section--centered" style="padding: var(--space-12); border-top: 1px solid rgba(0, 212, 255, 0.1);">
+    <p style="color: var(--text-tertiary); font-family: var(--font-mono); font-size: var(--text-sm);">
+      EROS SCHEDULE GENERATOR v2.0
+    </p>
+    <p style="color: var(--text-muted); font-size: var(--text-xs); margin-top: var(--space-2);">
+      36 Creators | 19,590 Captions | $438K+ Portfolio
+    </p>
+    <p style="color: var(--text-muted); font-size: var(--text-xs); margin-top: var(--space-2);">
+      Architecture Document | Generated: December 2025
+    </p>
+  </footer>
+
+</body>
+</html>
