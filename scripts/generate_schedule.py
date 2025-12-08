@@ -137,6 +137,45 @@ __all__ = [
 ]
 
 
+def parse_content_notes(notes_json: str | None) -> dict:
+    """Parse JSON notes from creators.notes field."""
+    if not notes_json:
+        return {}
+    try:
+        return json.loads(notes_json)
+    except json.JSONDecodeError:
+        return {"page_strategy": notes_json}  # Legacy plain text
+
+
+def extract_filter_keywords(notes: dict) -> set[str]:
+    """Extract all keywords to filter from content notes."""
+    keywords = set()
+    # From caption_filters
+    if notes.get("caption_filters", {}).get("exclude_keywords"):
+        keywords.update(notes["caption_filters"]["exclude_keywords"])
+    # From content_restrictions
+    for restriction in notes.get("content_restrictions", []):
+        if restriction.get("filter_keywords"):
+            keywords.update(restriction["filter_keywords"])
+    return keywords
+
+
+def extract_price_modifiers(notes: dict) -> dict[str | None, float]:
+    """Extract price modifiers by content type."""
+    modifiers = {}
+    # From pricing_guidance
+    for guidance in notes.get("pricing_guidance", []):
+        content_type = guidance.get("content_type")  # None = all content
+        modifier = guidance.get("price_modifier", 1.0)
+        modifiers[content_type] = modifier
+    # From content_restrictions (some have price modifiers)
+    for restriction in notes.get("content_restrictions", []):
+        if restriction.get("price_modifier"):
+            content_type = restriction.get("content_type")
+            modifiers[content_type] = restriction["price_modifier"]
+    return modifiers
+
+
 class ErosScheduleError(Exception):
     """Base exception for EROS schedule generation errors."""
     pass
@@ -193,6 +232,14 @@ DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
 
 DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
 
+# Default output directory for schedules
+# Priority: 1) EROS_SCHEDULES_PATH env var, 2) Developer project path
+_env_schedules_path = os.environ.get("EROS_SCHEDULES_PATH", "")
+DEFAULT_SCHEDULES_DIR = (
+    Path(_env_schedules_path) if _env_schedules_path
+    else HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "schedules"
+)
+
 # Business rule constants
 MIN_PPV_SPACING_HOURS = 3  # Critical: minimum 3 hours between PPVs
 RECOMMENDED_PPV_SPACING_HOURS = 4  # Recommended: 4 hours between PPVs
@@ -216,6 +263,12 @@ BUMP_MESSAGES = [
     "Thought you'd want to see this",
     "Special content waiting for you",
 ]
+
+
+def format_week_string(week_start: date) -> str:
+    """Format date as ISO week string (YYYY-Www)."""
+    iso_year, iso_week, _ = week_start.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -261,7 +314,7 @@ class ScheduleConfig:
     preview_lead_time_hours: int = 2
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class CreatorProfile:
     """Creator profile data from database."""
 
@@ -277,6 +330,9 @@ class CreatorProfile:
     avg_sentiment: float
     best_hours: list[int] = field(default_factory=list)
     vault_types: list[int] = field(default_factory=list)
+    content_notes: dict = field(default_factory=dict)
+    filter_keywords: set = field(default_factory=set)
+    price_modifiers: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -518,7 +574,7 @@ def load_creator_profile(
     if creator_name:
         query = """
             SELECT c.creator_id, c.page_name, c.display_name, c.page_type,
-                   c.current_active_fans,
+                   c.current_active_fans, c.notes,
                    cp.primary_tone, cp.emoji_frequency, cp.slang_level, cp.avg_sentiment
             FROM creators c
             LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
@@ -529,7 +585,7 @@ def load_creator_profile(
     else:
         query = """
             SELECT c.creator_id, c.page_name, c.display_name, c.page_type,
-                   c.current_active_fans,
+                   c.current_active_fans, c.notes,
                    cp.primary_tone, cp.emoji_frequency, cp.slang_level, cp.avg_sentiment
             FROM creators c
             LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
@@ -555,6 +611,11 @@ def load_creator_profile(
     if not vault_types:
         raise VaultEmptyError(row["creator_id"], row["page_name"])
 
+    # Parse content notes and extract filter keywords/price modifiers
+    content_notes = parse_content_notes(row["notes"] if row["notes"] else None)
+    filter_keywords = extract_filter_keywords(content_notes)
+    price_modifiers = extract_price_modifiers(content_notes)
+
     return CreatorProfile(
         creator_id=row["creator_id"],
         page_name=row["page_name"],
@@ -567,7 +628,10 @@ def load_creator_profile(
         slang_level=row["slang_level"] or "light",
         avg_sentiment=row["avg_sentiment"] or 0.5,
         best_hours=best_hours,
-        vault_types=vault_types
+        vault_types=vault_types,
+        content_notes=content_notes,
+        filter_keywords=filter_keywords,
+        price_modifiers=price_modifiers
     )
 
 
@@ -614,7 +678,8 @@ def load_available_captions(
     conn: sqlite3.Connection,
     creator_id: str,
     min_freshness: float = 30.0,
-    vault_types: list[int] | None = None
+    vault_types: list[int] | None = None,
+    filter_keywords: set[str] | None = None
 ) -> list[Caption]:
     """
     Load available captions filtered by freshness and vault.
@@ -668,6 +733,17 @@ def load_available_captions(
             slang_level=row["slang_level"],
             is_universal=bool(row["is_universal"])
         ))
+
+    # Filter out captions containing restricted keywords
+    if filter_keywords:
+        original_count = len(captions)
+        captions = [
+            c for c in captions
+            if not any(kw.lower() in c.caption_text.lower() for kw in filter_keywords)
+        ]
+        filtered_count = original_count - len(captions)
+        if filtered_count > 0:
+            print(f"[INFO] Filtered {filtered_count} captions by content restriction keywords")
 
     return captions
 
@@ -1735,7 +1811,8 @@ def generate_schedule(
 
     # Step 2: MATCH CONTENT - Load available captions
     captions = load_available_captions(
-        conn, config.creator_id, config.min_freshness, profile.vault_types
+        conn, config.creator_id, config.min_freshness, profile.vault_types,
+        filter_keywords=profile.filter_keywords
     )
     if not captions:
         result.validation_issues.append(ValidationIssue(
@@ -2015,6 +2092,20 @@ def generate_schedule(
     # Step 10: APPLY PAGE TYPE RULES
     items = apply_page_type_rules(items, config)
 
+    # Step 10B: APPLY CONTENT NOTES PRICE MODIFIERS
+    if profile.price_modifiers:
+        for item in items:
+            if item.item_type == "ppv" and item.suggested_price:
+                content_type = item.content_type_name
+                if content_type in profile.price_modifiers:
+                    item.suggested_price = round(
+                        item.suggested_price * profile.price_modifiers[content_type], 2
+                    )
+                elif None in profile.price_modifiers:
+                    item.suggested_price = round(
+                        item.suggested_price * profile.price_modifiers[None], 2
+                    )
+
     # =========================================================================
     # AGENT STEP 10A: VALIDATION GUARDIAN (Before Step 11)
     # Agent: validation-guardian - Enhanced validation with auto-fix suggestions
@@ -2200,7 +2291,7 @@ def format_markdown(result: ScheduleResult) -> str:
         for item in sorted(day_items, key=lambda x: x.scheduled_time):
             if item.item_type == "ppv":
                 ppv_count += 1
-                caption_preview = (item.caption_text[:40] + "...") if item.caption_text and len(item.caption_text) > 40 else (item.caption_text or "-")
+                caption_preview = item.caption_text or "-"
                 caption_preview = caption_preview.replace("|", "/").replace("\n", " ")
                 price_str = f"${item.suggested_price:.2f}" if item.suggested_price else "-"
                 day_projected += (item.suggested_price or 0) * 0.05  # Estimate 5% conversion
@@ -2219,14 +2310,14 @@ def format_markdown(result: ScheduleResult) -> str:
                     f"| {item.scheduled_time} | Drip | - | [DRIP WINDOW] | - | - | - |"
                 )
             elif item.item_type == "wall_post":
-                caption_preview = (item.caption_text[:35] + "...") if item.caption_text and len(item.caption_text) > 35 else (item.caption_text or "-")
+                caption_preview = item.caption_text or "-"
                 caption_preview = caption_preview.replace("|", "/").replace("\n", " ")
                 lines.append(
                     f"| {item.scheduled_time} | Wall | {item.content_type_name or 'N/A'} | "
                     f"{caption_preview} | - | - | - |"
                 )
             elif item.item_type == "free_preview":
-                caption_preview = (item.caption_text[:35] + "...") if item.caption_text and len(item.caption_text) > 35 else (item.caption_text or "-")
+                caption_preview = item.caption_text or "-"
                 caption_preview = caption_preview.replace("|", "/").replace("\n", " ")
                 preview_note = f"Pre #{item.linked_ppv_id}" if item.linked_ppv_id else item.preview_type or "preview"
                 lines.append(
@@ -2234,7 +2325,7 @@ def format_markdown(result: ScheduleResult) -> str:
                     f"{caption_preview} | - | - | - |"
                 )
             elif item.item_type == "poll":
-                question_preview = (item.caption_text[:35] + "...") if item.caption_text and len(item.caption_text) > 35 else (item.caption_text or "-")
+                question_preview = item.caption_text or "-"
                 question_preview = question_preview.replace("|", "/").replace("\n", " ")
                 options_count = len(item.poll_options) if item.poll_options else 2
                 duration = item.poll_duration_hours or 24
@@ -2439,9 +2530,16 @@ def generate_batch_schedules(
 
         # Save individual file if output_dir specified
         if output_dir:
-            output_dir.mkdir(parents=True, exist_ok=True)
-            week_str = week_start.strftime("%Y-W%W")
-            output_file = output_dir / f"{page_name}_{week_str}.md"
+            # Sanitize creator name for safe filesystem usage
+            safe_page_name = re.sub(r'[^\w\-_]', '_', page_name)
+            creator_dir = output_dir / safe_page_name
+            try:
+                creator_dir.mkdir(parents=True, exist_ok=True)
+            except PermissionError as e:
+                print(f"    Error: Cannot create {creator_dir}: {e}", file=sys.stderr)
+                continue
+            week_str = format_week_string(week_start)
+            output_file = creator_dir / f"{week_str}.md"
             output_file.write_text(format_markdown(result))
             print(f"    Saved to {output_file}", file=sys.stderr)
 
@@ -2496,6 +2594,12 @@ Business Rules Enforced:
     parser.add_argument(
         "--output-dir",
         help="Output directory for batch mode"
+    )
+    parser.add_argument(
+        "--stdout", "--print",
+        action="store_true",
+        dest="stdout",
+        help="Print to console instead of auto-saving to file"
     )
     parser.add_argument(
         "--format", "-f",
@@ -2601,7 +2705,14 @@ Business Rules Enforced:
 
         if args.batch:
             # Generate for all active creators
-            output_dir = Path(args.output_dir) if args.output_dir else None
+            # Default to auto-save unless --stdout is specified
+            if args.output_dir:
+                output_dir = Path(args.output_dir)
+            elif not args.stdout:
+                output_dir = DEFAULT_SCHEDULES_DIR
+            else:
+                output_dir = None
+
             results = generate_batch_schedules(conn, week_start, week_end, output_dir)
 
             if not output_dir:
@@ -2705,14 +2816,35 @@ Business Rules Enforced:
 
             if args.format == "json":
                 output = format_json(result)
+                ext = ".json"
             else:
                 output = format_markdown(result)
+                ext = ".md"
 
             if args.output:
-                Path(args.output).write_text(output)
-                print(f"Schedule written to {args.output}")
-            else:
+                # Explicit output path
+                output_path = Path(args.output)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(output)
+                print(f"Schedule saved to {output_path}", file=sys.stderr)
+            elif args.stdout:
+                # Explicit stdout request
                 print(output)
+            else:
+                # Default: auto-save to standard location
+                week_str = format_week_string(week_start)
+                # Sanitize creator name for safe filesystem usage
+                safe_creator_name = re.sub(r'[^\w\-_]', '_', config.creator_name)
+                creator_dir = DEFAULT_SCHEDULES_DIR / safe_creator_name
+                try:
+                    creator_dir.mkdir(parents=True, exist_ok=True)
+                except PermissionError as e:
+                    print(f"Error: Cannot create output directory {creator_dir}: {e}", file=sys.stderr)
+                    print("Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.", file=sys.stderr)
+                    sys.exit(1)
+                output_path = creator_dir / f"{week_str}{ext}"
+                output_path.write_text(output)
+                print(f"Schedule saved to {output_path}", file=sys.stderr)
 
             # Exit code based on validation
             if not result.validation_passed:

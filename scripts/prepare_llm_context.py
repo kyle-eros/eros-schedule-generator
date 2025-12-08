@@ -33,6 +33,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sqlite3
 import sys
 from dataclasses import dataclass, field, asdict
@@ -56,6 +57,50 @@ from match_persona import (
 )
 from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy
 
+
+def load_creator_content_notes(conn: sqlite3.Connection, creator_id: str) -> dict | None:
+    """Load and parse content notes from creators.notes JSON field."""
+    query = "SELECT notes FROM creators WHERE creator_id = ?"
+    row = conn.execute(query, (creator_id,)).fetchone()
+
+    if not row or not row["notes"]:
+        return None
+
+    try:
+        return json.loads(row["notes"])
+    except json.JSONDecodeError:
+        # If notes is plain text (legacy), return as page_strategy
+        return {"page_strategy": row["notes"]}
+
+
+def format_notes_for_llm(notes: dict) -> str:
+    """Format content notes as readable text for LLM context."""
+    lines = []
+
+    if notes.get("page_strategy"):
+        lines.append(f"**Page Strategy**: {notes['page_strategy']}")
+        lines.append("")
+
+    if notes.get("content_restrictions"):
+        lines.append("**Content Restrictions**:")
+        for r in notes["content_restrictions"]:
+            lines.append(f"- {r['content_type']}: {r['description']}")
+        lines.append("")
+
+    if notes.get("pricing_guidance"):
+        lines.append("**Pricing Guidance**:")
+        for p in notes["pricing_guidance"]:
+            ct = p.get('content_type') or 'all content'
+            mod = p.get('price_modifier', 1.0)
+            lines.append(f"- {ct}: {p['description']} (modifier: {mod}x)")
+        lines.append("")
+
+    if notes.get("caption_filters", {}).get("exclude_keywords"):
+        lines.append(f"**Excluded Keywords**: {', '.join(notes['caption_filters']['exclude_keywords'])}")
+
+    return "\n".join(lines)
+
+
 # Path resolution - check multiple possible database locations
 # Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
 SCRIPT_DIR = Path(__file__).parent
@@ -72,6 +117,20 @@ DB_PATH_CANDIDATES = [
 DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
 
 DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+
+# Default output directory for schedules/context
+_env_schedules_path = os.environ.get("EROS_SCHEDULES_PATH", "")
+DEFAULT_SCHEDULES_DIR = (
+    Path(_env_schedules_path) if _env_schedules_path
+    else HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "schedules"
+)
+
+
+def format_week_string(week_start: date) -> str:
+    """Format date as ISO week string (YYYY-Www)."""
+    iso_year, iso_week, _ = week_start.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
 
 # Analysis thresholds
 LOW_CONFIDENCE_THRESHOLD = 0.6
@@ -116,6 +175,7 @@ class CreatorContext:
     best_hours: tuple[int, ...]
     vault_types: tuple[str, ...]
     volume_fallback_used: bool = False  # True if multi-factor optimizer failed
+    content_notes: dict | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,6 +372,9 @@ def load_creator_context(
     cursor = conn.execute(vault_query, (row["creator_id"],))
     vault_types = tuple(r["type_name"] for r in cursor.fetchall())
 
+    # Load content notes
+    content_notes = load_creator_content_notes(conn, row["creator_id"])
+
     return CreatorContext(
         creator_id=row["creator_id"],
         page_name=row["page_name"],
@@ -327,7 +390,8 @@ def load_creator_context(
         avg_sentiment=row["avg_sentiment"] or 0.5,
         best_hours=best_hours,
         vault_types=vault_types,
-        volume_fallback_used=volume_fallback_used
+        volume_fallback_used=volume_fallback_used,
+        content_notes=content_notes
     )
 
 
@@ -516,6 +580,18 @@ def format_context_for_claude(context: ScheduleContext) -> str:
         f"**Best Hours**: {', '.join(f'{h:02d}:00' for h in c.best_hours[:6])}",
         f"**Vault Content**: {', '.join(c.vault_types[:8]) if c.vault_types else 'N/A'}",
         "",
+    ]
+
+    # Add content notes section if available
+    if c.content_notes:
+        lines.extend([
+            "### Creator Content Notes",
+            "",
+            format_notes_for_llm(c.content_notes),
+            "",
+        ])
+
+    lines.extend([
         "---",
         "",
         "## Schedule Period",
@@ -537,7 +613,7 @@ def format_context_for_claude(context: ScheduleContext) -> str:
         f"| Avg Performance | {context.performance_summary['avg_performance']} |",
         f"| Avg Freshness | {context.performance_summary['avg_freshness']} |",
         "",
-    ]
+    ])
 
     if context.mode == "full":
         # Include captions for semantic analysis
@@ -775,7 +851,13 @@ Examples:
     )
     parser.add_argument(
         "--output", "-o",
-        help="Output file path (default: stdout)"
+        help="Output file path (overrides auto-save location)"
+    )
+    parser.add_argument(
+        "--stdout", "--print",
+        action="store_true",
+        dest="stdout",
+        help="Print to console instead of auto-saving to file"
     )
     parser.add_argument(
         "--format", "-f",
@@ -856,14 +938,36 @@ Examples:
 
         # Write output
         if args.output:
-            Path(args.output).write_text(output)
-            print(f"Context written to {args.output}", file=sys.stderr)
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output)
+            print(f"Context saved to {output_path}", file=sys.stderr)
             print(f"  Creator: {creator.display_name}", file=sys.stderr)
             print(f"  Week: {week_start} - {week_end}", file=sys.stderr)
             print(f"  Mode: {args.mode}", file=sys.stderr)
             print(f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)", file=sys.stderr)
-        else:
+        elif args.stdout:
             print(output)
+        else:
+            # Default: auto-save to standard location
+            ext = ".json" if args.format == "json" else ".md"
+            week_str = format_week_string(week_start)
+            # Sanitize creator name for safe filesystem usage
+            safe_page_name = re.sub(r'[^\w\-_]', '_', creator.page_name)
+            context_dir = DEFAULT_SCHEDULES_DIR / "context" / safe_page_name
+            try:
+                context_dir.mkdir(parents=True, exist_ok=True)
+            except PermissionError as e:
+                print(f"Error: Cannot create output directory {context_dir}: {e}", file=sys.stderr)
+                print("Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.", file=sys.stderr)
+                sys.exit(1)
+            output_path = context_dir / f"{week_str}_context{ext}"
+            output_path.write_text(output)
+            print(f"Context saved to {output_path}", file=sys.stderr)
+            print(f"  Creator: {creator.display_name}", file=sys.stderr)
+            print(f"  Week: {week_start} - {week_end}", file=sys.stderr)
+            print(f"  Mode: {args.mode}", file=sys.stderr)
+            print(f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)", file=sys.stderr)
 
 
 if __name__ == "__main__":

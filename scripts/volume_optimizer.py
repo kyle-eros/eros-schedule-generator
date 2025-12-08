@@ -778,23 +778,23 @@ class MultiFactorVolumeOptimizer:
             except (ValueError, TypeError):
                 pass
 
-        # Get average purchase rate and revenue per send from mass_messages
+        # Get average purchase rate and revenue per PPV message from mass_messages
         metrics_query = """
             SELECT
                 AVG(CAST(purchased_count AS FLOAT) / NULLIF(sent_count, 0)) as avg_rate,
                 SUM(earnings) as total_net,
-                SUM(sent_count) as total_sent
+                COUNT(*) as message_count
             FROM mass_messages
-            WHERE creator_id = ? AND sent_count > 0
+            WHERE creator_id = ? AND sent_count > 0 AND message_type = 'ppv'
         """
         metrics_cursor = self.conn.execute(metrics_query, (row["creator_id"],))
         metrics_row = metrics_cursor.fetchone()
         avg_purchase_rate = metrics_row["avg_rate"] if metrics_row and metrics_row["avg_rate"] else 0.0
 
-        # Calculate average revenue per send
+        # Calculate average revenue per PPV message (not per fan send)
         avg_revenue_per_send = 0.0
-        if metrics_row and metrics_row["total_sent"] and metrics_row["total_net"]:
-            avg_revenue_per_send = metrics_row["total_net"] / metrics_row["total_sent"]
+        if metrics_row and metrics_row["message_count"] and metrics_row["total_net"]:
+            avg_revenue_per_send = metrics_row["total_net"] / metrics_row["message_count"]
 
         return CreatorMetrics(
             creator_id=row["creator_id"],
