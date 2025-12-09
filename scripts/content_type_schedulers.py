@@ -14,23 +14,21 @@ returning ScheduleItem instances positioned appropriately.
 
 import random
 from datetime import datetime, timedelta
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from generate_schedule import (
-        ScheduleItem,
-        ScheduleConfig,
         CreatorProfile,
-        Caption,
-        FreePreview,
-        Poll,
         GameWheelConfig,
+        ScheduleConfig,
+        ScheduleItem,
     )
 
 
 def _get_schedule_item_class():
     """Lazy import to avoid circular dependency."""
     from generate_schedule import ScheduleItem
+
     return ScheduleItem
 
 
@@ -38,12 +36,13 @@ def _get_schedule_item_class():
 # WALL POST SCHEDULING
 # =============================================================================
 
+
 def select_wall_posts_for_slots(
     wall_captions: list,  # list[Caption]
     slots: list[dict],
     config: "ScheduleConfig",
     profile: "CreatorProfile",
-    start_item_id: int = 1000
+    start_item_id: int = 1000,
 ) -> list:  # list[ScheduleItem]
     """
     Assign wall post captions to designated slots.
@@ -100,22 +99,24 @@ def select_wall_posts_for_slots(
             used_caption_ids.add(selected.caption_id)
             previous_content_type = selected.content_type_name
 
-            items.append(ScheduleItem(
-                item_id=item_id,
-                creator_id=config.creator_id,
-                scheduled_date=slot["date"],
-                scheduled_time=slot["time"],
-                item_type="wall_post",
-                channel="feed",
-                caption_id=selected.caption_id,
-                caption_text=selected.caption_text,
-                content_type_id=selected.content_type_id,
-                content_type_name=selected.content_type_name,
-                freshness_score=selected.freshness_score,
-                performance_score=selected.performance_score,
-                priority=4,
-                notes=f"Wall post | Boost: {selected.persona_boost:.2f}x"
-            ))
+            items.append(
+                ScheduleItem(
+                    item_id=item_id,
+                    creator_id=config.creator_id,
+                    scheduled_date=slot["date"],
+                    scheduled_time=slot["time"],
+                    item_type="wall_post",
+                    channel="feed",
+                    caption_id=selected.caption_id,
+                    caption_text=selected.caption_text,
+                    content_type_id=selected.content_type_id,
+                    content_type_name=selected.content_type_name,
+                    freshness_score=selected.freshness_score,
+                    performance_score=selected.performance_score,
+                    priority=4,
+                    notes=f"Wall post | Boost: {selected.persona_boost:.2f}x",
+                )
+            )
             item_id += 1
 
     return items
@@ -125,11 +126,12 @@ def select_wall_posts_for_slots(
 # FREE PREVIEW SCHEDULING
 # =============================================================================
 
+
 def select_previews_for_ppvs(
     previews: list,  # list[FreePreview]
     ppv_items: list,  # list[ScheduleItem]
     config: "ScheduleConfig",
-    start_item_id: int = 2000
+    start_item_id: int = 2000,
 ) -> list:  # list[ScheduleItem]
     """
     Assign free previews before high-value PPVs.
@@ -158,7 +160,9 @@ def select_previews_for_ppvs(
     previews_per_day: dict[str, int] = {}
     item_id = start_item_id
 
-    lead_time_hours = config.preview_lead_time_hours if hasattr(config, 'preview_lead_time_hours') else 2
+    lead_time_hours = (
+        config.preview_lead_time_hours if hasattr(config, "preview_lead_time_hours") else 2
+    )
 
     for ppv in ppv_items:
         # Only preview for high-value PPVs
@@ -187,25 +191,29 @@ def select_previews_for_ppvs(
             previews_per_day[ppv.scheduled_date] = previews_per_day.get(ppv.scheduled_date, 0) + 1
 
             # Calculate preview time (lead_time hours before PPV)
-            ppv_dt = datetime.strptime(f"{ppv.scheduled_date} {ppv.scheduled_time}", "%Y-%m-%d %H:%M")
+            ppv_dt = datetime.strptime(
+                f"{ppv.scheduled_date} {ppv.scheduled_time}", "%Y-%m-%d %H:%M"
+            )
             preview_dt = ppv_dt - timedelta(hours=lead_time_hours)
 
-            items.append(ScheduleItem(
-                item_id=item_id,
-                creator_id=ppv.creator_id,
-                scheduled_date=preview_dt.strftime("%Y-%m-%d"),
-                scheduled_time=preview_dt.strftime("%H:%M"),
-                item_type="free_preview",
-                channel="feed",
-                caption_text=selected.preview_text,
-                content_type_id=selected.content_type_id,
-                freshness_score=selected.freshness_score,
-                performance_score=selected.performance_score,
-                preview_type=selected.preview_type,
-                linked_ppv_id=ppv.item_id,
-                priority=3,
-                notes=f"Preview for PPV #{ppv.item_id} | Type: {selected.preview_type}"
-            ))
+            items.append(
+                ScheduleItem(
+                    item_id=item_id,
+                    creator_id=ppv.creator_id,
+                    scheduled_date=preview_dt.strftime("%Y-%m-%d"),
+                    scheduled_time=preview_dt.strftime("%H:%M"),
+                    item_type="free_preview",
+                    channel="feed",
+                    caption_text=selected.preview_text,
+                    content_type_id=selected.content_type_id,
+                    freshness_score=selected.freshness_score,
+                    performance_score=selected.performance_score,
+                    preview_type=selected.preview_type,
+                    linked_ppv_id=ppv.item_id,
+                    priority=3,
+                    notes=f"Preview for PPV #{ppv.item_id} | Type: {selected.preview_type}",
+                )
+            )
             item_id += 1
 
     return items
@@ -215,12 +223,13 @@ def select_previews_for_ppvs(
 # POLL SCHEDULING
 # =============================================================================
 
+
 def select_polls_for_week(
     polls: list,  # list[Poll]
     config: "ScheduleConfig",
     profile: "CreatorProfile",
     week_start: str,
-    start_item_id: int = 3000
+    start_item_id: int = 3000,
 ) -> list:  # list[ScheduleItem]
     """
     Select and schedule polls for the week.
@@ -246,7 +255,7 @@ def select_polls_for_week(
     if not polls:
         return []
 
-    polls_per_week = getattr(config, 'polls_per_week', 3)
+    polls_per_week = getattr(config, "polls_per_week", 3)
     if polls_per_week <= 0:
         return []
 
@@ -272,7 +281,7 @@ def select_polls_for_week(
     poll_hours = [18, 19, 20]  # Evening hours
 
     # Sort polls by persona_boost (prefer matching tone)
-    sorted_polls = sorted(polls, key=lambda p: getattr(p, 'persona_boost', 1.0), reverse=True)
+    sorted_polls = sorted(polls, key=lambda p: getattr(p, "persona_boost", 1.0), reverse=True)
 
     for i, poll_date in enumerate(poll_days[:polls_per_week]):
         if i >= len(sorted_polls):
@@ -282,19 +291,21 @@ def select_polls_for_week(
         poll_hour = random.choice(poll_hours)
         poll_minute = random.choice([0, 15, 30])
 
-        items.append(ScheduleItem(
-            item_id=item_id,
-            creator_id=config.creator_id,
-            scheduled_date=poll_date.strftime("%Y-%m-%d"),
-            scheduled_time=f"{poll_hour:02d}:{poll_minute:02d}",
-            item_type="poll",
-            channel="poll",
-            caption_text=poll.question_text,
-            poll_options=poll.options,
-            poll_duration_hours=poll.duration_hours,
-            priority=4,
-            notes=f"Poll | Category: {poll.poll_category} | Duration: {poll.duration_hours}h"
-        ))
+        items.append(
+            ScheduleItem(
+                item_id=item_id,
+                creator_id=config.creator_id,
+                scheduled_date=poll_date.strftime("%Y-%m-%d"),
+                scheduled_time=f"{poll_hour:02d}:{poll_minute:02d}",
+                item_type="poll",
+                channel="poll",
+                caption_text=poll.question_text,
+                poll_options=poll.options,
+                poll_duration_hours=poll.duration_hours,
+                priority=4,
+                notes=f"Poll | Category: {poll.poll_category} | Duration: {poll.duration_hours}h",
+            )
+        )
         item_id += 1
 
     return items
@@ -304,11 +315,9 @@ def select_polls_for_week(
 # GAME WHEEL SCHEDULING
 # =============================================================================
 
+
 def create_game_wheel_schedule_item(
-    wheel_config: "GameWheelConfig",
-    config: "ScheduleConfig",
-    week_start: str,
-    item_id: int = 4000
+    wheel_config: "GameWheelConfig", config: "ScheduleConfig", week_start: str, item_id: int = 4000
 ) -> "ScheduleItem | None":
     """
     Generate game wheel schedule entry.
@@ -346,7 +355,7 @@ def create_game_wheel_schedule_item(
         caption_text=promo_text,
         wheel_config_id=wheel_config.wheel_id,
         priority=4,
-        notes=f"Game Wheel | Trigger: {wheel_config.spin_trigger} >= ${wheel_config.min_trigger_amount:.2f}"
+        notes=f"Game Wheel | Trigger: {wheel_config.spin_trigger} >= ${wheel_config.min_trigger_amount:.2f}",
     )
 
 
@@ -354,11 +363,9 @@ def create_game_wheel_schedule_item(
 # SLOT GENERATION HELPERS
 # =============================================================================
 
+
 def generate_wall_post_slots(
-    config: "ScheduleConfig",
-    week_start: str,
-    week_end: str,
-    start_slot_id: int = 500
+    config: "ScheduleConfig", week_start: str, week_end: str, start_slot_id: int = 500
 ) -> list[dict[str, Any]]:
     """
     Generate wall post slots.
@@ -378,11 +385,11 @@ def generate_wall_post_slots(
     Returns:
         List of slot dictionaries
     """
-    if not getattr(config, 'enable_wall_posts', False):
+    if not getattr(config, "enable_wall_posts", False):
         return []
 
-    wall_hours = list(getattr(config, 'wall_post_hours', (12, 16, 20)))
-    posts_per_day = getattr(config, 'wall_posts_per_day', 2)
+    wall_hours = list(getattr(config, "wall_post_hours", (12, 16, 20)))
+    posts_per_day = getattr(config, "wall_posts_per_day", 2)
 
     slots = []
     slot_id = start_slot_id
@@ -397,15 +404,17 @@ def generate_wall_post_slots(
             hour = wall_hours[i % len(wall_hours)]
             minute = random.choice([0, 15, 30, 45])
 
-            slots.append({
-                "slot_id": slot_id,
-                "date": current_date.strftime("%Y-%m-%d"),
-                "day_name": day_name,
-                "time": f"{hour:02d}:{minute:02d}",
-                "hour": hour,
-                "type": "wall_post",
-                "priority": 4
-            })
+            slots.append(
+                {
+                    "slot_id": slot_id,
+                    "date": current_date.strftime("%Y-%m-%d"),
+                    "day_name": day_name,
+                    "time": f"{hour:02d}:{minute:02d}",
+                    "hour": hour,
+                    "type": "wall_post",
+                    "priority": 4,
+                }
+            )
             slot_id += 1
 
         current_date += timedelta(days=1)
@@ -414,9 +423,7 @@ def generate_wall_post_slots(
 
 
 def generate_poll_slots(
-    config: "ScheduleConfig",
-    week_start: str,
-    start_slot_id: int = 600
+    config: "ScheduleConfig", week_start: str, start_slot_id: int = 600
 ) -> list[dict[str, Any]]:
     """
     Generate poll slots for the week.
@@ -434,10 +441,10 @@ def generate_poll_slots(
     Returns:
         List of slot dictionaries
     """
-    if not getattr(config, 'enable_polls', False):
+    if not getattr(config, "enable_polls", False):
         return []
 
-    polls_per_week = getattr(config, 'polls_per_week', 3)
+    polls_per_week = getattr(config, "polls_per_week", 3)
     if polls_per_week <= 0:
         return []
 
@@ -458,15 +465,17 @@ def generate_poll_slots(
         day_name = poll_date.strftime("%A")
         hour = random.choice([18, 19, 20])
 
-        slots.append({
-            "slot_id": slot_id,
-            "date": poll_date.strftime("%Y-%m-%d"),
-            "day_name": day_name,
-            "time": f"{hour:02d}:00",
-            "hour": hour,
-            "type": "poll",
-            "priority": 4
-        })
+        slots.append(
+            {
+                "slot_id": slot_id,
+                "date": poll_date.strftime("%Y-%m-%d"),
+                "day_name": day_name,
+                "time": f"{hour:02d}:00",
+                "hour": hour,
+                "type": "poll",
+                "priority": 4,
+            }
+        )
         slot_id += 1
 
     return slots

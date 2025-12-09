@@ -30,57 +30,35 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import random
 import sqlite3
 import statistics
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
+from content_type_strategy import (
+    ContentTypeStrategy,
+    get_content_type_earnings,
+)
+from hook_detection import HookType, detect_hook_type
 from utils import VoseAliasSelector
 from weights import (
-    calculate_weight,
-    calculate_discovery_bonus,
-    get_max_earnings,
-    POOL_PROVEN,
-    POOL_GLOBAL_EARNER,
     POOL_DISCOVERY,
-    EARNINGS_WEIGHT,
-    FRESHNESS_WEIGHT,
-    PERSONA_WEIGHT,
-    DISCOVERY_BONUS_WEIGHT,
+    POOL_GLOBAL_EARNER,
+    POOL_PROVEN,
+    calculate_weight,
+    get_max_earnings,
 )
-from content_type_strategy import (
-    get_content_type_earnings,
-    ContentTypeStrategy,
-)
-
 
 # =============================================================================
 # PATH CONFIGURATION
 # =============================================================================
 
 SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
 
-# Database path resolution with multiple candidate locations
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-
-DB_PATH = next(
-    (p for p in DB_PATH_CANDIDATES if p.exists()),
-    DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0]
-)
-
+from database import DB_PATH  # noqa: E402
 
 # =============================================================================
 # CONSTANTS
@@ -101,12 +79,17 @@ RECENT_IMPORT_DAYS: int = 30
 NO_MATCH_PENALTY: float = 0.95
 """Penalty applied when no persona signals match (5% reduction)."""
 
+# Hook rotation (Phase 3 - Authenticity & Anti-Detection)
+SAME_HOOK_PENALTY: float = 0.7
+"""Penalty applied when caption has same hook type as previous selection (30% reduction)."""
+
 
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
 
-@dataclass
+
+@dataclass(slots=True)
 class Caption:
     """Caption data for pool-based selection."""
 
@@ -156,10 +139,33 @@ class Caption:
     persona_boost: float = 1.0
     final_weight: float = 0.0
 
+    # Hook type for anti-detection rotation (Phase 3)
+    hook_type: HookType | None = None
+    """Detected hook type from caption text for rotation tracking."""
 
-@dataclass
+    hook_confidence: float = 0.0
+    """Confidence score for hook type detection (0.0-1.0)."""
+
+
+@dataclass(slots=True)
 class StratifiedPools:
-    """Captions stratified into 3 pools per content type."""
+    """
+    Captions stratified into 3 pools per content type.
+
+    This is the canonical StratifiedPools definition. All other modules
+    should import from select_captions.
+
+    Pools:
+        - proven: Captions with creator-specific earnings data
+        - global_earners: Captions with global earnings but no creator data
+        - discovery: Captions with no earnings data (new imports, under-tested)
+
+    Backwards Compatibility:
+        - content_type_name: Alias for type_name
+        - global_earner: Property returning global_earners
+        - has_proven: Property indicating if proven pool has captions
+        - content_type_avg_earnings: Cached expected earnings value
+    """
 
     content_type_id: int
     type_name: str
@@ -172,10 +178,40 @@ class StratifiedPools:
     discovery: list[Caption] = field(default_factory=list)
     """Under-tested or new imports."""
 
+    content_type_avg_earnings: float = 50.0
+    """Average earnings for this content type (for backwards compatibility)."""
+
+    # -------------------------------------------------------------------------
+    # Core Properties
+    # -------------------------------------------------------------------------
+
     @property
     def total_count(self) -> int:
         """Total captions across all pools."""
         return len(self.proven) + len(self.global_earners) + len(self.discovery)
+
+    @property
+    def has_proven(self) -> bool:
+        """Whether this content type has proven performers."""
+        return len(self.proven) > 0
+
+    # -------------------------------------------------------------------------
+    # Backwards Compatibility Properties
+    # -------------------------------------------------------------------------
+
+    @property
+    def content_type_name(self) -> str:
+        """Alias for type_name (backwards compatibility with generate_schedule.py)."""
+        return self.type_name
+
+    @property
+    def global_earner(self) -> list[Caption]:
+        """Alias for global_earners (backwards compatibility with generate_schedule.py)."""
+        return self.global_earners
+
+    # -------------------------------------------------------------------------
+    # Utility Methods
+    # -------------------------------------------------------------------------
 
     def get_expected_earnings(self) -> float:
         """
@@ -220,6 +256,7 @@ class StratifiedPools:
 # =============================================================================
 # PERSONA MATCHING
 # =============================================================================
+
 
 def calculate_persona_boost(caption: Caption, persona: dict[str, str]) -> float:
     """
@@ -271,6 +308,7 @@ def calculate_persona_boost(caption: Caption, persona: dict[str, str]) -> float:
 # =============================================================================
 # DATABASE LOADING
 # =============================================================================
+
 
 def load_persona(conn: sqlite3.Connection, creator_id: str) -> dict[str, str]:
     """Load creator persona from database."""
@@ -383,12 +421,12 @@ def load_stratified_pools(
 
     # Parameter order for query
     params: list[Any] = [
-        creator_id,                    # CTE WHERE
-        min_uses_for_proven,           # CASE WHEN (PROVEN check)
-        min_uses_for_proven,           # CASE WHEN (GLOBAL_EARNER check)
-        MIN_USES_FOR_GLOBAL_EARNER,    # CASE WHEN (global times used)
-        creator_id,                    # Main WHERE creator_id
-        min_freshness,                 # Main WHERE freshness_score
+        creator_id,  # CTE WHERE
+        min_uses_for_proven,  # CASE WHEN (PROVEN check)
+        min_uses_for_proven,  # CASE WHEN (GLOBAL_EARNER check)
+        MIN_USES_FOR_GLOBAL_EARNER,  # CASE WHEN (global times used)
+        creator_id,  # Main WHERE creator_id
+        min_freshness,  # Main WHERE freshness_score
     ]
     params.extend(allowed_content_types)  # IN clause
 
@@ -445,8 +483,7 @@ def load_stratified_pools(
         if ct_id not in pools:
             # Get type name from database
             name_cursor = conn.execute(
-                "SELECT type_name FROM content_types WHERE content_type_id = ?",
-                (ct_id,)
+                "SELECT type_name FROM content_types WHERE content_type_id = ?", (ct_id,)
             )
             name_row = name_cursor.fetchone()
             type_name = name_row["type_name"] if name_row else "unknown"
@@ -461,6 +498,7 @@ def load_stratified_pools(
 # =============================================================================
 # POOL-SPECIFIC SELECTION FUNCTIONS
 # =============================================================================
+
 
 def _get_content_type_weights(
     pools: dict[int, StratifiedPools],
@@ -481,9 +519,7 @@ def _get_content_type_weights(
     if content_type_weights is None:
         # Equal weights if not provided
         weights = {
-            pool.type_name: 1.0
-            for pool in pools.values()
-            if pool.type_name != exclude_content_type
+            pool.type_name: 1.0 for pool in pools.values() if pool.type_name != exclude_content_type
         }
     else:
         weights = {
@@ -539,6 +575,7 @@ def select_from_proven_pool(
     exclude_ids: set[int],
     exclude_content_type: str | None = None,
     content_type_weights: dict[str, float] | None = None,
+    last_hook_type: HookType | None = None,
 ) -> Caption | None:
     """
     Select from PROVEN pool only, weighted by earnings.
@@ -551,6 +588,7 @@ def select_from_proven_pool(
         exclude_ids: Caption IDs already selected (to avoid duplicates)
         exclude_content_type: Content type to exclude (for variety)
         content_type_weights: Optional earnings-based weights by type
+        last_hook_type: Hook type of previously selected caption (for rotation penalty)
 
     Returns:
         Selected caption or None if no eligible captions
@@ -579,6 +617,15 @@ def select_from_proven_pool(
         content_type_avg = pools[caption.content_type_id].get_expected_earnings()
         _calculate_weight_for_caption(caption, persona, content_type_avg, max_earnings)
 
+        # Detect hook type and apply penalty if same as previous (Phase 3)
+        hook_type, hook_confidence = detect_hook_type(caption.caption_text)
+        caption.hook_type = hook_type
+        caption.hook_confidence = hook_confidence
+
+        if last_hook_type is not None and hook_type == last_hook_type:
+            # Apply 0.7x penalty for same consecutive hook type
+            caption.final_weight *= SAME_HOOK_PENALTY
+
         # Apply content type weight multiplier
         type_name = caption.content_type_name or "unknown"
         type_multiplier = type_weights.get(type_name, 1.0)
@@ -599,6 +646,7 @@ def select_from_standard_pools(
     exclude_ids: set[int],
     exclude_content_type: str | None = None,
     content_type_weights: dict[str, float] | None = None,
+    last_hook_type: HookType | None = None,
 ) -> Caption | None:
     """
     Select from PROVEN + GLOBAL_EARNER pools.
@@ -611,6 +659,7 @@ def select_from_standard_pools(
         exclude_ids: Caption IDs already selected
         exclude_content_type: Content type to exclude
         content_type_weights: Optional earnings-based weights by type
+        last_hook_type: Hook type of previously selected caption (for rotation penalty)
 
     Returns:
         Selected caption or None if no eligible captions
@@ -632,7 +681,9 @@ def select_from_standard_pools(
     # Calculate max earnings using appropriate pool type
     max_earnings = max(
         get_max_earnings([c for c in eligible if c.pool_type == POOL_PROVEN], POOL_PROVEN),
-        get_max_earnings([c for c in eligible if c.pool_type == POOL_GLOBAL_EARNER], POOL_GLOBAL_EARNER),
+        get_max_earnings(
+            [c for c in eligible if c.pool_type == POOL_GLOBAL_EARNER], POOL_GLOBAL_EARNER
+        ),
     )
     if max_earnings <= 0:
         max_earnings = 100.0
@@ -643,6 +694,15 @@ def select_from_standard_pools(
     for caption in eligible:
         content_type_avg = pools[caption.content_type_id].get_expected_earnings()
         _calculate_weight_for_caption(caption, persona, content_type_avg, max_earnings)
+
+        # Detect hook type and apply penalty if same as previous (Phase 3)
+        hook_type, hook_confidence = detect_hook_type(caption.caption_text)
+        caption.hook_type = hook_type
+        caption.hook_confidence = hook_confidence
+
+        if last_hook_type is not None and hook_type == last_hook_type:
+            # Apply 0.7x penalty for same consecutive hook type
+            caption.final_weight *= SAME_HOOK_PENALTY
 
         # Apply content type weight multiplier
         type_name = caption.content_type_name or "unknown"
@@ -663,6 +723,7 @@ def select_from_discovery_pool(
     exclude_ids: set[int],
     exclude_content_type: str | None = None,
     prioritize_recent_imports: bool = True,
+    last_hook_type: HookType | None = None,
 ) -> Caption | None:
     """
     Select from DISCOVERY pool.
@@ -681,6 +742,7 @@ def select_from_discovery_pool(
         exclude_ids: Caption IDs already selected
         exclude_content_type: Content type to exclude
         prioritize_recent_imports: Whether to boost recent imports
+        last_hook_type: Hook type of previously selected caption (for rotation penalty)
 
     Returns:
         Selected caption or None if no eligible captions
@@ -712,6 +774,15 @@ def select_from_discovery_pool(
         content_type_avg = pools[caption.content_type_id].get_expected_earnings()
         _calculate_weight_for_caption(caption, persona, content_type_avg, max_global_earnings)
 
+        # Detect hook type and apply penalty if same as previous (Phase 3)
+        hook_type, hook_confidence = detect_hook_type(caption.caption_text)
+        caption.hook_type = hook_type
+        caption.hook_confidence = hook_confidence
+
+        if last_hook_type is not None and hook_type == last_hook_type:
+            # Apply 0.7x penalty for same consecutive hook type
+            caption.final_weight *= SAME_HOOK_PENALTY
+
         # Apply additional discovery prioritization
         if prioritize_recent_imports:
             # Bonus for recent external imports
@@ -738,6 +809,7 @@ def select_from_discovery_pool(
 # =============================================================================
 # MAIN SELECTION FUNCTION
 # =============================================================================
+
 
 def select_captions(
     conn: sqlite3.Connection,
@@ -767,6 +839,10 @@ def select_captions(
 
     Returns:
         List of selected Caption objects
+
+    Raises:
+        ValueError: If slot_type is invalid, or if creator is not found,
+            or if neither creator_name nor creator_id is provided.
     """
     # Validate slot_type
     valid_slot_types = {"premium", "standard", "discovery"}
@@ -777,7 +853,7 @@ def select_captions(
     if creator_name and not creator_id:
         cursor = conn.execute(
             "SELECT creator_id FROM creators WHERE page_name = ? OR display_name = ?",
-            (creator_name, creator_name)
+            (creator_name, creator_name),
         )
         row = cursor.fetchone()
         if not row:
@@ -814,11 +890,11 @@ def select_captions(
     selected: list[Caption] = []
     exclude_ids: set[int] = set()
     last_content_type: str | None = None
+    last_hook_type: HookType | None = None  # Track for hook rotation penalty
 
     # Map content type name to earnings weight
     content_type_weights = {
-        pool.type_name: content_type_earnings.get(pool.type_name, 50.0)
-        for pool in pools.values()
+        pool.type_name: content_type_earnings.get(pool.type_name, 50.0) for pool in pools.values()
     }
 
     for _ in range(count):
@@ -832,6 +908,7 @@ def select_captions(
                 exclude_ids=exclude_ids,
                 exclude_content_type=last_content_type,
                 content_type_weights=content_type_weights,
+                last_hook_type=last_hook_type,
             )
             # Fallback to standard if no proven available
             if caption is None:
@@ -841,6 +918,7 @@ def select_captions(
                     exclude_ids=exclude_ids,
                     exclude_content_type=last_content_type,
                     content_type_weights=content_type_weights,
+                    last_hook_type=last_hook_type,
                 )
 
         elif slot_type == "standard":
@@ -850,6 +928,7 @@ def select_captions(
                 exclude_ids=exclude_ids,
                 exclude_content_type=last_content_type,
                 content_type_weights=content_type_weights,
+                last_hook_type=last_hook_type,
             )
             # Fallback to discovery if no standard available
             if caption is None:
@@ -858,6 +937,7 @@ def select_captions(
                     persona=persona,
                     exclude_ids=exclude_ids,
                     exclude_content_type=last_content_type,
+                    last_hook_type=last_hook_type,
                 )
 
         elif slot_type == "discovery":
@@ -866,6 +946,7 @@ def select_captions(
                 persona=persona,
                 exclude_ids=exclude_ids,
                 exclude_content_type=last_content_type,
+                last_hook_type=last_hook_type,
             )
             # Fallback to global earners if discovery exhausted
             if caption is None:
@@ -875,16 +956,23 @@ def select_captions(
                     exclude_ids=exclude_ids,
                     exclude_content_type=last_content_type,
                     content_type_weights=content_type_weights,
+                    last_hook_type=last_hook_type,
                 )
 
         if caption is None:
             # Try one more time without content type exclusion
             if slot_type == "premium":
-                caption = select_from_proven_pool(pools, persona, exclude_ids)
+                caption = select_from_proven_pool(
+                    pools, persona, exclude_ids, last_hook_type=last_hook_type
+                )
             elif slot_type == "standard":
-                caption = select_from_standard_pools(pools, persona, exclude_ids)
+                caption = select_from_standard_pools(
+                    pools, persona, exclude_ids, last_hook_type=last_hook_type
+                )
             else:
-                caption = select_from_discovery_pool(pools, persona, exclude_ids)
+                caption = select_from_discovery_pool(
+                    pools, persona, exclude_ids, last_hook_type=last_hook_type
+                )
 
         if caption is None:
             # No more eligible captions
@@ -893,6 +981,7 @@ def select_captions(
         selected.append(caption)
         exclude_ids.add(caption.caption_id)
         last_content_type = caption.content_type_name
+        last_hook_type = caption.hook_type  # Update for next iteration
 
     return selected
 
@@ -901,6 +990,7 @@ def select_captions(
 # OUTPUT FORMATTING
 # =============================================================================
 
+
 def format_markdown(captions: list[Caption]) -> str:
     """Format selected captions as Markdown."""
     lines = [
@@ -908,12 +998,12 @@ def format_markdown(captions: list[Caption]) -> str:
         "",
         f"**Total Selected:** {len(captions)}",
         "",
-        "| # | ID | Pool | Type | Earnings | Fresh | Boost | Weight | Preview |",
-        "|---|-----|------|------|----------|-------|-------|--------|---------|",
+        "| # | ID | Pool | Type | Hook | Earnings | Fresh | Boost | Weight | Preview |",
+        "|---|-----|------|------|------|----------|-------|-------|--------|---------|",
     ]
 
     for i, c in enumerate(captions, 1):
-        preview = c.caption_text[:40] + "..." if len(c.caption_text) > 40 else c.caption_text
+        preview = c.caption_text[:35] + "..." if len(c.caption_text) > 35 else c.caption_text
         preview = preview.replace("|", "\\|").replace("\n", " ")
 
         # Get effective earnings for display
@@ -924,9 +1014,12 @@ def format_markdown(captions: list[Caption]) -> str:
         else:
             effective_earnings = c.performance_score * 0.5  # Discovery proxy
 
+        # Get hook type abbreviation
+        hook_abbr = c.hook_type.value[:4] if c.hook_type else "N/A"
+
         lines.append(
             f"| {i} | {c.caption_id} | {c.pool_type[:4]} | {c.content_type_name or 'N/A'} | "
-            f"${effective_earnings:.2f} | {c.freshness_score:.1f} | "
+            f"{hook_abbr} | ${effective_earnings:.2f} | {c.freshness_score:.1f} | "
             f"{c.persona_boost:.2f}x | {c.final_weight:.1f} | {preview} |"
         )
 
@@ -937,13 +1030,38 @@ def format_markdown(captions: list[Caption]) -> str:
     global_count = sum(1 for c in captions if c.pool_type == POOL_GLOBAL_EARNER)
     discovery_count = sum(1 for c in captions if c.pool_type == POOL_DISCOVERY)
 
-    lines.extend([
-        "## Pool Distribution",
-        f"- PROVEN: {proven_count} ({100*proven_count/len(captions):.1f}%)" if captions else "- PROVEN: 0",
-        f"- GLOBAL_EARNER: {global_count} ({100*global_count/len(captions):.1f}%)" if captions else "- GLOBAL_EARNER: 0",
-        f"- DISCOVERY: {discovery_count} ({100*discovery_count/len(captions):.1f}%)" if captions else "- DISCOVERY: 0",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Pool Distribution",
+            f"- PROVEN: {proven_count} ({100 * proven_count / len(captions):.1f}%)"
+            if captions
+            else "- PROVEN: 0",
+            f"- GLOBAL_EARNER: {global_count} ({100 * global_count / len(captions):.1f}%)"
+            if captions
+            else "- GLOBAL_EARNER: 0",
+            f"- DISCOVERY: {discovery_count} ({100 * discovery_count / len(captions):.1f}%)"
+            if captions
+            else "- DISCOVERY: 0",
+            "",
+        ]
+    )
+
+    # Hook type distribution (Phase 3)
+    if captions:
+        hook_counts: dict[str, int] = {}
+        for c in captions:
+            hook_name = c.hook_type.value if c.hook_type else "unknown"
+            hook_counts[hook_name] = hook_counts.get(hook_name, 0) + 1
+
+        lines.extend(
+            [
+                "## Hook Type Distribution",
+            ]
+        )
+        for hook_name, count in sorted(hook_counts.items(), key=lambda x: -x[1]):
+            pct = 100 * count / len(captions)
+            lines.append(f"- {hook_name}: {count} ({pct:.1f}%)")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -960,14 +1078,21 @@ def format_json(captions: list[Caption]) -> str:
             "pool_type": c.pool_type,
             "performance_score": round(c.performance_score, 2),
             "freshness_score": round(c.freshness_score, 2),
-            "creator_avg_earnings": round(c.creator_avg_earnings, 2) if c.creator_avg_earnings else None,
-            "global_avg_earnings": round(c.global_avg_earnings, 2) if c.global_avg_earnings else None,
+            "creator_avg_earnings": round(c.creator_avg_earnings, 2)
+            if c.creator_avg_earnings
+            else None,
+            "global_avg_earnings": round(c.global_avg_earnings, 2)
+            if c.global_avg_earnings
+            else None,
             "creator_times_used": c.creator_times_used,
             "global_times_used": c.global_times_used,
             "source": c.source,
             "imported_at": c.imported_at,
             "persona_boost": round(c.persona_boost, 2),
             "final_weight": round(c.final_weight, 2),
+            # Hook type fields (Phase 3)
+            "hook_type": c.hook_type.value if c.hook_type else None,
+            "hook_confidence": round(c.hook_confidence, 2),
         }
         for c in captions
     ]
@@ -977,6 +1102,7 @@ def format_json(captions: list[Caption]) -> str:
 # =============================================================================
 # CLI ENTRY POINT
 # =============================================================================
+
 
 def main() -> None:
     """Main entry point."""
@@ -1009,55 +1135,39 @@ Persona Boost:
     - Slang level match: 1.10x
     - Maximum combined: 1.40x
     - No match penalty: 0.95x
-        """
+
+Hook Rotation (Phase 3 - Anti-Detection):
+    - Same consecutive hook penalty: 0.70x
+    - Hook types: curiosity, personal, exclusivity, recency, question, direct, teasing
+    - Promotes natural variation in opening hooks
+        """,
     )
 
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
+        "--count", "-n", type=int, default=10, help="Number of captions to select (default: 10)"
     )
     parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
-    parser.add_argument(
-        "--count", "-n",
-        type=int,
-        default=10,
-        help="Number of captions to select (default: 10)"
-    )
-    parser.add_argument(
-        "--slot-type", "-s",
+        "--slot-type",
+        "-s",
         choices=["premium", "standard", "discovery"],
         default="standard",
-        help="Slot type: premium, standard, or discovery (default: standard)"
+        help="Slot type: premium, standard, or discovery (default: standard)",
     )
     parser.add_argument(
-        "--min-freshness",
-        type=float,
-        default=30.0,
-        help="Minimum freshness score (default: 30)"
+        "--min-freshness", type=float, default=30.0, help="Minimum freshness score (default: 30)"
     )
+    parser.add_argument("--no-persona", action="store_true", help="Disable persona boost")
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--no-persona",
-        action="store_true",
-        help="Disable persona boost"
-    )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 

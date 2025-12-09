@@ -42,117 +42,110 @@ import uuid
 
 # Configure module logger
 logger = logging.getLogger(__name__)
-from dataclasses import dataclass, field, asdict
-from datetime import date, datetime, time, timedelta
-from pathlib import Path
-from typing import Any, Optional
+from dataclasses import asdict, dataclass, field  # noqa: E402
+from datetime import date, datetime, time, timedelta  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 
-from utils import VoseAliasSelector
-from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy
-from weights import (
+from content_type_strategy import (  # noqa: E402
+    PREMIUM_HOURS,
+    ContentTypeStrategy,
+    get_content_type_earnings,
+)
+
+# Import StratifiedPools from canonical location (select_captions.py)
+# This class provides backwards-compatible properties:
+#   - content_type_name (alias for type_name)
+#   - global_earner (alias for global_earners)
+#   - has_proven, content_type_avg_earnings
+from select_captions import StratifiedPools  # noqa: E402
+from utils import VoseAliasSelector  # noqa: E402
+from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy  # noqa: E402
+from weights import (  # noqa: E402
+    POOL_DISCOVERY,
+    POOL_GLOBAL_EARNER,
+    POOL_PROVEN,
+    calculate_payday_multiplier,
     calculate_weight,
     determine_pool_type,
     get_max_earnings,
-    POOL_PROVEN,
-    POOL_GLOBAL_EARNER,
-    POOL_DISCOVERY,
+    is_high_payday_multiplier,
+    is_mid_cycle,
 )
-from content_type_strategy import (
-    ContentTypeStrategy,
-    get_content_type_earnings,
-    allocate_slots_weighted,
-    PREMIUM_HOURS,
-)
-
-# Stratified pools dataclass for pool-based selection
-from dataclasses import dataclass as _dataclass
-
-
-@_dataclass
-class StratifiedPools:
-    """
-    Stratified caption pools for a single content type.
-
-    Pools:
-        - proven: Captions with creator-specific earnings data
-        - global_earner: Captions with global earnings but no creator data
-        - discovery: Captions with no earnings data
-    """
-    content_type_id: int
-    content_type_name: str
-    proven: list  # List[Caption]
-    global_earner: list  # List[Caption]
-    discovery: list  # List[Caption]
-    content_type_avg_earnings: float = 50.0
-
-    @property
-    def total_count(self) -> int:
-        """Total captions across all pools."""
-        return len(self.proven) + len(self.global_earner) + len(self.discovery)
-
-    @property
-    def has_proven(self) -> bool:
-        """Whether this content type has proven performers."""
-        return len(self.proven) > 0
 
 # New pipeline modules for full mode
 try:
     from quality_scoring import QualityScorer, calculate_enhanced_weight, get_quality_modifier
+
     QUALITY_SCORING_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     QUALITY_SCORING_AVAILABLE = False
+    logger.debug("quality_scoring module not available: %s", e)
 
 try:
-    from caption_enhancer import CaptionEnhancer, EnhancementResult, PersonaContext as CEPersonaContext
+    from caption_enhancer import CaptionEnhancer
+    from caption_enhancer import PersonaContext as CEPersonaContext
+
     CAPTION_ENHANCER_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     CAPTION_ENHANCER_AVAILABLE = False
+    logger.debug("caption_enhancer module not available: %s", e)
 
 try:
-    from followup_generator import FollowupGenerator, FollowUpContext, FollowUpMessage
+    from followup_generator import FollowUpContext, FollowupGenerator
+
     FOLLOWUP_GENERATOR_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     FOLLOWUP_GENERATOR_AVAILABLE = False
+    logger.debug("followup_generator module not available: %s", e)
 
 # Agent invoker for sub-agent integration
 try:
-    from agent_invoker import AgentInvoker, AGENT_CONFIGS
+    from agent_invoker import AgentInvoker
     from shared_context import (
-        ScheduleContext,
         CreatorProfile as AgentCreatorProfile,
-        PersonaProfile,
     )
+    from shared_context import (
+        PersonaProfile,
+        ScheduleContext,
+    )
+
     AGENT_INVOKER_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     AGENT_INVOKER_AVAILABLE = False
+    logger.debug("agent_invoker/shared_context modules not available: %s", e)
 
 # Content type loaders for new content types
 try:
     from content_type_loaders import (
-        load_wall_post_captions,
-        load_free_previews,
-        load_polls,
-        load_game_wheel_config,
-        apply_preview_persona_scores,
         apply_poll_persona_scores,
+        apply_preview_persona_scores,
+        load_free_previews,
+        load_game_wheel_config,
+        load_polls,
+        load_wall_post_captions,
     )
+
     CONTENT_TYPE_LOADERS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     CONTENT_TYPE_LOADERS_AVAILABLE = False
+    logger.debug("content_type_loaders module not available: %s", e)
 
 # Content type schedulers for new content types
 try:
     from content_type_schedulers import (
-        select_wall_posts_for_slots,
-        select_previews_for_ppvs,
-        select_polls_for_week,
         create_game_wheel_schedule_item,
-        generate_wall_post_slots,
         generate_poll_slots,
+        generate_wall_post_slots,
+        select_polls_for_week,
+        select_previews_for_ppvs,
+        select_wall_posts_for_slots,
     )
+
     CONTENT_TYPE_SCHEDULERS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     CONTENT_TYPE_SCHEDULERS_AVAILABLE = False
+    logger.debug("content_type_schedulers module not available: %s", e)
 
 
 # =============================================================================
@@ -183,6 +176,11 @@ __all__ = [
     "load_creator_profile",
     "format_markdown",
     "format_json",
+    # Validation functions (Phase 2 - Self-Healing)
+    "validate_schedule",
+    "apply_auto_corrections",
+    "validate_with_self_healing",
+    "MAX_VALIDATION_PASSES",
 ]
 
 
@@ -227,6 +225,7 @@ def extract_price_modifiers(notes: dict) -> dict[str | None, float]:
 
 class ErosScheduleError(Exception):
     """Base exception for EROS schedule generation errors."""
+
     pass
 
 
@@ -264,28 +263,14 @@ class VaultEmptyError(ErosScheduleError):
 SCRIPT_DIR = Path(__file__).parent
 SQL_DIR = SCRIPT_DIR.parent / "assets" / "sql"
 
-# Database path resolution with multiple candidate locations
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
-HOME_DIR = Path.home()
-
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,  # Environment variable (highest priority)
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-# Filter out None entries
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH, HOME_DIR  # noqa: E402
 
 # Default output directory for schedules
 # Priority: 1) EROS_SCHEDULES_PATH env var, 2) Developer project path
 _env_schedules_path = os.environ.get("EROS_SCHEDULES_PATH", "")
 DEFAULT_SCHEDULES_DIR = (
-    Path(_env_schedules_path) if _env_schedules_path
+    Path(_env_schedules_path)
+    if _env_schedules_path
     else HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "schedules"
 )
 
@@ -299,7 +284,38 @@ DRIP_WINDOW_START_HOUR = 14  # Drip window starts at 2 PM
 DRIP_WINDOW_END_HOUR = 22  # Drip window ends at 10 PM
 
 # Content type rotation order (preferred sequence)
-ROTATION_ORDER = ["solo", "bundle", "winner", "sextape", "bg", "gg", "toy_play", "custom", "dick_rate"]
+ROTATION_ORDER = [
+    "solo",
+    "bundle",
+    "winner",
+    "sextape",
+    "bg",
+    "gg",
+    "toy_play",
+    "custom",
+    "dick_rate",
+]
+
+# Premium content types (higher value, should be prioritized on paydays)
+PREMIUM_CONTENT_TYPES = {"bundle", "sextape", "bg", "gg", "custom"}
+"""
+Premium content types for payday prioritization.
+
+These content types have higher average prices and should be soft-prioritized
+on high payday multiplier days (1st, 15th, and surrounding days).
+- bundle: Multi-item collections ($18-25)
+- sextape: Full videos ($22-30)
+- bg: Boy/girl content ($28-35)
+- gg: Girl/girl content ($25-32)
+- custom: Custom requests ($35-50)
+"""
+
+# Payday slot modifiers for premium content
+PAYDAY_PREMIUM_BOOST: float = 1.2
+"""Weight multiplier for premium content on high payday days (>=1.15 multiplier)."""
+
+PAYDAY_PREMIUM_PENALTY: float = 0.9
+"""Weight multiplier for premium content on mid-cycle days (<=0.95 multiplier)."""
 
 # Follow-up bump messages
 BUMP_MESSAGES = [
@@ -340,17 +356,17 @@ class ScheduleConfig:
     enable_drip_windows: bool = False
     enable_page_type_rules: bool = True
     # Volume optimization fields
-    volume_period: str = "day"          # "day" or "week"
-    ppv_per_week: int = 0               # Weekly total for tracking
-    is_paid_page: bool = False          # Convenience flag
-    volume_strategy: Optional[VolumeStrategy] = None  # Full strategy object
+    volume_period: str = "day"  # "day" or "week"
+    ppv_per_week: int = 0  # Weekly total for tracking
+    is_paid_page: bool = False  # Convenience flag
+    volume_strategy: VolumeStrategy | None = None  # Full strategy object
     # Enhanced pipeline mode fields (Phase 4 integration)
-    mode: str = "quick"                 # "quick" or "full" - pipeline mode
-    use_quality_scoring: bool = False   # Enable LLM quality scoring (full mode)
+    mode: str = "quick"  # "quick" or "full" - pipeline mode
+    use_quality_scoring: bool = False  # Enable LLM quality scoring (full mode)
     use_caption_enhancement: bool = False  # Enable caption enhancement (full mode)
-    use_context_followups: bool = False # Enable context-aware follow-ups (full mode)
+    use_context_followups: bool = False  # Enable context-aware follow-ups (full mode)
     # Sub-agent integration
-    use_agents: bool = False            # Enable sub-agent delegation for enhanced optimization
+    use_agents: bool = False  # Enable sub-agent delegation for enhanced optimization
     # Content type toggles (Phase 2 expansion)
     enable_wall_posts: bool = False
     wall_posts_per_day: int = 2
@@ -359,14 +375,18 @@ class ScheduleConfig:
     enable_polls: bool = False
     polls_per_week: int = 3
     enable_game_wheel: bool = False
-    wall_post_hours: tuple[int, ...] = (12, 16, 20)  # Use tuple instead of list for frozen dataclass
+    wall_post_hours: tuple[int, ...] = (
+        12,
+        16,
+        20,
+    )  # Use tuple instead of list for frozen dataclass
     preview_lead_time_hours: int = 2
     # NEW: Earnings-based selection config
-    earnings_weight: float = 0.70          # Primary factor (~70%)
+    earnings_weight: float = 0.70  # Primary factor (~70%)
     earnings_freshness_weight: float = 0.20  # Secondary factor (~20%)
     persona_tiebreak_weight: float = 0.10  # Tiebreaker (~10%)
-    reserved_slot_ratio: float = 0.15      # 15% of slots for untested
-    min_uses_for_tested: int = 3           # Threshold for "tested" status
+    reserved_slot_ratio: float = 0.15  # 15% of slots for untested
+    min_uses_for_tested: int = 3  # Threshold for "tested" status
 
 
 @dataclass(slots=True)
@@ -390,7 +410,7 @@ class CreatorProfile:
     price_modifiers: dict = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(slots=True)
 class Caption:
     """Caption data for selection."""
 
@@ -410,16 +430,17 @@ class Caption:
     final_weight: float = 0.0
     # NEW: Earnings-based fields for priority selection
     creator_avg_earnings: float | None = None  # Creator-specific avg earnings
-    global_avg_earnings: float | None = None   # Global avg earnings (fallback)
-    creator_times_used: int = 0                # Times used by THIS creator
-    global_times_used: int = 0                 # Global times used
-    earnings_source: str = "none"              # "creator", "global", or "none"
-    is_untested: bool = False                  # True if <3 uses for this creator
+    global_avg_earnings: float | None = None  # Global avg earnings (fallback)
+    creator_times_used: int = 0  # Times used by THIS creator
+    global_times_used: int = 0  # Global times used
+    earnings_source: str = "none"  # "creator", "global", or "none"
+    is_untested: bool = False  # True if <3 uses for this creator
 
 
 @dataclass
 class WallPostItem:
     """Wall/Feed post configuration."""
+
     post_id: int
     caption_id: int | None
     caption_text: str
@@ -435,6 +456,7 @@ class WallPostItem:
 @dataclass
 class FreePreview:
     """Free preview/teaser content."""
+
     preview_id: int
     preview_text: str
     preview_type: str  # teaser, countdown, behind_scenes, censored
@@ -449,6 +471,7 @@ class FreePreview:
 @dataclass
 class Poll:
     """Interactive poll configuration."""
+
     poll_id: int
     question_text: str
     options: list[str] = field(default_factory=list)
@@ -461,16 +484,19 @@ class Poll:
 @dataclass
 class GameWheelConfig:
     """Game wheel configuration."""
+
     wheel_id: int
     wheel_name: str
     spin_trigger: str  # tip, ppv_purchase, subscription
     min_trigger_amount: float
-    segments: list[dict] = field(default_factory=list)  # [{name, probability, prize_type, prize_value}]
+    segments: list[dict] = field(
+        default_factory=list
+    )  # [{name, probability, prize_type, prize_value}]
     display_text: str | None = None
     cooldown_hours: int = 24
 
 
-@dataclass
+@dataclass(slots=True)
 class ScheduleItem:
     """Represents a scheduled content item."""
 
@@ -503,15 +529,33 @@ class ScheduleItem:
 
 @dataclass(frozen=True, slots=True)
 class ValidationIssue:
-    """Represents a validation issue."""
+    """
+    Represents a validation issue with optional auto-correction capability.
+
+    Attributes:
+        rule_name: The name of the validation rule that was violated.
+        severity: The severity level - "error", "warning", or "info".
+        message: Human-readable description of the issue.
+        item_ids: Tuple of schedule item IDs affected by this issue.
+        auto_correctable: Whether this issue can be automatically corrected.
+        correction_action: The type of correction to apply:
+            - "move_slot": Move item to a new time slot
+            - "swap_caption": Replace caption with another
+            - "adjust_timing": Adjust follow-up timing
+        correction_value: The value to apply for correction (JSON or string).
+    """
 
     rule_name: str
     severity: str  # error, warning, info
     message: str
     item_ids: tuple[int, ...] = ()
+    # Auto-correction fields
+    auto_correctable: bool = False
+    correction_action: str = ""  # "move_slot", "swap_caption", "adjust_timing"
+    correction_value: str = ""  # New value to apply (JSON or string)
 
 
-@dataclass
+@dataclass(slots=True)
 class ScheduleResult:
     """Result of schedule generation."""
 
@@ -559,9 +603,7 @@ def get_db_connection(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def get_volume_level(
-    active_fans: int,
-    conn: sqlite3.Connection = None,
-    creator_id: str = None
+    active_fans: int, conn: sqlite3.Connection = None, creator_id: str = None
 ) -> tuple[str, int, int]:
     """
     Multi-factor volume determination.
@@ -620,10 +662,9 @@ def parse_iso_week(week_str: str) -> tuple[date, date]:
 # STEP 1: ANALYZE - Load creator profile and analytics
 # ============================================================================
 
+
 def load_creator_profile(
-    conn: sqlite3.Connection,
-    creator_name: str | None = None,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, creator_name: str | None = None, creator_id: str | None = None
 ) -> CreatorProfile | None:
     """
     Load creator profile from database.
@@ -693,7 +734,7 @@ def load_creator_profile(
         vault_types=vault_types,
         content_notes=content_notes,
         filter_keywords=filter_keywords,
-        price_modifiers=price_modifiers
+        price_modifiers=price_modifiers,
     )
 
 
@@ -815,10 +856,12 @@ def load_stratified_pools(
 
     # Load all captions (existing function)
     all_captions = load_available_captions(
-        conn, creator_id, min_freshness,
+        conn,
+        creator_id,
+        min_freshness,
         vault_types=allowed_content_types,
         filter_keywords=filter_keywords,
-        min_uses_for_tested=min_uses_for_tested
+        min_uses_for_tested=min_uses_for_tested,
     )
 
     # Get content type names mapping
@@ -828,15 +871,17 @@ def load_stratified_pools(
             type_names[cap.content_type_id] = cap.content_type_name
 
     # Initialize pools per content type
+    # Note: StratifiedPools uses type_name and global_earners as canonical fields
+    # but provides content_type_name and global_earner as backwards-compatible aliases
     pools: dict[int, StratifiedPools] = {}
     for ct_id in allowed_content_types:
         ct_name = type_names.get(ct_id, f"type_{ct_id}")
         ct_avg = content_type_earnings.get(ct_name, 50.0)
         pools[ct_id] = StratifiedPools(
             content_type_id=ct_id,
-            content_type_name=ct_name,
+            type_name=ct_name,
             proven=[],
-            global_earner=[],
+            global_earners=[],
             discovery=[],
             content_type_avg_earnings=ct_avg,
         )
@@ -851,7 +896,7 @@ def load_stratified_pools(
         if pool_type == POOL_PROVEN:
             pools[ct_id].proven.append(caption)
         elif pool_type == POOL_GLOBAL_EARNER:
-            pools[ct_id].global_earner.append(caption)
+            pools[ct_id].global_earners.append(caption)
         else:
             pools[ct_id].discovery.append(caption)
 
@@ -914,7 +959,7 @@ def load_available_captions(
     min_freshness: float = 30.0,
     vault_types: list[int] | None = None,
     filter_keywords: set[str] | None = None,
-    min_uses_for_tested: int = 3
+    min_uses_for_tested: int = 3,
 ) -> list[Caption]:
     """
     Load available captions filtered by freshness and vault.
@@ -979,32 +1024,35 @@ def load_available_captions(
             if row["content_type_id"] not in vault_types:
                 continue
 
-        captions.append(Caption(
-            caption_id=row["caption_id"],
-            caption_text=row["caption_text"],
-            caption_type=row["caption_type"],
-            content_type_id=row["content_type_id"],
-            content_type_name=row["content_type_name"],
-            performance_score=row["performance_score"] or 50.0,
-            freshness_score=row["freshness_score"] or 100.0,
-            tone=row["tone"],
-            emoji_style=row["emoji_style"],
-            slang_level=row["slang_level"],
-            is_universal=bool(row["is_universal"]),
-            # NEW: Earnings fields
-            creator_avg_earnings=row["creator_avg_earnings"],
-            global_avg_earnings=row["global_avg_earnings"],
-            creator_times_used=row["creator_times_used"] or 0,
-            global_times_used=row["global_times_used"] or 0,
-            earnings_source=row["earnings_source"],
-            is_untested=bool(row["is_untested"])
-        ))
+        captions.append(
+            Caption(
+                caption_id=row["caption_id"],
+                caption_text=row["caption_text"],
+                caption_type=row["caption_type"],
+                content_type_id=row["content_type_id"],
+                content_type_name=row["content_type_name"],
+                performance_score=row["performance_score"] or 50.0,
+                freshness_score=row["freshness_score"] or 100.0,
+                tone=row["tone"],
+                emoji_style=row["emoji_style"],
+                slang_level=row["slang_level"],
+                is_universal=bool(row["is_universal"]),
+                # NEW: Earnings fields
+                creator_avg_earnings=row["creator_avg_earnings"],
+                global_avg_earnings=row["global_avg_earnings"],
+                creator_times_used=row["creator_times_used"] or 0,
+                global_times_used=row["global_times_used"] or 0,
+                earnings_source=row["earnings_source"],
+                is_untested=bool(row["is_untested"]),
+            )
+        )
 
     # Filter out captions containing restricted keywords
     if filter_keywords:
         original_count = len(captions)
         captions = [
-            c for c in captions
+            c
+            for c in captions
             if not any(kw.lower() in c.caption_text.lower() for kw in filter_keywords)
         ]
         filtered_count = original_count - len(captions)
@@ -1020,12 +1068,11 @@ def load_available_captions(
 
 # Import sophisticated persona matching from match_persona.py
 # This enables text-based detection when database fields are NULL
-from match_persona import (
+from match_persona import (  # noqa: E402
     PersonaProfile as MatchPersonaProfile,
+)
+from match_persona import (  # noqa: E402
     calculate_persona_boost as full_persona_boost,
-    detect_tone_from_text,
-    detect_slang_level_from_text,
-    get_emoji_frequency_category,
 )
 
 
@@ -1033,7 +1080,7 @@ def apply_persona_scores(
     captions: list[Caption],
     profile: CreatorProfile,
     config: ScheduleConfig,
-    use_text_detection: bool = True
+    use_text_detection: bool = True,
 ) -> list[Caption]:
     """
     Apply persona boost scores to all captions using full match_persona logic.
@@ -1065,7 +1112,7 @@ def apply_persona_scores(
         creator_id=profile.creator_id,
         page_name=profile.page_name,
         primary_tone=profile.primary_tone,
-        secondary_tone=getattr(profile, 'secondary_tone', None),
+        secondary_tone=getattr(profile, "secondary_tone", None),
         emoji_frequency=profile.emoji_frequency,
         slang_level=profile.slang_level,
         avg_sentiment=profile.avg_sentiment,
@@ -1081,7 +1128,7 @@ def apply_persona_scores(
             caption_slang_level=caption.slang_level,
             persona=persona,
             caption_text=caption.caption_text,
-            use_text_detection=use_text_detection
+            use_text_detection=use_text_detection,
         )
 
         caption.persona_boost = match_result.total_boost
@@ -1091,9 +1138,7 @@ def apply_persona_scores(
         # content_type_avg_earnings. See lines ~1657 in pool-based selection.
 
         # Keep combined_score for backward compatibility (reporting/sorting)
-        caption.combined_score = (
-            caption.performance_score * 0.6 + caption.freshness_score * 0.4
-        )
+        caption.combined_score = caption.performance_score * 0.6 + caption.freshness_score * 0.4
 
     return captions
 
@@ -1101,6 +1146,7 @@ def apply_persona_scores(
 # ============================================================================
 # STEP 3B: EARNINGS-BASED WEIGHT CALCULATION
 # ============================================================================
+
 
 def get_earnings_stats(captions: list[Caption]) -> dict[str, float]:
     """
@@ -1120,12 +1166,12 @@ def get_earnings_stats(captions: list[Caption]) -> dict[str, float]:
             all_earnings.append(earnings)
 
     if not all_earnings:
-        return {'max_earnings': 100.0, 'avg_earnings': 50.0, 'median_earnings': 38.0}
+        return {"max_earnings": 100.0, "avg_earnings": 50.0, "median_earnings": 38.0}
 
     return {
-        'max_earnings': max(all_earnings),
-        'avg_earnings': statistics.mean(all_earnings),
-        'median_earnings': statistics.median(all_earnings)
+        "max_earnings": max(all_earnings),
+        "avg_earnings": statistics.mean(all_earnings),
+        "median_earnings": statistics.median(all_earnings),
     }
 
 
@@ -1181,7 +1227,9 @@ def _get_optimal_time_for_day(day: str, best_hours: list[int] | None = None) -> 
     return time(hour=hour, minute=minute)
 
 
-def _get_staggered_time(ppv_index: int, total_ppv: int, best_hours: list[int] | None = None) -> time:
+def _get_staggered_time(
+    ppv_index: int, total_ppv: int, best_hours: list[int] | None = None
+) -> time:
     """
     Get staggered posting time for multiple PPV in a day.
 
@@ -1206,11 +1254,10 @@ def _get_staggered_time(ppv_index: int, total_ppv: int, best_hours: list[int] | 
 
 
 def build_weekly_slots(
-    config: ScheduleConfig,
-    best_hours: list[int] | None = None
+    config: ScheduleConfig, best_hours: list[int] | None = None
 ) -> list[dict[str, Any]]:
     """
-    Build weekly time slots based on volume level with proper spacing.
+    Build weekly time slots based on volume level with proper spacing and payday awareness.
 
     Step 4 of pipeline: BUILD STRUCTURE
 
@@ -1220,6 +1267,12 @@ def build_weekly_slots(
 
     Ensures minimum 3-hour spacing between PPV slots by selecting hours
     that are at least 4 hours apart (to allow for minute variation).
+
+    Payday Awareness:
+    Each slot includes payday_multiplier and is_payday_optimal flags:
+    - payday_multiplier: Revenue multiplier (0.90-1.35) based on proximity to 1st/15th
+    - is_payday_optimal: True if multiplier >= 1.15 (premium content should be prioritized)
+    - is_mid_cycle: True if multiplier <= 0.95 (premium content should be deprioritized)
     """
     if best_hours is None or not best_hours:
         best_hours = [8, 12, 16, 20]  # Default hours with 4-hour gaps
@@ -1229,10 +1282,7 @@ def build_weekly_slots(
 
     # Check if this is a paid page with weekly volume
     is_paid_page = config.is_paid_page or config.page_type == "paid"
-    has_weekly_strategy = (
-        config.volume_strategy is not None
-        and config.volume_period == "week"
-    )
+    has_weekly_strategy = config.volume_strategy is not None and config.volume_period == "week"
 
     if is_paid_page and has_weekly_strategy:
         # PAID PAGE: Campaign-style weekly distribution
@@ -1252,6 +1302,11 @@ def build_weekly_slots(
         while current_date <= config.week_end and remaining_ppv > 0:
             day_name = current_date.strftime("%A")
 
+            # Calculate payday metrics for this date
+            payday_mult = calculate_payday_multiplier(current_date)
+            payday_optimal = is_high_payday_multiplier(current_date)
+            mid_cycle = is_mid_cycle(current_date)
+
             if day_name in optimal_days:
                 # Schedule PPV for this optimal day
                 day_ppv_count = min(ppv_per_optimal_day, remaining_ppv)
@@ -1260,15 +1315,20 @@ def build_weekly_slots(
                     # Single PPV: use optimal time
                     optimal_time = _get_optimal_time_for_day(day_name, best_hours)
                     slot_id += 1
-                    slots.append({
-                        "slot_id": slot_id,
-                        "date": current_date.isoformat(),
-                        "day_name": day_name,
-                        "time": optimal_time.strftime("%H:%M"),
-                        "hour": optimal_time.hour,
-                        "type": "ppv",
-                        "priority": 3
-                    })
+                    slots.append(
+                        {
+                            "slot_id": slot_id,
+                            "date": current_date.isoformat(),
+                            "day_name": day_name,
+                            "time": optimal_time.strftime("%H:%M"),
+                            "hour": optimal_time.hour,
+                            "type": "ppv",
+                            "priority": 3,
+                            "payday_multiplier": payday_mult,
+                            "is_payday_optimal": payday_optimal,
+                            "is_mid_cycle": mid_cycle,
+                        }
+                    )
                     remaining_ppv -= 1
                 else:
                     # Multiple PPV: use spaced hours
@@ -1278,15 +1338,20 @@ def build_weekly_slots(
                             break
                         slot_id += 1
                         minute = random.choice([0, 15, 30, 45])
-                        slots.append({
-                            "slot_id": slot_id,
-                            "date": current_date.isoformat(),
-                            "day_name": day_name,
-                            "time": f"{hour:02d}:{minute:02d}",
-                            "hour": hour,
-                            "type": "ppv",
-                            "priority": 3 if i == 0 else 5
-                        })
+                        slots.append(
+                            {
+                                "slot_id": slot_id,
+                                "date": current_date.isoformat(),
+                                "day_name": day_name,
+                                "time": f"{hour:02d}:{minute:02d}",
+                                "hour": hour,
+                                "type": "ppv",
+                                "priority": 3 if i == 0 else 5,
+                                "payday_multiplier": payday_mult,
+                                "is_payday_optimal": payday_optimal,
+                                "is_mid_cycle": mid_cycle,
+                            }
+                        )
                         remaining_ppv -= 1
 
             current_date += timedelta(days=1)
@@ -1300,6 +1365,11 @@ def build_weekly_slots(
         while current_date <= config.week_end:
             day_name = current_date.strftime("%A")
 
+            # Calculate payday metrics for this date
+            payday_mult = calculate_payday_multiplier(current_date)
+            payday_optimal = is_high_payday_multiplier(current_date)
+            mid_cycle = is_mid_cycle(current_date)
+
             # Generate PPV slots for this day with proper spacing
             # Use 4-hour minimum to account for minute variation
             ppv_hours = select_spaced_hours_strict(available_hours, config.ppv_per_day)
@@ -1308,41 +1378,52 @@ def build_weekly_slots(
                 slot_id += 1
                 # Add some minute variation (0, 15, 30, 45)
                 minute = random.choice([0, 15, 30, 45])
-                slots.append({
-                    "slot_id": slot_id,
-                    "date": current_date.isoformat(),
-                    "day_name": day_name,
-                    "time": f"{hour:02d}:{minute:02d}",
-                    "hour": hour,
-                    "type": "ppv",
-                    "priority": 3 if hour in best_hours[:3] else 5
-                })
+                slots.append(
+                    {
+                        "slot_id": slot_id,
+                        "date": current_date.isoformat(),
+                        "day_name": day_name,
+                        "time": f"{hour:02d}:{minute:02d}",
+                        "hour": hour,
+                        "type": "ppv",
+                        "priority": 3 if hour in best_hours[:3] else 5,
+                        "payday_multiplier": payday_mult,
+                        "is_payday_optimal": payday_optimal,
+                        "is_mid_cycle": mid_cycle,
+                    }
+                )
 
             current_date += timedelta(days=1)
 
     # NEW: Wall post slots (if enabled)
-    if CONTENT_TYPE_SCHEDULERS_AVAILABLE and getattr(config, 'enable_wall_posts', False):
+    if CONTENT_TYPE_SCHEDULERS_AVAILABLE and getattr(config, "enable_wall_posts", False):
         wall_slots = generate_wall_post_slots(
             config,
             config.week_start.isoformat(),
             config.week_end.isoformat(),
-            start_slot_id=slot_id
+            start_slot_id=slot_id,
         )
         slots.extend(wall_slots)
         slot_id += len(wall_slots)
 
     # NEW: Poll slots (if enabled)
-    if CONTENT_TYPE_SCHEDULERS_AVAILABLE and getattr(config, 'enable_polls', False):
+    if CONTENT_TYPE_SCHEDULERS_AVAILABLE and getattr(config, "enable_polls", False):
         poll_slots = generate_poll_slots(
-            config,
-            config.week_start.isoformat(),
-            start_slot_id=slot_id
+            config, config.week_start.isoformat(), start_slot_id=slot_id
         )
         slots.extend(poll_slots)
         slot_id += len(poll_slots)
 
     # Sort by datetime
     slots.sort(key=lambda s: (s["date"], s["time"]))
+
+    # Log payday distribution for debugging
+    payday_optimal_count = sum(1 for s in slots if s.get("is_payday_optimal", False))
+    mid_cycle_count = sum(1 for s in slots if s.get("is_mid_cycle", False))
+    logger.info(
+        f"Payday awareness: {payday_optimal_count} optimal slots, "
+        f"{mid_cycle_count} mid-cycle slots out of {len(slots)} total"
+    )
 
     return slots
 
@@ -1462,9 +1543,106 @@ def select_spaced_hours_strict(available_hours: list[int], count: int) -> list[i
     return selected[:count]
 
 
+def add_timing_variance(scheduled_time: time, is_weekend: bool = False) -> time:
+    """
+    Add natural timing variance to a scheduled time.
+
+    Fans can detect robotic exact-hour scheduling patterns. This function
+    adds random variance to make schedules appear more organic and prevent
+    pattern detection.
+
+    Args:
+        scheduled_time: The original scheduled time.
+        is_weekend: Whether this is a weekend day (Sat/Sun).
+            Weekend variance is larger (+/- 10 min) for a more casual feel.
+
+    Returns:
+        New time with variance applied.
+
+    Variance ranges:
+        - Weekday: +/- 7 minutes (to avoid looking automated)
+        - Weekend: +/- 10 minutes (more casual audience behavior)
+
+    Note: Variance is capped to stay within valid time bounds (00:00-23:59).
+
+    Examples:
+        >>> from datetime import time
+        >>> add_timing_variance(time(14, 0), is_weekend=False)
+        datetime.time(13, 55)  # Could be anywhere from 13:53 to 14:07
+        >>> add_timing_variance(time(21, 30), is_weekend=True)
+        datetime.time(21, 37)  # Could be anywhere from 21:20 to 21:40
+    """
+    # Determine variance range based on day type
+    variance_minutes = 10 if is_weekend else 7
+
+    # Generate random variance (symmetrical around 0)
+    variance = random.randint(-variance_minutes, variance_minutes)
+
+    # Calculate new minute value
+    total_minutes = scheduled_time.hour * 60 + scheduled_time.minute + variance
+
+    # Clamp to valid range (0:00 to 23:59)
+    total_minutes = max(0, min(23 * 60 + 59, total_minutes))
+
+    # Convert back to hour:minute
+    new_hour = total_minutes // 60
+    new_minute = total_minutes % 60
+
+    return time(hour=new_hour, minute=new_minute)
+
+
+def apply_timing_variance_to_slots(
+    slots: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Apply timing variance to all PPV slots in a schedule.
+
+    Modifies slot times in-place to add natural variance that prevents
+    robotic scheduling pattern detection by fans.
+
+    Args:
+        slots: List of slot dicts with 'time', 'day_name', and 'type' keys.
+
+    Returns:
+        The same slots list with modified times.
+
+    Note:
+        - Only applies to PPV slots (type='ppv')
+        - Detects weekend based on day_name
+        - Preserves original slot ordering
+    """
+    weekend_days = {"Saturday", "Sunday"}
+
+    for slot in slots:
+        if slot.get("type") != "ppv":
+            continue
+
+        # Parse current time
+        time_str = slot.get("time", "12:00")
+        try:
+            hour, minute = map(int, time_str.split(":"))
+            current_time = time(hour=hour, minute=minute)
+        except (ValueError, AttributeError):
+            continue  # Skip malformed times
+
+        # Determine if weekend
+        day_name = slot.get("day_name", "")
+        is_weekend = day_name in weekend_days
+
+        # Apply variance
+        new_time = add_timing_variance(current_time, is_weekend=is_weekend)
+
+        # Update slot
+        slot["time"] = new_time.strftime("%H:%M")
+        slot["hour"] = new_time.hour
+
+    return slots
+
+
 # ============================================================================
 # STEP 5: ASSIGN CAPTIONS - Weighted selection (Vose Alias)
 # ============================================================================
+
 
 def get_next_content_type(previous_type: str | None, available_types: set[str]) -> str | None:
     """
@@ -1491,8 +1669,7 @@ def get_next_content_type(previous_type: str | None, available_types: set[str]) 
 
 
 def partition_captions_by_testing_status(
-    captions: list[Caption],
-    min_uses: int = 3
+    captions: list[Caption], min_uses: int = 3
 ) -> tuple[list[Caption], list[Caption]]:
     """
     Partition captions into tested and untested groups.
@@ -1516,11 +1693,7 @@ def partition_captions_by_testing_status(
     return tested, untested
 
 
-def calculate_reserved_slots(
-    total_slots: int,
-    reserved_ratio: float,
-    untested_count: int
-) -> int:
+def calculate_reserved_slots(total_slots: int, reserved_ratio: float, untested_count: int) -> int:
     """
     Calculate number of slots to reserve for untested captions.
 
@@ -1543,14 +1716,13 @@ def _select_from_pool(
     used_ids: set[int],
     target_type: str | None,
     previous_type: str | None,
-    max_attempts: int = 50
+    max_attempts: int = 50,
 ) -> Caption | None:
     """Helper to select from a caption pool with constraints."""
     # First try: match target content type
     if target_type:
         type_candidates = [
-            c for c in pool
-            if c.content_type_name == target_type and c.caption_id not in used_ids
+            c for c in pool if c.content_type_name == target_type and c.caption_id not in used_ids
         ]
         if type_candidates:
             weights = [c.final_weight for c in type_candidates]
@@ -1578,6 +1750,84 @@ def _select_from_pool(
     return None
 
 
+def _select_target_content_type(
+    available_types: set[str],
+    content_type_allocation: dict[str, int],
+    content_type_used: dict[str, int],
+    previous_content_type: str | None,
+    is_payday_optimal: bool = False,
+    is_mid_cycle: bool = False,
+) -> str | None:
+    """
+    Select target content type with payday-aware soft prioritization.
+
+    On payday-optimal days (1st, 15th, and surrounding days):
+    - Soft-prioritize premium content types (bundles, sextapes, bg)
+    - Use PAYDAY_PREMIUM_BOOST (1.2x) weight multiplier for selection
+
+    On mid-cycle days (far from paydays):
+    - Soft-deprioritize premium content types
+    - Use PAYDAY_PREMIUM_PENALTY (0.9x) weight multiplier
+
+    This is SOFT prioritization - if no premium content is available
+    or allocation demands otherwise, any content type can be selected.
+
+    Args:
+        available_types: Set of available content type names
+        content_type_allocation: Target allocation per content type
+        content_type_used: Current usage counts per content type
+        previous_content_type: Previous slot's content type (for rotation)
+        is_payday_optimal: True if this is a high payday multiplier day
+        is_mid_cycle: True if this is a mid-cycle (low multiplier) day
+
+    Returns:
+        Selected content type name, or None if none available
+    """
+    # Calculate remaining allocation for each type
+    remaining_allocation: dict[str, int] = {}
+    for ct_name in available_types:
+        if ct_name == previous_content_type:
+            continue  # Skip for rotation
+        allocated = content_type_allocation.get(ct_name, 0)
+        used = content_type_used.get(ct_name, 0)
+        remaining = allocated - used
+        if remaining > 0:
+            remaining_allocation[ct_name] = remaining
+
+    if not remaining_allocation:
+        # All at allocation, pick any except previous
+        return get_next_content_type(previous_content_type, available_types)
+
+    # Apply payday-aware weighting
+    weighted_types: list[tuple[str, float]] = []
+    for ct_name, remaining in remaining_allocation.items():
+        weight = float(remaining)
+
+        # Apply payday modifiers for premium content
+        is_premium = ct_name in PREMIUM_CONTENT_TYPES
+
+        if is_payday_optimal and is_premium:
+            # Boost premium content on payday-optimal days
+            weight *= PAYDAY_PREMIUM_BOOST
+        elif is_mid_cycle and is_premium:
+            # Penalize premium content on mid-cycle days
+            weight *= PAYDAY_PREMIUM_PENALTY
+
+        weighted_types.append((ct_name, weight))
+
+    # Select weighted random (soft prioritization)
+    if weighted_types:
+        types, weights = zip(*weighted_types, strict=True)
+        total_weight = sum(weights)
+        if total_weight > 0:
+            probs = [w / total_weight for w in weights]
+            selected = random.choices(types, weights=probs, k=1)[0]
+            return selected
+
+    # Fallback: first available
+    return next(iter(remaining_allocation.keys()), None)
+
+
 def _select_from_stratified_pool(
     pools: dict[int, StratifiedPools],
     target_content_type: str | None,
@@ -1586,7 +1836,7 @@ def _select_from_stratified_pool(
     previous_type: str | None,
     persona: dict[str, str],
     config: ScheduleConfig,
-    max_attempts: int = 50
+    max_attempts: int = 50,
 ) -> tuple[Caption | None, str]:
     """
     Select a caption from stratified pools based on slot tier.
@@ -1615,14 +1865,14 @@ def _select_from_stratified_pool(
     # Find matching content type pools
     target_pools: list[StratifiedPools] = []
     if target_content_type:
-        for ct_id, pool in pools.items():
+        for _ct_id, pool in pools.items():
             if pool.content_type_name == target_content_type:
                 target_pools.append(pool)
                 break
 
     # If no target match, try any content type except previous
     if not target_pools:
-        for ct_id, pool in pools.items():
+        for _ct_id, pool in pools.items():
             if pool.content_type_name != previous_type:
                 target_pools.append(pool)
 
@@ -1728,10 +1978,9 @@ def assign_captions_to_slots_pooled(
 
     # Discovery slots: evenly distributed (excluding premium)
     discovery_candidates = [i for i in range(total_ppv_slots) if i not in premium_slot_indices]
-    discovery_slot_indices = set(identify_discovery_slots(
-        [ppv_slots[i] for i in discovery_candidates],
-        discovery_count
-    ))
+    discovery_slot_indices = set(
+        identify_discovery_slots([ppv_slots[i] for i in discovery_candidates], discovery_count)
+    )
     # Map back to original indices
     mapped_discovery = set()
     for idx, orig_idx in enumerate(discovery_candidates):
@@ -1740,7 +1989,7 @@ def assign_captions_to_slots_pooled(
     discovery_slot_indices = mapped_discovery
 
     # Track content type usage vs allocation
-    content_type_used: dict[str, int] = {ct: 0 for ct in content_type_allocation.keys()}
+    content_type_used: dict[str, int] = dict.fromkeys(content_type_allocation.keys(), 0)
     available_types = set(content_type_allocation.keys())
 
     # Build items
@@ -1763,20 +2012,19 @@ def assign_captions_to_slots_pooled(
         else:
             slot_tier = "standard"
 
-        # Determine target content type based on allocation and rotation
-        target_type = None
-        for ct_name in available_types:
-            if ct_name == previous_content_type:
-                continue
-            allocated = content_type_allocation.get(ct_name, 0)
-            used = content_type_used.get(ct_name, 0)
-            if used < allocated:
-                target_type = ct_name
-                break
+        # Get payday info from slot (added by build_weekly_slots)
+        is_payday_optimal = slot.get("is_payday_optimal", False)
+        slot_is_mid_cycle = slot.get("is_mid_cycle", False)
 
-        # If all at allocation, pick any except previous
-        if not target_type:
-            target_type = get_next_content_type(previous_content_type, available_types)
+        # Determine target content type based on allocation, rotation, and payday
+        target_type = _select_target_content_type(
+            available_types=available_types,
+            content_type_allocation=content_type_allocation,
+            content_type_used=content_type_used,
+            previous_content_type=previous_content_type,
+            is_payday_optimal=is_payday_optimal,
+            is_mid_cycle=slot_is_mid_cycle,
+        )
 
         # Select caption from appropriate pool
         selected_caption, pool_type = _select_from_stratified_pool(
@@ -1804,28 +2052,38 @@ def assign_captions_to_slots_pooled(
             elif selected_caption.performance_score < 50:
                 base_price *= 0.9
 
-            # Build selection notes
+            # Build selection notes with payday info
+            payday_mult = slot.get("payday_multiplier", 1.0)
+            payday_tag = ""
+            if is_payday_optimal:
+                payday_tag = " | Payday: OPTIMAL"
+            elif slot_is_mid_cycle:
+                payday_tag = " | Payday: mid-cycle"
+
             selection_note = (
                 f"Pool: {pool_type} | Tier: {slot_tier} | "
-                f"Boost: {selected_caption.persona_boost:.2f}x"
+                f"Boost: {selected_caption.persona_boost:.2f}x | "
+                f"PaydayMult: {payday_mult:.2f}x{payday_tag}"
             )
 
-            items.append(ScheduleItem(
-                item_id=slot["slot_id"],
-                creator_id=config.creator_id,
-                scheduled_date=slot["date"],
-                scheduled_time=slot["time"],
-                item_type="ppv",
-                caption_id=selected_caption.caption_id,
-                caption_text=selected_caption.caption_text,
-                content_type_id=selected_caption.content_type_id,
-                content_type_name=selected_caption.content_type_name,
-                suggested_price=round(base_price, 2),
-                freshness_score=selected_caption.freshness_score,
-                performance_score=selected_caption.performance_score,
-                priority=slot["priority"],
-                notes=selection_note
-            ))
+            items.append(
+                ScheduleItem(
+                    item_id=slot["slot_id"],
+                    creator_id=config.creator_id,
+                    scheduled_date=slot["date"],
+                    scheduled_time=slot["time"],
+                    item_type="ppv",
+                    caption_id=selected_caption.caption_id,
+                    caption_text=selected_caption.caption_text,
+                    content_type_id=selected_caption.content_type_id,
+                    content_type_name=selected_caption.content_type_name,
+                    suggested_price=round(base_price, 2),
+                    freshness_score=selected_caption.freshness_score,
+                    performance_score=selected_caption.performance_score,
+                    priority=slot["priority"],
+                    notes=selection_note,
+                )
+            )
 
     # Log content type distribution
     logger.info(f"Content type distribution: {content_type_used}")
@@ -1877,9 +2135,7 @@ def assign_captions_to_slots(
         return []
 
     # Partition captions by testing status
-    tested, untested = partition_captions_by_testing_status(
-        captions, config.min_uses_for_tested
-    )
+    tested, untested = partition_captions_by_testing_status(captions, config.min_uses_for_tested)
 
     # Count PPV slots
     ppv_slots = [s for s in slots if s["type"] == "ppv"]
@@ -1887,9 +2143,7 @@ def assign_captions_to_slots(
 
     # Calculate reserved slots for discovery
     reserved_count = calculate_reserved_slots(
-        total_ppv_slots,
-        config.reserved_slot_ratio,
-        len(untested)
+        total_ppv_slots, config.reserved_slot_ratio, len(untested)
     )
 
     # Distribute reserved slots evenly across the week
@@ -1914,11 +2168,12 @@ def assign_captions_to_slots(
     if untested:
         try:
             untested_selector = VoseAliasSelector(
-                untested,
-                lambda c: c.freshness_score * c.persona_boost
+                untested, lambda c: c.freshness_score * c.persona_boost
             )
         except ValueError as e:
-            logger.warning(f"Failed to construct untested_selector: {e}, falling back to max-weight")
+            logger.warning(
+                f"Failed to construct untested_selector: {e}, falling back to max-weight"
+            )
 
     items = []
     used_caption_ids: set[int] = set()
@@ -1947,14 +2202,12 @@ def assign_captions_to_slots(
 
         if is_reserved_slot and untested:
             selected_caption = _select_from_pool(
-                untested, untested_selector, used_caption_ids,
-                target_type, previous_content_type
+                untested, untested_selector, used_caption_ids, target_type, previous_content_type
             )
 
         if not selected_caption and tested:
             selected_caption = _select_from_pool(
-                tested, tested_selector, used_caption_ids,
-                target_type, previous_content_type
+                tested, tested_selector, used_caption_ids, target_type, previous_content_type
             )
 
         if not selected_caption:
@@ -1978,22 +2231,24 @@ def assign_captions_to_slots(
             if is_reserved_slot:
                 selection_note += " [DISCOVERY]"
 
-            items.append(ScheduleItem(
-                item_id=slot["slot_id"],
-                creator_id=config.creator_id,
-                scheduled_date=slot["date"],
-                scheduled_time=slot["time"],
-                item_type="ppv",
-                caption_id=selected_caption.caption_id,
-                caption_text=selected_caption.caption_text,
-                content_type_id=selected_caption.content_type_id,
-                content_type_name=selected_caption.content_type_name,
-                suggested_price=round(base_price, 2),
-                freshness_score=selected_caption.freshness_score,
-                performance_score=selected_caption.performance_score,
-                priority=slot["priority"],
-                notes=selection_note
-            ))
+            items.append(
+                ScheduleItem(
+                    item_id=slot["slot_id"],
+                    creator_id=config.creator_id,
+                    scheduled_date=slot["date"],
+                    scheduled_time=slot["time"],
+                    item_type="ppv",
+                    caption_id=selected_caption.caption_id,
+                    caption_text=selected_caption.caption_text,
+                    content_type_id=selected_caption.content_type_id,
+                    content_type_name=selected_caption.content_type_name,
+                    suggested_price=round(base_price, 2),
+                    freshness_score=selected_caption.freshness_score,
+                    performance_score=selected_caption.performance_score,
+                    priority=slot["priority"],
+                    notes=selection_note,
+                )
+            )
 
     return items
 
@@ -2002,10 +2257,8 @@ def assign_captions_to_slots(
 # STEP 6: GENERATE FOLLOW-UPS - Create follow-ups (if enabled)
 # ============================================================================
 
-def generate_follow_ups(
-    items: list[ScheduleItem],
-    config: ScheduleConfig
-) -> list[ScheduleItem]:
+
+def generate_follow_ups(items: list[ScheduleItem], config: ScheduleConfig) -> list[ScheduleItem]:
     """
     Generate follow-up bump messages for each PPV.
 
@@ -2025,8 +2278,7 @@ def generate_follow_ups(
 
         # Calculate follow-up time (15-45 minutes after PPV)
         ppv_time = datetime.strptime(
-            f"{item.scheduled_date} {item.scheduled_time}",
-            "%Y-%m-%d %H:%M"
+            f"{item.scheduled_date} {item.scheduled_time}", "%Y-%m-%d %H:%M"
         )
         follow_up_minutes = random.randint(FOLLOW_UP_MIN_MINUTES, FOLLOW_UP_MAX_MINUTES)
         follow_up_time = ppv_time + timedelta(minutes=follow_up_minutes)
@@ -2034,18 +2286,20 @@ def generate_follow_ups(
         # Create follow-up item
         bump_message = random.choice(BUMP_MESSAGES)
 
-        all_items.append(ScheduleItem(
-            item_id=next_id,
-            creator_id=config.creator_id,
-            scheduled_date=follow_up_time.strftime("%Y-%m-%d"),
-            scheduled_time=follow_up_time.strftime("%H:%M"),
-            item_type="bump",
-            caption_text=bump_message,
-            is_follow_up=True,
-            parent_item_id=item.item_id,
-            priority=6,
-            notes=f"Follow-up for PPV #{item.item_id}"
-        ))
+        all_items.append(
+            ScheduleItem(
+                item_id=next_id,
+                creator_id=config.creator_id,
+                scheduled_date=follow_up_time.strftime("%Y-%m-%d"),
+                scheduled_time=follow_up_time.strftime("%H:%M"),
+                item_type="bump",
+                caption_text=bump_message,
+                is_follow_up=True,
+                parent_item_id=item.item_id,
+                priority=6,
+                notes=f"Follow-up for PPV #{item.item_id}",
+            )
+        )
 
         next_id += 1
 
@@ -2059,10 +2313,9 @@ def generate_follow_ups(
 # STEP 6B: CONTEXTUAL FOLLOW-UPS - Context-aware bumps (full mode)
 # ============================================================================
 
+
 def generate_contextual_follow_ups(
-    items: list[ScheduleItem],
-    config: ScheduleConfig,
-    profile: CreatorProfile
+    items: list[ScheduleItem], config: ScheduleConfig, profile: CreatorProfile
 ) -> list[ScheduleItem]:
     """
     Generate context-aware follow-up messages using FollowupGenerator.
@@ -2090,13 +2343,15 @@ def generate_contextual_follow_ups(
         print("Warning: FollowupGenerator not available, using generic bumps", file=sys.stderr)
         return generate_follow_ups(items, config)
 
-    generator = FollowupGenerator({
-        "creator_id": profile.creator_id,
-        "page_name": profile.page_name,
-        "primary_tone": profile.primary_tone,
-        "emoji_frequency": profile.emoji_frequency,
-        "slang_level": profile.slang_level,
-    })
+    generator = FollowupGenerator(
+        {
+            "creator_id": profile.creator_id,
+            "page_name": profile.page_name,
+            "primary_tone": profile.primary_tone,
+            "emoji_frequency": profile.emoji_frequency,
+            "slang_level": profile.slang_level,
+        }
+    )
 
     all_items = list(items)
     next_id = max((item.item_id for item in items), default=0) + 1
@@ -2109,10 +2364,7 @@ def generate_contextual_follow_ups(
         if item.item_type != "ppv":
             continue
 
-        ppv_dt = datetime.strptime(
-            f"{item.scheduled_date} {item.scheduled_time}",
-            "%Y-%m-%d %H:%M"
-        )
+        ppv_dt = datetime.strptime(f"{item.scheduled_date} {item.scheduled_time}", "%Y-%m-%d %H:%M")
 
         context = FollowUpContext(
             original_caption=item.caption_text or "",
@@ -2121,7 +2373,7 @@ def generate_contextual_follow_ups(
             emoji_frequency=profile.emoji_frequency,
             price=item.suggested_price,
             day_of_week=ppv_dt.weekday(),
-            hour=ppv_dt.hour
+            hour=ppv_dt.hour,
         )
         ppv_contexts.append(context)
         ppv_items.append(item)
@@ -2130,25 +2382,24 @@ def generate_contextual_follow_ups(
     followups = generator.generate_batch(ppv_contexts, avoid_repetition=True)
 
     # Create follow-up schedule items
-    for item, followup in zip(ppv_items, followups):
-        ppv_dt = datetime.strptime(
-            f"{item.scheduled_date} {item.scheduled_time}",
-            "%Y-%m-%d %H:%M"
-        )
+    for item, followup in zip(ppv_items, followups, strict=True):
+        ppv_dt = datetime.strptime(f"{item.scheduled_date} {item.scheduled_time}", "%Y-%m-%d %H:%M")
         follow_up_time = ppv_dt + timedelta(minutes=followup.timing_minutes)
 
-        all_items.append(ScheduleItem(
-            item_id=next_id,
-            creator_id=config.creator_id,
-            scheduled_date=follow_up_time.strftime("%Y-%m-%d"),
-            scheduled_time=follow_up_time.strftime("%H:%M"),
-            item_type="bump",
-            caption_text=followup.text,
-            is_follow_up=True,
-            parent_item_id=item.item_id,
-            priority=6,
-            notes=f"Context: {followup.context_type} | Timing: {followup.timing_minutes}min"
-        ))
+        all_items.append(
+            ScheduleItem(
+                item_id=next_id,
+                creator_id=config.creator_id,
+                scheduled_date=follow_up_time.strftime("%Y-%m-%d"),
+                scheduled_time=follow_up_time.strftime("%H:%M"),
+                item_type="bump",
+                caption_text=followup.text,
+                is_follow_up=True,
+                parent_item_id=item.item_id,
+                priority=6,
+                notes=f"Context: {followup.context_type} | Timing: {followup.timing_minutes}min",
+            )
+        )
         next_id += 1
 
     # Sort by datetime
@@ -2161,10 +2412,8 @@ def generate_contextual_follow_ups(
 # STEP 7: APPLY DRIP WINDOWS - Enforce no-PPV zones (if enabled)
 # ============================================================================
 
-def apply_drip_windows(
-    items: list[ScheduleItem],
-    config: ScheduleConfig
-) -> list[ScheduleItem]:
+
+def apply_drip_windows(items: list[ScheduleItem], config: ScheduleConfig) -> list[ScheduleItem]:
     """
     Apply drip windows - 4-8 hour periods with NO buying opportunities.
 
@@ -2186,16 +2435,18 @@ def apply_drip_windows(
         if DRIP_WINDOW_START_HOUR <= hour < DRIP_WINDOW_END_HOUR:
             if item.item_type == "ppv":
                 # Convert PPV to drip marker during drip window
-                modified_items.append(ScheduleItem(
-                    item_id=item.item_id,
-                    creator_id=item.creator_id,
-                    scheduled_date=item.scheduled_date,
-                    scheduled_time=item.scheduled_time,
-                    item_type="drip",
-                    caption_text="[DRIP WINDOW - No PPV]",
-                    priority=7,
-                    notes="Drip window active - original PPV moved"
-                ))
+                modified_items.append(
+                    ScheduleItem(
+                        item_id=item.item_id,
+                        creator_id=item.creator_id,
+                        scheduled_date=item.scheduled_date,
+                        scheduled_time=item.scheduled_time,
+                        item_type="drip",
+                        caption_text="[DRIP WINDOW - No PPV]",
+                        priority=7,
+                        notes="Drip window active - original PPV moved",
+                    )
+                )
             else:
                 modified_items.append(item)
         else:
@@ -2208,10 +2459,8 @@ def apply_drip_windows(
 # STEP 8: APPLY PAGE TYPE RULES - Paid vs Free rules (if enabled)
 # ============================================================================
 
-def apply_page_type_rules(
-    items: list[ScheduleItem],
-    config: ScheduleConfig
-) -> list[ScheduleItem]:
+
+def apply_page_type_rules(items: list[ScheduleItem], config: ScheduleConfig) -> list[ScheduleItem]:
     """
     Apply page-type specific rules for pricing and content.
 
@@ -2245,21 +2494,22 @@ def apply_page_type_rules(
 # STEP 9: VALIDATE & RETURN - Check business rules
 # ============================================================================
 
-def validate_schedule(
-    items: list[ScheduleItem],
-    config: ScheduleConfig
-) -> list[ValidationIssue]:
+# Maximum validation passes for self-healing loop
+MAX_VALIDATION_PASSES = 2
+
+
+def validate_schedule(items: list[ScheduleItem], config: ScheduleConfig) -> list[ValidationIssue]:
     """
     Validate schedule against all business rules.
 
     Step 9 of pipeline: VALIDATE & RETURN
 
-    Rules checked:
-    1. PPV Spacing >= 3 hours (ERROR if violated)
-    2. No duplicate captions (ERROR if violated)
-    3. All freshness >= 30 (ERROR if violated)
-    4. Content rotation (WARNING if same type consecutively)
-    5. Follow-up timing 15-45 min (WARNING if outside)
+    Rules checked (with auto-correction capability):
+    1. PPV Spacing >= 3 hours (ERROR if violated) - AUTO-CORRECTABLE: move_slot
+    2. No duplicate captions (ERROR if violated) - AUTO-CORRECTABLE: swap_caption
+    3. All freshness >= 30 (ERROR if violated) - AUTO-CORRECTABLE: swap_caption
+    4. Content rotation (WARNING if same type consecutively) - NOT auto-correctable
+    5. Follow-up timing 15-45 min (WARNING if outside) - AUTO-CORRECTABLE: adjust_timing
     """
     issues = []
 
@@ -2271,18 +2521,34 @@ def validate_schedule(
         prev = ppv_items[i - 1]
         curr = ppv_items[i]
 
-        prev_dt = datetime.strptime(f"{prev.scheduled_date} {prev.scheduled_time}", "%Y-%m-%d %H:%M")
-        curr_dt = datetime.strptime(f"{curr.scheduled_date} {curr.scheduled_time}", "%Y-%m-%d %H:%M")
+        prev_dt = datetime.strptime(
+            f"{prev.scheduled_date} {prev.scheduled_time}", "%Y-%m-%d %H:%M"
+        )
+        curr_dt = datetime.strptime(
+            f"{curr.scheduled_date} {curr.scheduled_time}", "%Y-%m-%d %H:%M"
+        )
 
         gap_hours = (curr_dt - prev_dt).total_seconds() / 3600
 
         if gap_hours < MIN_PPV_SPACING_HOURS:
-            issues.append(ValidationIssue(
-                rule_name="ppv_spacing",
-                severity="error",
-                message=f"PPV spacing too close: {gap_hours:.1f}h between #{prev.item_id} and #{curr.item_id} (min {MIN_PPV_SPACING_HOURS}h)",
-                item_ids=(prev.item_id, curr.item_id)
-            ))
+            # Calculate correction: shift second item forward
+            needed_shift = MIN_PPV_SPACING_HOURS - gap_hours + 0.25  # Add 15 min buffer
+            new_dt = curr_dt + timedelta(hours=needed_shift)
+            correction_value = json.dumps(
+                {"new_date": new_dt.strftime("%Y-%m-%d"), "new_time": new_dt.strftime("%H:%M")}
+            )
+
+            issues.append(
+                ValidationIssue(
+                    rule_name="ppv_spacing",
+                    severity="error",
+                    message=f"PPV spacing too close: {gap_hours:.1f}h between #{prev.item_id} and #{curr.item_id} (min {MIN_PPV_SPACING_HOURS}h)",
+                    item_ids=(prev.item_id, curr.item_id),
+                    auto_correctable=True,
+                    correction_action="move_slot",
+                    correction_value=correction_value,
+                )
+            )
 
     # Check duplicate captions
     caption_ids: dict[int, list[int]] = {}
@@ -2294,24 +2560,35 @@ def validate_schedule(
 
     for caption_id, item_ids in caption_ids.items():
         if len(item_ids) > 1:
-            issues.append(ValidationIssue(
-                rule_name="duplicate_captions",
-                severity="error",
-                message=f"Caption {caption_id} used {len(item_ids)} times in items {item_ids}",
-                item_ids=tuple(item_ids)
-            ))
+            # Mark all but the first occurrence for swap
+            issues.append(
+                ValidationIssue(
+                    rule_name="duplicate_captions",
+                    severity="error",
+                    message=f"Caption {caption_id} used {len(item_ids)} times in items {item_ids}",
+                    item_ids=tuple(item_ids[1:]),  # Only flag duplicates, not the original
+                    auto_correctable=True,
+                    correction_action="swap_caption",
+                    correction_value="",
+                )
+            )
 
     # Check freshness scores
     for item in items:
         if item.freshness_score < MIN_FRESHNESS_SCORE and item.item_type == "ppv":
-            issues.append(ValidationIssue(
-                rule_name="freshness_threshold",
-                severity="error",
-                message=f"Item #{item.item_id} has low freshness: {item.freshness_score:.1f} (min {MIN_FRESHNESS_SCORE})",
-                item_ids=(item.item_id,)
-            ))
+            issues.append(
+                ValidationIssue(
+                    rule_name="freshness_threshold",
+                    severity="error",
+                    message=f"Item #{item.item_id} has low freshness: {item.freshness_score:.1f} (min {MIN_FRESHNESS_SCORE})",
+                    item_ids=(item.item_id,),
+                    auto_correctable=True,
+                    correction_action="swap_caption",
+                    correction_value="",
+                )
+            )
 
-    # Check content rotation
+    # Check content rotation (NOT auto-correctable - requires human judgment)
     previous_type = None
     consecutive_count = 0
     for item in sorted(items, key=lambda x: (x.scheduled_date, x.scheduled_time)):
@@ -2321,12 +2598,15 @@ def validate_schedule(
         if item.content_type_name == previous_type:
             consecutive_count += 1
             if consecutive_count >= 2:
-                issues.append(ValidationIssue(
-                    rule_name="content_rotation",
-                    severity="warning",
-                    message=f"Same content type '{item.content_type_name}' used {consecutive_count + 1}x consecutively at item #{item.item_id}",
-                    item_ids=(item.item_id,)
-                ))
+                issues.append(
+                    ValidationIssue(
+                        rule_name="content_rotation",
+                        severity="warning",
+                        message=f"Same content type '{item.content_type_name}' used {consecutive_count + 1}x consecutively at item #{item.item_id}",
+                        item_ids=(item.item_id,),
+                        auto_correctable=False,  # Requires human judgment
+                    )
+                )
         else:
             consecutive_count = 0
             previous_type = item.content_type_name
@@ -2337,29 +2617,216 @@ def validate_schedule(
         if item.is_follow_up and item.parent_item_id:
             parent = items_by_id.get(item.parent_item_id)
             if parent:
-                parent_dt = datetime.strptime(f"{parent.scheduled_date} {parent.scheduled_time}", "%Y-%m-%d %H:%M")
-                item_dt = datetime.strptime(f"{item.scheduled_date} {item.scheduled_time}", "%Y-%m-%d %H:%M")
+                parent_dt = datetime.strptime(
+                    f"{parent.scheduled_date} {parent.scheduled_time}", "%Y-%m-%d %H:%M"
+                )
+                item_dt = datetime.strptime(
+                    f"{item.scheduled_date} {item.scheduled_time}", "%Y-%m-%d %H:%M"
+                )
                 gap_minutes = (item_dt - parent_dt).total_seconds() / 60
 
                 if gap_minutes < FOLLOW_UP_MIN_MINUTES or gap_minutes > FOLLOW_UP_MAX_MINUTES:
-                    issues.append(ValidationIssue(
-                        rule_name="followup_timing",
-                        severity="warning",
-                        message=f"Follow-up #{item.item_id} timing: {gap_minutes:.0f}min (should be {FOLLOW_UP_MIN_MINUTES}-{FOLLOW_UP_MAX_MINUTES}min)",
-                        item_ids=(item.item_id,)
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            rule_name="followup_timing",
+                            severity="warning",
+                            message=f"Follow-up #{item.item_id} timing: {gap_minutes:.0f}min (should be {FOLLOW_UP_MIN_MINUTES}-{FOLLOW_UP_MAX_MINUTES}min)",
+                            item_ids=(item.item_id,),
+                            auto_correctable=True,
+                            correction_action="adjust_timing",
+                            correction_value="25",  # Adjust to 25 minutes (middle of range)
+                        )
+                    )
 
     return issues
+
+
+def apply_auto_corrections(
+    items: list[ScheduleItem],
+    issues: list[ValidationIssue],
+    available_captions: list[Caption] | None = None,
+) -> tuple[list[ScheduleItem], list[str]]:
+    """
+    Apply automatic corrections to schedule items based on validation issues.
+
+    Args:
+        items: List of ScheduleItem objects.
+        issues: List of auto-correctable ValidationIssue objects.
+        available_captions: Optional pool of fresh captions for swap corrections.
+
+    Returns:
+        Tuple of (corrected items list, list of correction descriptions).
+
+    Correction actions:
+        - move_slot: Move item to new time slot
+        - swap_caption: Replace caption with fresh one from pool
+        - adjust_timing: Adjust follow-up timing relative to parent
+    """
+    corrections_applied: list[str] = []
+    items_by_id = {item.item_id: item for item in items}
+    used_caption_ids = {item.caption_id for item in items if item.caption_id}
+
+    # Build fresh caption pool if available
+    fresh_pool: list[Caption] = []
+    if available_captions:
+        fresh_pool = [
+            c
+            for c in available_captions
+            if c.caption_id not in used_caption_ids and c.freshness_score >= MIN_FRESHNESS_SCORE
+        ]
+
+    for issue in issues:
+        if not issue.auto_correctable:
+            continue
+
+        action = issue.correction_action
+        value = issue.correction_value
+        item_ids = issue.item_ids
+
+        if not item_ids:
+            continue
+
+        if action == "move_slot" and value:
+            # Move item to new time slot
+            # For PPV spacing, the second item in the pair needs to move
+            item_id = item_ids[-1] if len(item_ids) >= 2 else item_ids[0]
+            item = items_by_id.get(item_id)
+
+            if item:
+                try:
+                    new_slot = json.loads(value)
+                    # ScheduleItem is not frozen, so we can modify directly
+                    item.scheduled_date = new_slot.get("new_date", item.scheduled_date)
+                    item.scheduled_time = new_slot.get("new_time", item.scheduled_time)
+                    corrections_applied.append(f"move_slot(#{item_id} -> {item.scheduled_time})")
+                except json.JSONDecodeError:
+                    pass
+
+        elif action == "swap_caption" and fresh_pool:
+            # Replace caption with fresh one of same content type
+            for item_id in item_ids:
+                item = items_by_id.get(item_id)
+                if item and item.content_type_id:
+                    # Find matching caption from pool
+                    matching = [c for c in fresh_pool if c.content_type_id == item.content_type_id]
+                    if matching:
+                        new_caption = matching[0]
+                        fresh_pool.remove(new_caption)
+                        used_caption_ids.add(new_caption.caption_id)
+
+                        # Update item with new caption
+                        item.caption_id = new_caption.caption_id
+                        item.caption_text = new_caption.caption_text
+                        item.freshness_score = new_caption.freshness_score
+                        item.performance_score = new_caption.performance_score
+
+                        corrections_applied.append(
+                            f"swap_caption(#{item_id} -> caption_{new_caption.caption_id})"
+                        )
+
+        elif action == "adjust_timing":
+            # Adjust follow-up timing to specified minutes after parent
+            item_id = item_ids[0]
+            item = items_by_id.get(item_id)
+
+            if item and item.parent_item_id:
+                parent = items_by_id.get(item.parent_item_id)
+                if parent:
+                    try:
+                        target_minutes = int(value) if value else 25
+                        parent_dt = datetime.strptime(
+                            f"{parent.scheduled_date} {parent.scheduled_time}", "%Y-%m-%d %H:%M"
+                        )
+                        new_dt = parent_dt + timedelta(minutes=target_minutes)
+                        item.scheduled_date = new_dt.strftime("%Y-%m-%d")
+                        item.scheduled_time = new_dt.strftime("%H:%M")
+                        corrections_applied.append(
+                            f"adjust_timing(#{item_id} -> {target_minutes}min)"
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+    return items, corrections_applied
+
+
+def validate_with_self_healing(
+    items: list[ScheduleItem],
+    config: ScheduleConfig,
+    available_captions: list[Caption] | None = None,
+) -> tuple[list[ScheduleItem], list[ValidationIssue], list[str]]:
+    """
+    Validate schedule with automatic self-healing correction loop.
+
+    This function runs validation, applies auto-corrections, and re-validates
+    up to MAX_VALIDATION_PASSES times to fix auto-correctable issues silently.
+
+    Args:
+        items: List of ScheduleItem objects.
+        config: Schedule configuration.
+        available_captions: Optional pool of fresh captions for swap corrections.
+
+    Returns:
+        Tuple of (corrected items, final validation issues, list of corrections applied).
+
+    Auto-correctable issues:
+        1. PPV spacing violation (<3hr) -> Move to next valid slot
+        2. Duplicate caption -> Swap with unused caption of same type
+        3. Freshness below 30 -> Swap with fresher caption
+        4. Follow-up timing outside 15-45min -> Adjust to 25 minutes
+
+    NOT auto-correctable:
+        - Content rotation patterns (requires human judgment)
+        - Pricing decisions
+        - Volume targets
+    """
+    all_corrections: list[str] = []
+
+    for pass_num in range(1, MAX_VALIDATION_PASSES + 1):
+        # Run validation
+        issues = validate_schedule(items, config)
+
+        # Check if there are any errors
+        errors = [i for i in issues if i.severity == "error"]
+        if not errors:
+            # No errors, we're done
+            break
+
+        # Collect auto-correctable errors
+        auto_fixable = [i for i in errors if i.auto_correctable]
+
+        if not auto_fixable:
+            # No auto-fixable errors, nothing more we can do
+            break
+
+        if pass_num < MAX_VALIDATION_PASSES:
+            # Apply corrections
+            items, corrections = apply_auto_corrections(items, auto_fixable, available_captions)
+            all_corrections.extend(corrections)
+            logger.info(f"[Validation Pass {pass_num}] Auto-corrected {len(corrections)} issues")
+
+    # Final validation
+    final_issues = validate_schedule(items, config)
+
+    # Add correction summary if any were applied
+    if all_corrections:
+        final_issues.append(
+            ValidationIssue(
+                rule_name="auto_corrections",
+                severity="info",
+                message=f"Applied {len(all_corrections)} auto-corrections: {', '.join(all_corrections[:5])}{'...' if len(all_corrections) > 5 else ''}",
+            )
+        )
+        logger.info(f"[Self-Healing] Total corrections applied: {len(all_corrections)}")
+
+    return items, final_issues, all_corrections
 
 
 # ============================================================================
 # MAIN PIPELINE
 # ============================================================================
 
-def generate_schedule(
-    config: ScheduleConfig,
-    conn: sqlite3.Connection
-) -> ScheduleResult:
+
+def generate_schedule(config: ScheduleConfig, conn: sqlite3.Connection) -> ScheduleResult:
     """
     Generate a weekly schedule using the enhanced 12-step pipeline.
 
@@ -2392,7 +2859,7 @@ def generate_schedule(
         week_start=config.week_start.isoformat(),
         week_end=config.week_end.isoformat(),
         volume_level=config.volume_level,
-        generated_at=datetime.now().isoformat()
+        generated_at=datetime.now().isoformat(),
     )
 
     # =========================================================================
@@ -2402,7 +2869,7 @@ def generate_schedule(
     agent_invoker: AgentInvoker | None = None
 
     if config.use_agents and AGENT_INVOKER_AVAILABLE:
-        print(f"  [AGENT MODE] Initializing agent system...", file=sys.stderr)
+        print("  [AGENT MODE] Initializing agent system...", file=sys.stderr)
         try:
             agent_invoker = AgentInvoker(db_path=str(DB_PATH))
 
@@ -2428,33 +2895,48 @@ def generate_schedule(
 
             if missing_agents:
                 print(f"  [AGENT MODE] WARNING: Missing agents: {missing_agents}", file=sys.stderr)
-                print(f"  [AGENT MODE] Expected location: ~/.claude/agents/eros-scheduling/", file=sys.stderr)
-                print(f"  [AGENT MODE] Continuing with fallback mode for missing agents", file=sys.stderr)
+                print(
+                    "  [AGENT MODE] Expected location: ~/.claude/agents/eros-scheduling/",
+                    file=sys.stderr,
+                )
+                print(
+                    "  [AGENT MODE] Continuing with fallback mode for missing agents",
+                    file=sys.stderr,
+                )
 
-            print(f"  [AGENT MODE] Available agents: {len(available_agents)}/{len(required_agents)}", file=sys.stderr)
+            print(
+                f"  [AGENT MODE] Available agents: {len(available_agents)}/{len(required_agents)}",
+                file=sys.stderr,
+            )
             for agent in available_agents:
                 print(f"    - {agent}", file=sys.stderr)
 
-            result.agent_mode = "enabled" if len(available_agents) == len(required_agents) else "partial"
+            result.agent_mode = (
+                "enabled" if len(available_agents) == len(required_agents) else "partial"
+            )
 
         except Exception as e:
             print(f"  [AGENT MODE] Warning: Agent initialization failed: {e}", file=sys.stderr)
-            print(f"  [AGENT MODE] Falling back to standard pipeline", file=sys.stderr)
+            print("  [AGENT MODE] Falling back to standard pipeline", file=sys.stderr)
             agent_invoker = None
             agent_context = None
             result.agent_mode = "disabled"
     elif config.use_agents and not AGENT_INVOKER_AVAILABLE:
-        print(f"  [AGENT MODE] Warning: Agent invoker not available (import failed)", file=sys.stderr)
+        print(
+            "  [AGENT MODE] Warning: Agent invoker not available (import failed)", file=sys.stderr
+        )
         result.agent_mode = "disabled"
 
     # Step 1: ANALYZE - Load creator profile
     profile = load_creator_profile(conn, creator_id=config.creator_id)
     if not profile:
-        result.validation_issues.append(ValidationIssue(
-            rule_name="creator_not_found",
-            severity="error",
-            message=f"Creator not found: {config.creator_id}"
-        ))
+        result.validation_issues.append(
+            ValidationIssue(
+                rule_name="creator_not_found",
+                severity="error",
+                message=f"Creator not found: {config.creator_id}",
+            )
+        )
         result.validation_passed = False
         return result
 
@@ -2467,7 +2949,7 @@ def generate_schedule(
     # =========================================================================
     if agent_invoker and agent_context:
         try:
-            print(f"  [AGENT MODE] Invoking volume-calibrator...", file=sys.stderr)
+            print("  [AGENT MODE] Invoking volume-calibrator...", file=sys.stderr)
 
             # Populate agent context with creator profile
             agent_context.creator_profile = AgentCreatorProfile(
@@ -2487,15 +2969,17 @@ def generate_schedule(
             )
 
             # Invoke timezone optimizer for timing strategy
-            timing_strategy, timing_fallback = agent_invoker.invoke_timezone_optimizer(agent_context)
+            timing_strategy, timing_fallback = agent_invoker.invoke_timezone_optimizer(
+                agent_context
+            )
             agent_context.timing = timing_strategy
 
             if timing_fallback:
                 result.agents_fallback.append("timezone-optimizer")
-                print(f"  [AGENT MODE] timezone-optimizer: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] timezone-optimizer: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("timezone-optimizer")
-                print(f"  [AGENT MODE] timezone-optimizer: invoked successfully", file=sys.stderr)
+                print("  [AGENT MODE] timezone-optimizer: invoked successfully", file=sys.stderr)
 
             # Invoke page type optimizer for page-specific rules
             page_rules, page_fallback = agent_invoker.invoke_page_type_optimizer(agent_context)
@@ -2503,10 +2987,10 @@ def generate_schedule(
 
             if page_fallback:
                 result.agents_fallback.append("page-type-optimizer")
-                print(f"  [AGENT MODE] page-type-optimizer: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] page-type-optimizer: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("page-type-optimizer")
-                print(f"  [AGENT MODE] page-type-optimizer: invoked successfully", file=sys.stderr)
+                print("  [AGENT MODE] page-type-optimizer: invoked successfully", file=sys.stderr)
 
         except Exception as e:
             print(f"  [AGENT MODE] Warning: Volume calibration agents failed: {e}", file=sys.stderr)
@@ -2516,11 +3000,13 @@ def generate_schedule(
     # NEW: Get allowed content types from vault_matrix
     allowed_content_types = get_allowed_content_types(conn, config.creator_id)
     if not allowed_content_types:
-        result.validation_issues.append(ValidationIssue(
-            rule_name="no_content_types",
-            severity="error",
-            message="No content types found in vault_matrix. Cannot generate schedule."
-        ))
+        result.validation_issues.append(
+            ValidationIssue(
+                rule_name="no_content_types",
+                severity="error",
+                message="No content types found in vault_matrix. Cannot generate schedule.",
+            )
+        )
         result.validation_passed = False
         return result
 
@@ -2528,16 +3014,21 @@ def generate_schedule(
 
     # Load available captions
     captions = load_available_captions(
-        conn, config.creator_id, config.min_freshness, profile.vault_types,
+        conn,
+        config.creator_id,
+        config.min_freshness,
+        profile.vault_types,
         filter_keywords=profile.filter_keywords,
-        min_uses_for_tested=config.min_uses_for_tested
+        min_uses_for_tested=config.min_uses_for_tested,
     )
     if not captions:
-        result.validation_issues.append(ValidationIssue(
-            rule_name="no_captions",
-            severity="error",
-            message="No eligible captions found with freshness >= 30"
-        ))
+        result.validation_issues.append(
+            ValidationIssue(
+                rule_name="no_captions",
+                severity="error",
+                message="No eligible captions found with freshness >= 30",
+            )
+        )
         result.validation_passed = False
         return result
 
@@ -2579,7 +3070,7 @@ def generate_schedule(
         f"[Step 2] Stratified pools loaded: "
         f"{total_proven} proven, {total_global} global_earner, {total_discovery} discovery"
     )
-    for ct_id, pool in stratified_pools.items():
+    for _ct_id, pool in stratified_pools.items():
         logger.debug(
             f"  {pool.content_type_name}: "
             f"proven={len(pool.proven)}, global={len(pool.global_earner)}, "
@@ -2592,7 +3083,7 @@ def generate_schedule(
     # =========================================================================
     if agent_invoker and agent_context:
         try:
-            print(f"  [AGENT MODE] Invoking content-strategy-optimizer...", file=sys.stderr)
+            print("  [AGENT MODE] Invoking content-strategy-optimizer...", file=sys.stderr)
 
             # Populate persona profile for content matching
             agent_context.persona_profile = PersonaProfile(
@@ -2606,26 +3097,33 @@ def generate_schedule(
             )
 
             # Invoke content rotation architect for content strategy
-            rotation_strategy, rotation_fallback = agent_invoker.invoke_content_rotation_architect(agent_context)
+            rotation_strategy, rotation_fallback = agent_invoker.invoke_content_rotation_architect(
+                agent_context
+            )
             agent_context.rotation = rotation_strategy
 
             if rotation_fallback:
                 result.agents_fallback.append("content-rotation-architect")
-                print(f"  [AGENT MODE] content-rotation-architect: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] content-rotation-architect: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("content-rotation-architect")
-                print(f"  [AGENT MODE] content-rotation-architect: invoked successfully", file=sys.stderr)
+                print(
+                    "  [AGENT MODE] content-rotation-architect: invoked successfully",
+                    file=sys.stderr,
+                )
 
             # Invoke pricing strategist for optimized pricing
-            pricing_strategy, pricing_fallback = agent_invoker.invoke_pricing_strategist(agent_context)
+            pricing_strategy, pricing_fallback = agent_invoker.invoke_pricing_strategist(
+                agent_context
+            )
             agent_context.pricing = pricing_strategy
 
             if pricing_fallback:
                 result.agents_fallback.append("pricing-strategist")
-                print(f"  [AGENT MODE] pricing-strategist: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] pricing-strategist: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("pricing-strategist")
-                print(f"  [AGENT MODE] pricing-strategist: invoked successfully", file=sys.stderr)
+                print("  [AGENT MODE] pricing-strategist: invoked successfully", file=sys.stderr)
 
         except Exception as e:
             print(f"  [AGENT MODE] Warning: Content strategy agents failed: {e}", file=sys.stderr)
@@ -2638,16 +3136,16 @@ def generate_schedule(
     wheel_config = None
 
     if CONTENT_TYPE_LOADERS_AVAILABLE:
-        if getattr(config, 'enable_wall_posts', False):
+        if getattr(config, "enable_wall_posts", False):
             wall_captions = load_wall_post_captions(conn, config.creator_id)
 
-        if getattr(config, 'enable_free_previews', False):
+        if getattr(config, "enable_free_previews", False):
             previews = load_free_previews(conn, config.creator_id)
 
-        if getattr(config, 'enable_polls', False):
+        if getattr(config, "enable_polls", False):
             polls_pool = load_polls(conn, config.creator_id)
 
-        if getattr(config, 'enable_game_wheel', False):
+        if getattr(config, "enable_game_wheel", False):
             wheel_config = load_game_wheel_config(conn, config.creator_id)
 
     # Step 3B: Apply persona scores to new content types
@@ -2664,28 +3162,32 @@ def generate_schedule(
 
     if config.mode == "full" and config.use_quality_scoring:
         if QUALITY_SCORING_AVAILABLE:
-            print(f"  [FULL MODE] Step 4: Quality scoring {len(caption_pool)} captions...", file=sys.stderr)
+            print(
+                f"  [FULL MODE] Step 4: Quality scoring {len(caption_pool)} captions...",
+                file=sys.stderr,
+            )
 
             # Import CreatorProfile from quality_scoring module
             from quality_scoring import CreatorProfile as QSCreatorProfile
 
             scorer = QualityScorer(conn)
             quality_scores = scorer.score_caption_batch(
-                [{"caption_id": c.caption_id, "caption_text": c.caption_text} for c in caption_pool],
+                [
+                    {"caption_id": c.caption_id, "caption_text": c.caption_text}
+                    for c in caption_pool
+                ],
                 QSCreatorProfile(
                     creator_id=profile.creator_id,
                     page_name=profile.page_name,
                     primary_tone=profile.primary_tone,
                     emoji_frequency=profile.emoji_frequency,
                     slang_level=profile.slang_level,
-                )
+                ),
             )
 
             # Filter out poor quality captions (overall_score < 0.30)
             caption_pool_filtered = scorer.filter_by_quality(
-                [asdict(c) for c in caption_pool],
-                quality_scores,
-                min_score=0.30
+                [asdict(c) for c in caption_pool], quality_scores, min_score=0.30
             )
 
             # Convert back to Caption objects
@@ -2694,9 +3196,15 @@ def generate_schedule(
                 for c in caption_pool_filtered
             ]
 
-            print(f"  [FULL MODE] Quality scoring complete: {len(caption_pool)} captions passed", file=sys.stderr)
+            print(
+                f"  [FULL MODE] Quality scoring complete: {len(caption_pool)} captions passed",
+                file=sys.stderr,
+            )
         else:
-            print("  [FULL MODE] Warning: QualityScorer not available, skipping quality scoring", file=sys.stderr)
+            print(
+                "  [FULL MODE] Warning: QualityScorer not available, skipping quality scoring",
+                file=sys.stderr,
+            )
 
     # Apply quality-enhanced weights if available
     if quality_scores:
@@ -2710,7 +3218,7 @@ def generate_schedule(
                     caption.freshness_score,
                     qs.overall_score,
                     caption.persona_boost,
-                    quality_mod
+                    quality_mod,
                 )
     else:
         # Use original captions if no quality scoring
@@ -2718,6 +3226,11 @@ def generate_schedule(
 
     # Step 5: BUILD STRUCTURE - Create weekly slots
     slots = build_weekly_slots(config, profile.best_hours)
+
+    # Apply timing variance to make schedules appear more organic
+    # This prevents fans from detecting robotic exact-hour scheduling patterns
+    slots = apply_timing_variance_to_slots(slots)
+    logger.info("[Step 5] Applied timing variance to slot times")
 
     # Count PPV slots for allocation calculation
     ppv_slots = [s for s in slots if s.get("type") == "ppv"]
@@ -2754,7 +3267,7 @@ def generate_schedule(
             [s for s in slots if s.get("type") == "wall_post"],
             config,
             profile,
-            start_item_id=max((i.item_id for i in items), default=0) + 100
+            start_item_id=max((i.item_id for i in items), default=0) + 100,
         )
         items.extend(wall_items)
 
@@ -2765,7 +3278,7 @@ def generate_schedule(
             previews,
             ppv_items,
             config,
-            start_item_id=max((i.item_id for i in items), default=0) + 200
+            start_item_id=max((i.item_id for i in items), default=0) + 200,
         )
         items.extend(preview_items)
 
@@ -2776,7 +3289,7 @@ def generate_schedule(
             config,
             profile,
             config.week_start.isoformat(),
-            start_item_id=max((i.item_id for i in items), default=0) + 300
+            start_item_id=max((i.item_id for i in items), default=0) + 300,
         )
         items.extend(poll_items)
 
@@ -2786,7 +3299,7 @@ def generate_schedule(
             wheel_config,
             config,
             config.week_start.isoformat(),
-            item_id=max((i.item_id for i in items), default=0) + 400
+            item_id=max((i.item_id for i in items), default=0) + 400,
         )
         if wheel_item:
             items.append(wheel_item)
@@ -2795,20 +3308,21 @@ def generate_schedule(
     if config.mode == "full" and config.use_caption_enhancement:
         if CAPTION_ENHANCER_AVAILABLE:
             print(f"  [FULL MODE] Step 7: Enhancing {len(items)} captions...", file=sys.stderr)
-            enhancer = CaptionEnhancer(CEPersonaContext(
-                creator_id=profile.creator_id,
-                page_name=profile.page_name,
-                primary_tone=profile.primary_tone,
-                emoji_frequency=profile.emoji_frequency,
-                slang_level=profile.slang_level,
-            ))
+            enhancer = CaptionEnhancer(
+                CEPersonaContext(
+                    creator_id=profile.creator_id,
+                    page_name=profile.page_name,
+                    primary_tone=profile.primary_tone,
+                    emoji_frequency=profile.emoji_frequency,
+                    slang_level=profile.slang_level,
+                )
+            )
 
             enhanced_count = 0
             for item in items:
                 if item.item_type == "ppv" and item.caption_text:
                     enhancement_result = enhancer.enhance_with_rollback(
-                        item.caption_id or 0,
-                        item.caption_text
+                        item.caption_id or 0, item.caption_text
                     )
                     if not enhancement_result.used_original:
                         item.caption_text = enhancement_result.enhanced_text
@@ -2816,14 +3330,20 @@ def generate_schedule(
                         item.notes += f" | Enhanced: {tweaks_str}"
                         enhanced_count += 1
 
-            print(f"  [FULL MODE] Caption enhancement complete: {enhanced_count} enhanced", file=sys.stderr)
+            print(
+                f"  [FULL MODE] Caption enhancement complete: {enhanced_count} enhanced",
+                file=sys.stderr,
+            )
         else:
-            print("  [FULL MODE] Warning: CaptionEnhancer not available, skipping enhancement", file=sys.stderr)
+            print(
+                "  [FULL MODE] Warning: CaptionEnhancer not available, skipping enhancement",
+                file=sys.stderr,
+            )
 
     # Step 8: GENERATE FOLLOW-UPS (context-aware in full mode)
     if config.enable_follow_ups:
         if config.mode == "full" and config.use_context_followups:
-            print(f"  [FULL MODE] Step 8: Generating context-aware follow-ups...", file=sys.stderr)
+            print("  [FULL MODE] Step 8: Generating context-aware follow-ups...", file=sys.stderr)
             items = generate_contextual_follow_ups(items, config, profile)
         else:
             items = generate_follow_ups(items, config)
@@ -2834,7 +3354,7 @@ def generate_schedule(
     # =========================================================================
     if agent_invoker and agent_context and config.enable_follow_ups:
         try:
-            print(f"  [AGENT MODE] Invoking multi-touch-sequencer...", file=sys.stderr)
+            print("  [AGENT MODE] Invoking multi-touch-sequencer...", file=sys.stderr)
 
             # Get all PPV items that have follow-ups
             ppv_items = [item for item in items if item.item_type == "ppv"]
@@ -2843,18 +3363,21 @@ def generate_schedule(
                 followup_sequence, followup_fallback = agent_invoker.invoke_multi_touch_sequencer(
                     agent_context,
                     ppv_item_id=ppv_item.item_id,
-                    content_type=ppv_item.content_type_name or "solo"
+                    content_type=ppv_item.content_type_name or "solo",
                 )
                 agent_context.followup_sequences.append(followup_sequence)
 
             if followup_fallback:
                 if "multi-touch-sequencer" not in result.agents_fallback:
                     result.agents_fallback.append("multi-touch-sequencer")
-                    print(f"  [AGENT MODE] multi-touch-sequencer: using fallback", file=sys.stderr)
+                    print("  [AGENT MODE] multi-touch-sequencer: using fallback", file=sys.stderr)
             else:
                 if "multi-touch-sequencer" not in result.agents_used:
                     result.agents_used.append("multi-touch-sequencer")
-                    print(f"  [AGENT MODE] multi-touch-sequencer: invoked successfully", file=sys.stderr)
+                    print(
+                        "  [AGENT MODE] multi-touch-sequencer: invoked successfully",
+                        file=sys.stderr,
+                    )
 
         except Exception as e:
             print(f"  [AGENT MODE] Warning: Multi-touch sequencer failed: {e}", file=sys.stderr)
@@ -2887,7 +3410,7 @@ def generate_schedule(
     # =========================================================================
     if agent_invoker and agent_context:
         try:
-            print(f"  [AGENT MODE] Invoking validation-guardian...", file=sys.stderr)
+            print("  [AGENT MODE] Invoking validation-guardian...", file=sys.stderr)
 
             # Convert items to dict format for validation
             schedule_items_dict = [
@@ -2905,39 +3428,54 @@ def generate_schedule(
             ]
 
             validation_result, validation_fallback = agent_invoker.invoke_validation_guardian(
-                agent_context,
-                schedule_items_dict
+                agent_context, schedule_items_dict
             )
             agent_context.validation_result = validation_result
 
             if validation_fallback:
                 result.agents_fallback.append("validation-guardian")
-                print(f"  [AGENT MODE] validation-guardian: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] validation-guardian: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("validation-guardian")
-                print(f"  [AGENT MODE] validation-guardian: invoked successfully", file=sys.stderr)
+                print("  [AGENT MODE] validation-guardian: invoked successfully", file=sys.stderr)
 
             # Invoke revenue forecaster for projections
-            revenue_projection, revenue_fallback = agent_invoker.invoke_revenue_forecaster(agent_context)
+            revenue_projection, revenue_fallback = agent_invoker.invoke_revenue_forecaster(
+                agent_context
+            )
             agent_context.revenue_projection = revenue_projection
 
             if revenue_fallback:
                 result.agents_fallback.append("revenue-forecaster")
-                print(f"  [AGENT MODE] revenue-forecaster: using fallback", file=sys.stderr)
+                print("  [AGENT MODE] revenue-forecaster: using fallback", file=sys.stderr)
             else:
                 result.agents_used.append("revenue-forecaster")
-                print(f"  [AGENT MODE] revenue-forecaster: invoked successfully", file=sys.stderr)
+                print("  [AGENT MODE] revenue-forecaster: invoked successfully", file=sys.stderr)
 
         except Exception as e:
-            print(f"  [AGENT MODE] Warning: Validation/forecasting agents failed: {e}", file=sys.stderr)
+            print(
+                f"  [AGENT MODE] Warning: Validation/forecasting agents failed: {e}",
+                file=sys.stderr,
+            )
             result.agents_fallback.extend(["validation-guardian", "revenue-forecaster"])
 
-    # Step 11: VALIDATE
-    validation_issues = validate_schedule(items, config)
-    result.validation_issues = validation_issues
-    result.validation_passed = not any(
-        issue.severity == "error" for issue in validation_issues
+    # Step 11: VALIDATE with Self-Healing Correction Loop
+    # Use the new validate_with_self_healing function that automatically
+    # corrects fixable issues (PPV spacing, duplicates, freshness, timing)
+    items, validation_issues, corrections_applied = validate_with_self_healing(
+        items, config, available_captions=caption_pool
     )
+
+    # Log corrections if any were applied
+    if corrections_applied:
+        logger.info(f"[Step 11] Self-healing applied {len(corrections_applied)} auto-corrections")
+        for correction in corrections_applied[:5]:  # Log first 5 corrections
+            logger.debug(f"  - {correction}")
+        if len(corrections_applied) > 5:
+            logger.debug(f"  - ... and {len(corrections_applied) - 5} more")
+
+    result.validation_issues = validation_issues
+    result.validation_passed = not any(issue.severity == "error" for issue in validation_issues)
 
     # Step 12: Populate result
     result.items = items
@@ -2945,7 +3483,7 @@ def generate_schedule(
     result.total_bumps = sum(1 for item in items if item.item_type == "bump")
     result.total_follow_ups = sum(1 for item in items if item.is_follow_up)
     result.total_drip = sum(1 for item in items if item.item_type == "drip")
-    result.unique_captions = len(set(item.caption_id for item in items if item.caption_id))
+    result.unique_captions = len({item.caption_id for item in items if item.caption_id})
 
     ppv_items = [item for item in items if item.item_type == "ppv"]
     if ppv_items:
@@ -2972,11 +3510,17 @@ def generate_schedule(
         elif agents_successful > 0:
             result.agent_mode = "enabled"  # All agents succeeded
 
-        print(f"  [AGENT MODE] Summary: {agents_successful}/{total_agents_attempted} agents invoked successfully", file=sys.stderr)
+        print(
+            f"  [AGENT MODE] Summary: {agents_successful}/{total_agents_attempted} agents invoked successfully",
+            file=sys.stderr,
+        )
         if result.agents_used:
             print(f"  [AGENT MODE] Agents used: {', '.join(result.agents_used)}", file=sys.stderr)
         if result.agents_fallback:
-            print(f"  [AGENT MODE] Fallbacks used: {', '.join(result.agents_fallback)}", file=sys.stderr)
+            print(
+                f"  [AGENT MODE] Fallbacks used: {', '.join(result.agents_fallback)}",
+                file=sys.stderr,
+            )
 
     return result
 
@@ -2984,6 +3528,7 @@ def generate_schedule(
 # ============================================================================
 # OUTPUT FORMATTING
 # ============================================================================
+
 
 def format_markdown(result: ScheduleResult) -> str:
     """Format schedule result as professional Markdown."""
@@ -3003,7 +3548,7 @@ def format_markdown(result: ScheduleResult) -> str:
         "",
         "### Creator Intelligence Brief",
         "",
-        f"- **Active Fans**: (see profile)",
+        "- **Active Fans**: (see profile)",
         f"- **Best Hours**: {', '.join(f'{h:02d}:00' for h in result.best_hours[:5])}",
         f"- **Vault Types**: {', '.join(result.vault_types[:8]) if result.vault_types else 'N/A'}",
         "",
@@ -3036,10 +3581,7 @@ def format_markdown(result: ScheduleResult) -> str:
         lines.append(f"| Game Wheel | {result.total_game_wheels} | Gamification |")
     lines.append("")
 
-    lines.extend([
-        "---",
-        ""
-    ])
+    lines.extend(["---", ""])
 
     # Group items by date
     items_by_date: dict[str, list[ScheduleItem]] = {}
@@ -3081,9 +3623,7 @@ def format_markdown(result: ScheduleResult) -> str:
                     f"| {item.scheduled_time} | Bump | - | {item.caption_text or '(follow-up)'} | - | - | - |"
                 )
             elif item.item_type == "drip":
-                lines.append(
-                    f"| {item.scheduled_time} | Drip | - | [DRIP WINDOW] | - | - | - |"
-                )
+                lines.append(f"| {item.scheduled_time} | Drip | - | [DRIP WINDOW] | - | - | - |")
             elif item.item_type == "wall_post":
                 caption_preview = item.caption_text or "-"
                 caption_preview = caption_preview.replace("|", "/").replace("\n", " ")
@@ -3094,7 +3634,11 @@ def format_markdown(result: ScheduleResult) -> str:
             elif item.item_type == "free_preview":
                 caption_preview = item.caption_text or "-"
                 caption_preview = caption_preview.replace("|", "/").replace("\n", " ")
-                preview_note = f"Pre #{item.linked_ppv_id}" if item.linked_ppv_id else item.preview_type or "preview"
+                preview_note = (
+                    f"Pre #{item.linked_ppv_id}"
+                    if item.linked_ppv_id
+                    else item.preview_type or "preview"
+                )
                 lines.append(
                     f"| {item.scheduled_time} | Preview | {preview_note} | "
                     f"{caption_preview} | - | - | - |"
@@ -3115,38 +3659,39 @@ def format_markdown(result: ScheduleResult) -> str:
                 )
 
         lines.append("")
-        lines.append(f"**Daily Summary**: {ppv_count} PPVs | {bump_count} Bumps | Projected: ${day_projected:.2f}")
+        lines.append(
+            f"**Daily Summary**: {ppv_count} PPVs | {bump_count} Bumps | Projected: ${day_projected:.2f}"
+        )
         lines.append("")
 
     # Weekly summary
-    lines.extend([
-        "---",
-        "",
-        "### Weekly Summary",
-        "",
-        "| Metric | Value |",
-        "|--------|-------|",
-        f"| Total PPVs | {result.total_ppvs} |",
-        f"| Total Bumps | {result.total_bumps} |",
-        f"| Total Follow-ups | {result.total_follow_ups} |",
-        f"| Total Wall Posts | {result.total_wall_posts} |",
-        f"| Total Previews | {result.total_free_previews} |",
-        f"| Total Polls | {result.total_polls} |",
-        f"| Unique Captions | {result.unique_captions} |",
-        f"| Avg Caption Score | {result.avg_performance:.1f} |",
-        f"| Avg Freshness | {result.avg_freshness:.1f} |",
-        ""
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            "### Weekly Summary",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| Total PPVs | {result.total_ppvs} |",
+            f"| Total Bumps | {result.total_bumps} |",
+            f"| Total Follow-ups | {result.total_follow_ups} |",
+            f"| Total Wall Posts | {result.total_wall_posts} |",
+            f"| Total Previews | {result.total_free_previews} |",
+            f"| Total Polls | {result.total_polls} |",
+            f"| Unique Captions | {result.unique_captions} |",
+            f"| Avg Caption Score | {result.avg_performance:.1f} |",
+            f"| Avg Freshness | {result.avg_freshness:.1f} |",
+            "",
+        ]
+    )
 
     # Validation status
-    lines.extend([
-        "### Validation Status",
-        ""
-    ])
+    lines.extend(["### Validation Status", ""])
 
     # Check each rule
-    error_rules = set(i.rule_name for i in result.validation_issues if i.severity == "error")
-    warning_rules = set(i.rule_name for i in result.validation_issues if i.severity == "warning")
+    error_rules = {i.rule_name for i in result.validation_issues if i.severity == "error"}
+    warning_rules = {i.rule_name for i in result.validation_issues if i.severity == "warning"}
 
     checks = [
         ("ppv_spacing", "PPV Spacing (>= 3h)"),
@@ -3174,11 +3719,9 @@ def format_markdown(result: ScheduleResult) -> str:
             lines.append(f"- {severity_marker} **{issue.rule_name}**: {issue.message}")
         lines.append("")
 
-    lines.extend([
-        "---",
-        f"Generated: {result.generated_at} | Schedule ID: {result.schedule_id}",
-        ""
-    ])
+    lines.extend(
+        ["---", f"Generated: {result.generated_at} | Schedule ID: {result.schedule_id}", ""]
+    )
 
     return "\n".join(lines)
 
@@ -3205,7 +3748,7 @@ def format_json(result: ScheduleResult) -> str:
             "total_wall_posts": result.total_wall_posts,
             "total_free_previews": result.total_free_previews,
             "total_polls": result.total_polls,
-            "total_game_wheels": result.total_game_wheels
+            "total_game_wheels": result.total_game_wheels,
         },
         # Agent system integration (Phase 3)
         "agent_system": {
@@ -3213,7 +3756,7 @@ def format_json(result: ScheduleResult) -> str:
             "agents_used": result.agents_used,
             "agents_fallback": result.agents_fallback,
             "total_invoked": len(result.agents_used),
-            "total_fallback": len(result.agents_fallback)
+            "total_fallback": len(result.agents_fallback),
         },
         "validation": {
             "passed": result.validation_passed,
@@ -3222,15 +3765,15 @@ def format_json(result: ScheduleResult) -> str:
                     "rule_name": issue.rule_name,
                     "severity": issue.severity,
                     "message": issue.message,
-                    "item_ids": issue.item_ids
+                    "item_ids": issue.item_ids,
                 }
                 for issue in result.validation_issues
-            ]
+            ],
         },
         "best_hours": result.best_hours,
         "vault_types": result.vault_types,
         "items": [asdict(item) for item in result.items],
-        "generated_at": result.generated_at
+        "generated_at": result.generated_at,
     }
     return json.dumps(data, indent=2)
 
@@ -3239,11 +3782,9 @@ def format_json(result: ScheduleResult) -> str:
 # BATCH MODE
 # ============================================================================
 
+
 def generate_batch_schedules(
-    conn: sqlite3.Connection,
-    week_start: date,
-    week_end: date,
-    output_dir: Path | None = None
+    conn: sqlite3.Connection, week_start: date, week_end: date, output_dir: Path | None = None
 ) -> list[ScheduleResult]:
     """Generate schedules for all active creators."""
     cursor = conn.execute(
@@ -3264,8 +3805,7 @@ def generate_batch_schedules(
         # Use multi-factor volume optimization
         try:
             strategy = optimizer.calculate_optimal_volume(
-                creator["creator_id"],
-                creator["current_active_fans"]
+                creator["creator_id"], creator["current_active_fans"]
             )
             volume_level = strategy.volume_level
             ppv_per_day = strategy.ppv_per_day
@@ -3297,7 +3837,7 @@ def generate_batch_schedules(
             volume_period=volume_period,
             ppv_per_week=ppv_per_week,
             is_paid_page=is_paid_page,
-            volume_strategy=strategy
+            volume_strategy=strategy,
         )
 
         result = generate_schedule(config, conn)
@@ -3306,7 +3846,7 @@ def generate_batch_schedules(
         # Save individual file if output_dir specified
         if output_dir:
             # Sanitize creator name for safe filesystem usage
-            safe_page_name = re.sub(r'[^\w\-_]', '_', page_name)
+            safe_page_name = re.sub(r"[^\w\-_]", "_", page_name)
             creator_dir = output_dir / safe_page_name
             try:
                 creator_dir.mkdir(parents=True, exist_ok=True)
@@ -3325,6 +3865,7 @@ def generate_batch_schedules(
 # MAIN ENTRY POINT
 # ============================================================================
 
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -3341,121 +3882,89 @@ Business Rules Enforced:
     - Follow-ups: 15-45 minutes after each PPV
     - Freshness: ALL captions must have freshness >= 30
     - Rotation: NEVER same content type consecutively
-        """
+        """,
     )
 
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
+        "--week", "-w", required=True, help="Week in ISO format (YYYY-Www, e.g., 2025-W01)"
     )
     parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
+        "--batch", "-b", action="store_true", help="Generate schedules for all active creators"
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
+    parser.add_argument("--output-dir", help="Output directory for batch mode")
     parser.add_argument(
-        "--week", "-w",
-        required=True,
-        help="Week in ISO format (YYYY-Www, e.g., 2025-W01)"
-    )
-    parser.add_argument(
-        "--batch", "-b",
-        action="store_true",
-        help="Generate schedules for all active creators"
-    )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--output-dir",
-        help="Output directory for batch mode"
-    )
-    parser.add_argument(
-        "--stdout", "--print",
+        "--stdout",
+        "--print",
         action="store_true",
         dest="stdout",
-        help="Print to console instead of auto-saving to file"
+        help="Print to console instead of auto-saving to file",
     )
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
     parser.add_argument(
-        "--no-follow-ups",
-        action="store_true",
-        help="Disable follow-up bump generation"
+        "--no-follow-ups", action="store_true", help="Disable follow-up bump generation"
     )
-    parser.add_argument(
-        "--enable-drip",
-        action="store_true",
-        help="Enable drip window enforcement"
-    )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--enable-drip", action="store_true", help="Enable drip window enforcement")
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
     # Enhanced pipeline mode arguments (Phase 4)
     parser.add_argument(
-        "--mode", "-m",
+        "--mode",
+        "-m",
         choices=["quick", "full"],
         default="quick",
-        help="Generation mode: quick (pattern-only) or full (with LLM)"
+        help="Generation mode: quick (pattern-only) or full (with LLM)",
     )
     parser.add_argument(
         "--enable-quality-scoring",
         action="store_true",
-        help="Enable LLM-based quality scoring (full mode)"
+        help="Enable LLM-based quality scoring (full mode)",
     )
     parser.add_argument(
-        "--enable-enhancement",
-        action="store_true",
-        help="Enable caption enhancement (full mode)"
+        "--enable-enhancement", action="store_true", help="Enable caption enhancement (full mode)"
     )
     parser.add_argument(
         "--enable-context-followups",
         action="store_true",
-        help="Enable context-aware follow-ups (full mode)"
+        help="Enable context-aware follow-ups (full mode)",
     )
     parser.add_argument(
         "--use-agents",
         action="store_true",
-        help="Enable sub-agent delegation for enhanced optimization (pricing, timing, rotation, validation)"
+        help="Enable sub-agent delegation for enhanced optimization (pricing, timing, rotation, validation)",
     )
     # NEW: Content type enablement flags
     parser.add_argument(
         "--enable-wall-posts",
         action="store_true",
-        help="Include wall posts in schedule (feed engagement)"
+        help="Include wall posts in schedule (feed engagement)",
     )
     parser.add_argument(
         "--wall-posts-per-day",
         type=int,
         default=2,
-        help="Number of wall posts per day (default: 2)"
+        help="Number of wall posts per day (default: 2)",
     )
     parser.add_argument(
         "--enable-previews",
         action="store_true",
-        help="Include free previews before high-value PPVs"
+        help="Include free previews before high-value PPVs",
     )
     parser.add_argument(
-        "--enable-polls",
-        action="store_true",
-        help="Include interactive polls in schedule"
+        "--enable-polls", action="store_true", help="Include interactive polls in schedule"
     )
     parser.add_argument(
-        "--polls-per-week",
-        type=int,
-        default=3,
-        help="Number of polls per week (default: 3)"
+        "--polls-per-week", type=int, default=3, help="Number of polls per week (default: 3)"
     )
     parser.add_argument(
-        "--enable-game-wheel",
-        action="store_true",
-        help="Include game wheel promotion in schedule"
+        "--enable-game-wheel", action="store_true", help="Include game wheel promotion in schedule"
     )
 
     args = parser.parse_args()
@@ -3492,10 +4001,7 @@ Business Rules Enforced:
 
             if not output_dir:
                 if args.format == "json":
-                    output = json.dumps(
-                        [json.loads(format_json(r)) for r in results],
-                        indent=2
-                    )
+                    output = json.dumps([json.loads(format_json(r)) for r in results], indent=2)
                 else:
                     output = "\n\n---\n\n".join(format_markdown(r) for r in results)
 
@@ -3507,14 +4013,15 @@ Business Rules Enforced:
 
             # Summary
             passed = sum(1 for r in results if r.validation_passed)
-            print(f"\nBatch complete: {passed}/{len(results)} schedules passed validation", file=sys.stderr)
+            print(
+                f"\nBatch complete: {passed}/{len(results)} schedules passed validation",
+                file=sys.stderr,
+            )
 
         else:
             # Generate for single creator
             profile = load_creator_profile(
-                conn,
-                creator_name=args.creator,
-                creator_id=args.creator_id
+                conn, creator_name=args.creator, creator_id=args.creator_id
             )
 
             if not profile:
@@ -3525,8 +4032,7 @@ Business Rules Enforced:
             optimizer = MultiFactorVolumeOptimizer(conn)
             try:
                 strategy = optimizer.calculate_optimal_volume(
-                    profile.creator_id,
-                    profile.active_fans
+                    profile.creator_id, profile.active_fans
                 )
                 volume_level = strategy.volume_level
                 ppv_per_day = strategy.ppv_per_day
@@ -3609,13 +4115,18 @@ Business Rules Enforced:
                 # Default: auto-save to standard location
                 week_str = format_week_string(week_start)
                 # Sanitize creator name for safe filesystem usage
-                safe_creator_name = re.sub(r'[^\w\-_]', '_', config.creator_name)
+                safe_creator_name = re.sub(r"[^\w\-_]", "_", config.creator_name)
                 creator_dir = DEFAULT_SCHEDULES_DIR / safe_creator_name
                 try:
                     creator_dir.mkdir(parents=True, exist_ok=True)
                 except PermissionError as e:
-                    print(f"Error: Cannot create output directory {creator_dir}: {e}", file=sys.stderr)
-                    print("Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.", file=sys.stderr)
+                    print(
+                        f"Error: Cannot create output directory {creator_dir}: {e}", file=sys.stderr
+                    )
+                    print(
+                        "Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.",
+                        file=sys.stderr,
+                    )
                     sys.exit(1)
                 output_path = creator_dir / f"{week_str}{ext}"
                 output_path.write_text(output)
@@ -3623,7 +4134,7 @@ Business Rules Enforced:
 
             # Exit code based on validation
             if not result.validation_passed:
-                print(f"\nWarning: Schedule has validation errors", file=sys.stderr)
+                print("\nWarning: Schedule has validation errors", file=sys.stderr)
                 sys.exit(1)
 
 

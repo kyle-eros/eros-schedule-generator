@@ -16,8 +16,8 @@ import argparse
 import json
 import sqlite3
 import sys
-from dataclasses import dataclass, field, asdict
-from datetime import date, datetime, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +33,7 @@ SQL_DIR = SCRIPT_DIR.parent / "assets" / "sql"
 @dataclass
 class AIInsightsRequest:
     """Structured data for Claude to generate strategic insights."""
+
     creator_name: str
     display_name: str
 
@@ -164,10 +165,7 @@ def get_volume_level(active_fans: int) -> tuple[str, int, int]:
         return ("Ultra", 9, 9)
 
 
-def analyze_volume_recommendation(
-    creator_id: str,
-    conn: sqlite3.Connection
-) -> VolumeStrategy:
+def analyze_volume_recommendation(creator_id: str, conn: sqlite3.Connection) -> VolumeStrategy:
     """
     Get volume recommendation using multi-factor optimizer.
 
@@ -195,7 +193,7 @@ def generate_brief(
     conn: sqlite3.Connection,
     creator_name: str | None = None,
     creator_id: str | None = None,
-    period_days: int = 30
+    period_days: int = 30,
 ) -> CreatorBrief | None:
     """
     Generate a comprehensive analytics brief for a creator.
@@ -270,7 +268,7 @@ def generate_brief(
         emoji_frequency=profile.get("emoji_frequency") or "",
         slang_level=profile.get("slang_level") or "",
         analysis_period_days=period_days,
-        analysis_date=date.today().isoformat()
+        analysis_date=date.today().isoformat(),
     )
 
     # Calculate date range
@@ -318,7 +316,7 @@ def generate_brief(
             "hour": row["hour"],
             "count": row["count"],
             "avg_earnings": round(row["avg_earnings"] or 0, 2),
-            "avg_view_rate": round(row["avg_view_rate"] or 0, 4)
+            "avg_view_rate": round(row["avg_view_rate"] or 0, 4),
         }
         for row in cursor.fetchall()
     ]
@@ -344,7 +342,7 @@ def generate_brief(
             "day": day_names[row["day"]] if row["day"] is not None else "Unknown",
             "day_number": row["day"],
             "count": row["count"],
-            "avg_earnings": round(row["avg_earnings"] or 0, 2)
+            "avg_earnings": round(row["avg_earnings"] or 0, 2),
         }
         for row in cursor.fetchall()
     ]
@@ -369,7 +367,7 @@ def generate_brief(
         {
             "type_name": row["type_name"],
             "count": row["count"],
-            "avg_earnings": round(row["avg_earnings"] or 0, 2)
+            "avg_earnings": round(row["avg_earnings"] or 0, 2),
         }
         for row in cursor.fetchall()
     ]
@@ -419,8 +417,8 @@ def format_markdown(brief: CreatorBrief) -> str:
         "",
         "## Profile",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Page Name | {brief.page_name} |",
         f"| Page Type | {brief.page_type} |",
         f"| Active Fans | {brief.active_fans:,} |",
@@ -430,8 +428,8 @@ def format_markdown(brief: CreatorBrief) -> str:
         "",
         "## Financial Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total Earnings | ${brief.total_earnings:,.2f} |",
         f"| Message Revenue | ${brief.message_net:,.2f} |",
         f"| Avg per Fan | ${brief.avg_earnings_per_fan:.2f} |",
@@ -439,13 +437,13 @@ def format_markdown(brief: CreatorBrief) -> str:
         "",
         "## Performance Metrics",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Messages Sent | {brief.total_messages:,} |",
         f"| Avg Earnings/Message | ${brief.avg_earnings_per_message:.2f} |",
         f"| Avg View Rate | {brief.avg_view_rate:.2%} |",
         f"| Avg Purchase Rate | {brief.avg_purchase_rate:.2%} |",
-        ""
+        "",
     ]
 
     if brief.best_hours:
@@ -478,38 +476,44 @@ def format_markdown(brief: CreatorBrief) -> str:
             lines.append(f"| {ct['type_name']} | {ct['count']} | ${ct['avg_earnings']:.2f} |")
         lines.append("")
 
-    lines.extend([
-        "## Caption Pool",
-        "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
-        f"| Total Captions | {brief.total_captions:,} |",
-        f"| Fresh (>= 30) | {brief.fresh_captions:,} |",
-        f"| Exhausted (< 25) | {brief.exhausted_captions:,} |",
-        f"| Avg Freshness | {brief.avg_freshness:.1f} |",
-        ""
-    ])
+    lines.extend(
+        [
+            "## Caption Pool",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| Total Captions | {brief.total_captions:,} |",
+            f"| Fresh (>= 30) | {brief.fresh_captions:,} |",
+            f"| Exhausted (< 25) | {brief.exhausted_captions:,} |",
+            f"| Avg Freshness | {brief.avg_freshness:.1f} |",
+            "",
+        ]
+    )
 
     if brief.primary_tone:
-        lines.extend([
-            "## Persona",
-            "",
-            f"| Attribute | Value |",
-            f"|-----------|-------|",
-            f"| Primary Tone | {brief.primary_tone} |",
-            f"| Emoji Frequency | {brief.emoji_frequency} |",
-            f"| Slang Level | {brief.slang_level} |",
-            ""
-        ])
+        lines.extend(
+            [
+                "## Persona",
+                "",
+                "| Attribute | Value |",
+                "|-----------|-------|",
+                f"| Primary Tone | {brief.primary_tone} |",
+                f"| Emoji Frequency | {brief.emoji_frequency} |",
+                f"| Slang Level | {brief.slang_level} |",
+                "",
+            ]
+        )
 
     if brief.vault_content_types:
-        lines.extend([
-            "## Vault Inventory",
-            "",
-            f"**Available Content Types ({brief.vault_total_types}):** " +
-            ", ".join(brief.vault_content_types),
-            ""
-        ])
+        lines.extend(
+            [
+                "## Vault Inventory",
+                "",
+                f"**Available Content Types ({brief.vault_total_types}):** "
+                + ", ".join(brief.vault_content_types),
+                "",
+            ]
+        )
 
     return "\n".join(lines)
 
@@ -523,9 +527,11 @@ def format_json(brief: CreatorBrief) -> str:
 # DYNAMIC AGENCY BENCHMARKS - Compare creator to agency portfolio
 # =============================================================================
 
+
 @dataclass
 class AgencyBenchmarks:
     """Dynamic benchmarks calculated from all agency creators."""
+
     agency_avg_revenue: float
     agency_avg_purchase_rate: float
     agency_avg_view_rate: float
@@ -541,10 +547,7 @@ class AgencyBenchmarks:
     performance_tier_label: str  # "Top Performer", "Above Average", "Average", "Below Average"
 
 
-def calculate_agency_benchmarks(
-    conn: sqlite3.Connection,
-    brief: CreatorBrief
-) -> AgencyBenchmarks:
+def calculate_agency_benchmarks(conn: sqlite3.Connection, brief: CreatorBrief) -> AgencyBenchmarks:
     """
     Calculate dynamic benchmarks comparing this creator to the agency portfolio.
 
@@ -598,25 +601,31 @@ def calculate_agency_benchmarks(
 
     # Purchase rate percentile (based on creator's average)
     purchase_rate_percentile = _calculate_percentile(
-        brief.avg_purchase_rate, agency_avg_purchase_rate, 0.25  # max expected 25%
+        brief.avg_purchase_rate,
+        agency_avg_purchase_rate,
+        0.25,  # max expected 25%
     )
 
     # View rate percentile
     view_rate_percentile = _calculate_percentile(
-        brief.avg_view_rate, agency_avg_view_rate, 0.80  # max expected 80%
+        brief.avg_view_rate,
+        agency_avg_view_rate,
+        0.80,  # max expected 80%
     )
 
     # Earnings per message percentile
     epm_percentile = _calculate_percentile(
-        brief.avg_earnings_per_message, agency_avg_epm, 10.0  # max expected $10
+        brief.avg_earnings_per_message,
+        agency_avg_epm,
+        10.0,  # max expected $10
     )
 
     # Overall percentile (weighted average)
     overall_percentile = int(
-        (revenue_percentile * 0.40) +
-        (purchase_rate_percentile * 0.25) +
-        (view_rate_percentile * 0.20) +
-        (epm_percentile * 0.15)
+        (revenue_percentile * 0.40)
+        + (purchase_rate_percentile * 0.25)
+        + (view_rate_percentile * 0.20)
+        + (epm_percentile * 0.15)
     )
 
     # Calculate vs agency revenue
@@ -652,7 +661,7 @@ def calculate_agency_benchmarks(
         creator_earnings_percentile=epm_percentile,
         overall_percentile=overall_percentile,
         vs_agency_revenue=vs_agency_revenue,
-        performance_tier_label=performance_tier_label
+        performance_tier_label=performance_tier_label,
     )
 
 
@@ -675,7 +684,9 @@ def _calculate_percentile(value: float, avg: float, max_expected: float) -> int:
     return min(100, max(0, percentile))
 
 
-def prepare_insights_request(brief: CreatorBrief, benchmarks: AgencyBenchmarks | None = None) -> str:
+def prepare_insights_request(
+    brief: CreatorBrief, benchmarks: AgencyBenchmarks | None = None
+) -> str:
     """
     Generate a structured markdown prompt for Claude to provide strategic insights.
 
@@ -708,7 +719,7 @@ def prepare_insights_request(brief: CreatorBrief, benchmarks: AgencyBenchmarks |
         volume_level=brief.volume_level,
         ppv_per_day=brief.ppv_per_day,
         vs_agency_avg=benchmarks.vs_agency_revenue if benchmarks else "",
-        percentile_rank=f"{benchmarks.overall_percentile}th percentile" if benchmarks else ""
+        percentile_rank=f"{benchmarks.overall_percentile}th percentile" if benchmarks else "",
     )
 
     # Build the prompt
@@ -730,20 +741,22 @@ def prepare_insights_request(brief: CreatorBrief, benchmarks: AgencyBenchmarks |
 
     # Agency benchmarks section (if available)
     if benchmarks:
-        lines.extend([
-            "## Agency Competitive Position",
-            "",
-            "| Metric | Creator | Agency Avg | Percentile |",
-            "|--------|---------|------------|------------|",
-            f"| Revenue (30d) | ${insights.total_revenue_30d:,.0f} | ${benchmarks.agency_avg_revenue:,.0f} | {benchmarks.creator_revenue_percentile}th |",
-            f"| Purchase Rate | {insights.purchase_rate:.1%} | {benchmarks.agency_avg_purchase_rate:.1%} | {benchmarks.creator_purchase_rate_percentile}th |",
-            f"| View Rate | {insights.view_rate:.1%} | {benchmarks.agency_avg_view_rate:.1%} | {benchmarks.creator_view_rate_percentile}th |",
-            f"| Earnings/Message | ${insights.avg_revenue_per_message:.2f} | ${benchmarks.agency_avg_earnings_per_message:.2f} | {benchmarks.creator_earnings_percentile}th |",
-            "",
-            f"**Overall Ranking:** {benchmarks.performance_tier_label} ({benchmarks.overall_percentile}th percentile)",
-            f"**vs Agency Average:** {benchmarks.vs_agency_revenue}",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Agency Competitive Position",
+                "",
+                "| Metric | Creator | Agency Avg | Percentile |",
+                "|--------|---------|------------|------------|",
+                f"| Revenue (30d) | ${insights.total_revenue_30d:,.0f} | ${benchmarks.agency_avg_revenue:,.0f} | {benchmarks.creator_revenue_percentile}th |",
+                f"| Purchase Rate | {insights.purchase_rate:.1%} | {benchmarks.agency_avg_purchase_rate:.1%} | {benchmarks.creator_purchase_rate_percentile}th |",
+                f"| View Rate | {insights.view_rate:.1%} | {benchmarks.agency_avg_view_rate:.1%} | {benchmarks.creator_view_rate_percentile}th |",
+                f"| Earnings/Message | ${insights.avg_revenue_per_message:.2f} | ${benchmarks.agency_avg_earnings_per_message:.2f} | {benchmarks.creator_earnings_percentile}th |",
+                "",
+                f"**Overall Ranking:** {benchmarks.performance_tier_label} ({benchmarks.overall_percentile}th percentile)",
+                f"**vs Agency Average:** {benchmarks.vs_agency_revenue}",
+                "",
+            ]
+        )
 
     # Best performing hours
     if insights.best_hours:
@@ -777,63 +790,69 @@ def prepare_insights_request(brief: CreatorBrief, benchmarks: AgencyBenchmarks |
         lines.append("")
 
     # Caption health
-    lines.extend([
-        "## Caption Health",
-        "",
-        "| Metric | Value |",
-        "|--------|-------|",
-        f"| Total Captions | {insights.total_captions:,} |",
-        f"| Fresh (score >= 30) | {insights.fresh_captions:,} |",
-        f"| Exhausted (score < 25) | {insights.exhausted_captions:,} |",
-        f"| Average Freshness | {insights.avg_freshness:.1f} |",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Caption Health",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| Total Captions | {insights.total_captions:,} |",
+            f"| Fresh (score >= 30) | {insights.fresh_captions:,} |",
+            f"| Exhausted (score < 25) | {insights.exhausted_captions:,} |",
+            f"| Average Freshness | {insights.avg_freshness:.1f} |",
+            "",
+        ]
+    )
 
     # Persona profile
     if insights.primary_tone:
-        lines.extend([
-            "## Persona Profile",
-            "",
-            f"- **Primary Tone:** {insights.primary_tone}",
-            f"- **Emoji Frequency:** {insights.emoji_frequency}",
-            f"- **Slang Level:** {insights.slang_level}",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Persona Profile",
+                "",
+                f"- **Primary Tone:** {insights.primary_tone}",
+                f"- **Emoji Frequency:** {insights.emoji_frequency}",
+                f"- **Slang Level:** {insights.slang_level}",
+                "",
+            ]
+        )
 
     # Analysis task
-    lines.extend([
-        "---",
-        "",
-        "## Analysis Task",
-        "",
-        "Based on the data above, provide strategic insights in the following JSON format:",
-        "",
-        "```json",
-        "{",
-        '  "performance_summary": "2-3 sentence overview of this creator\'s performance",',
-        '  "key_strength": "What this creator does best based on the data",',
-        '  "primary_challenge": "Biggest opportunity for improvement",',
-        '  "timing_insight": "Specific timing optimization recommendation",',
-        '  "content_insight": "Content strategy recommendation based on top performers",',
-        '  "caption_health_insight": "Caption freshness management recommendation",',
-        '  "immediate_actions": ["Action 1", "Action 2", "Action 3"],',
-        '  "strategic_opportunities": ["Opportunity 1", "Opportunity 2"],',
-        '  "risk_factors": ["Issue to watch"]',
-        "}",
-        "```",
-        "",
-        "## Guidelines",
-        "",
-        "- Be SPECIFIC to this creator's data, not generic advice",
-        "- Reference actual numbers from the data above",
-        "- Prioritize high-impact, actionable recommendations",
-        "- Consider industry benchmarks:",
-        "  - View rate: 60%+ is good, 70%+ is excellent",
-        "  - Purchase rate: 15%+ is good, 20%+ is excellent",
-        "  - Revenue per message: $2+ is good, $5+ is excellent",
-        "- Focus on what the data reveals, not assumptions",
-        "",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            "## Analysis Task",
+            "",
+            "Based on the data above, provide strategic insights in the following JSON format:",
+            "",
+            "```json",
+            "{",
+            '  "performance_summary": "2-3 sentence overview of this creator\'s performance",',
+            '  "key_strength": "What this creator does best based on the data",',
+            '  "primary_challenge": "Biggest opportunity for improvement",',
+            '  "timing_insight": "Specific timing optimization recommendation",',
+            '  "content_insight": "Content strategy recommendation based on top performers",',
+            '  "caption_health_insight": "Caption freshness management recommendation",',
+            '  "immediate_actions": ["Action 1", "Action 2", "Action 3"],',
+            '  "strategic_opportunities": ["Opportunity 1", "Opportunity 2"],',
+            '  "risk_factors": ["Issue to watch"]',
+            "}",
+            "```",
+            "",
+            "## Guidelines",
+            "",
+            "- Be SPECIFIC to this creator's data, not generic advice",
+            "- Reference actual numbers from the data above",
+            "- Prioritize high-impact, actionable recommendations",
+            "- Consider industry benchmarks:",
+            "  - View rate: 60%+ is good, 70%+ is excellent",
+            "  - Purchase rate: 15%+ is good, 20%+ is excellent",
+            "  - Revenue per message: $2+ is good, $5+ is excellent",
+            "- Focus on what the data reveals, not assumptions",
+            "",
+        ]
+    )
 
     return "\n".join(lines)
 
@@ -848,42 +867,27 @@ Examples:
     python analyze_creator.py --creator missalexa
     python analyze_creator.py --creator-id abc123 --period 90
     python analyze_creator.py --creator missalexa --output brief.md --format markdown
-        """
+        """,
     )
 
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
+        "--period", "-p", type=int, default=30, help="Analysis period in days (default: 30)"
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
-    parser.add_argument(
-        "--period", "-p",
-        type=int,
-        default=30,
-        help="Analysis period in days (default: 30)"
-    )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
     parser.add_argument(
         "--insights",
         action="store_true",
-        help="Output context for Claude AI to generate strategic insights"
+        help="Output context for Claude AI to generate strategic insights",
     )
 
     args = parser.parse_args()
@@ -902,10 +906,7 @@ Examples:
 
     try:
         brief = generate_brief(
-            conn,
-            creator_name=args.creator,
-            creator_id=args.creator_id,
-            period_days=args.period
+            conn, creator_name=args.creator, creator_id=args.creator_id, period_days=args.period
         )
 
         if not brief:

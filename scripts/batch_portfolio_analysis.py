@@ -28,26 +28,26 @@ from __future__ import annotations
 
 VERSION = "1.0.0"
 
-import argparse
-import json
-import logging
-import os
-import re
-import sqlite3
-import sys
-import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any, Callable
+import argparse  # noqa: E402
+import json  # noqa: E402
+import logging  # noqa: E402
+import os  # noqa: E402
+import re  # noqa: E402
+import sqlite3  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from collections.abc import Callable  # noqa: E402
+from dataclasses import asdict, dataclass, field  # noqa: E402
+from datetime import datetime  # noqa: E402
+from enum import Enum  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 
 # Import from analyze_creator for reuse in quick analysis
-from analyze_creator import (
-    CreatorBrief,
+from analyze_creator import (  # noqa: E402
     AgencyBenchmarks,
-    generate_brief,
     calculate_agency_benchmarks,
+    generate_brief,
 )
 
 # Configure logging
@@ -65,14 +65,14 @@ OUTPUT_DIR = PROJECT_ROOT / "reports" / "portfolio_analysis"
 
 # Caption freshness thresholds
 FRESHNESS_CRITICAL = 30  # Below this is critically stale
-FRESHNESS_STALE = 50     # Below this needs attention
-FRESHNESS_GOOD = 70      # Good freshness level
-FRESHNESS_EXCELLENT = 80 # Fresh captions
+FRESHNESS_STALE = 50  # Below this needs attention
+FRESHNESS_GOOD = 70  # Good freshness level
+FRESHNESS_EXCELLENT = 80  # Fresh captions
 
 # Percentile thresholds for portfolio positioning
-PERCENTILE_ELITE = 90    # Elite performer
-PERCENTILE_TOP = 75      # Top performer
-PERCENTILE_STRONG = 50   # Strong performer
+PERCENTILE_ELITE = 90  # Elite performer
+PERCENTILE_TOP = 75  # Top performer
+PERCENTILE_STRONG = 50  # Strong performer
 PERCENTILE_DEVELOPING = 25  # Developing
 
 
@@ -80,8 +80,10 @@ PERCENTILE_DEVELOPING = 25  # Developing
 # ENUMS
 # =============================================================================
 
+
 class AnalysisMode(Enum):
     """Analysis mode selection."""
+
     QUICK = "quick"
     DEEP = "deep"
     FULL = "full"  # Both quick and deep
@@ -89,6 +91,7 @@ class AnalysisMode(Enum):
 
 class HealthRating(Enum):
     """Overall health rating for creators."""
+
     EXCELLENT = "Excellent"
     GOOD = "Good"
     AVERAGE = "Average"
@@ -98,6 +101,7 @@ class HealthRating(Enum):
 
 class BenchmarkRating(Enum):
     """Performance benchmark rating scale."""
+
     EXCELLENT = "Excellent"
     GOOD = "Good"
     AVERAGE = "Average"
@@ -108,9 +112,11 @@ class BenchmarkRating(Enum):
 # HELPER DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class MonthlyTrend:
     """Monthly PPV performance trend data point."""
+
     month: str  # YYYY-MM format
     ppv_count: int
     revenue: float
@@ -126,6 +132,7 @@ class MonthlyTrend:
 @dataclass
 class WeekOverWeek:
     """Week-over-week comparison metrics."""
+
     current_week_ppvs: int
     current_week_revenue: float
     current_week_purchase_rate: float
@@ -143,6 +150,7 @@ class WeekOverWeek:
 @dataclass
 class HourlyPerformance:
     """Performance metrics for a specific hour."""
+
     hour: int  # 0-23
     count: int
     total_revenue: float
@@ -158,6 +166,7 @@ class HourlyPerformance:
 @dataclass
 class DailyPerformance:
     """Performance metrics for a day of week."""
+
     day: str  # Full name: Monday, Tuesday, etc.
     day_number: int  # 0=Sunday, 6=Saturday
     count: int
@@ -172,6 +181,7 @@ class DailyPerformance:
 @dataclass
 class HeatmapEntry:
     """Hour + Day combination performance entry."""
+
     day: str  # Short name: Mon, Tue, etc.
     hour: int
     count: int
@@ -185,6 +195,7 @@ class HeatmapEntry:
 @dataclass
 class ContentTypePerformance:
     """Performance metrics for a content type."""
+
     type_name: str
     type_category: str
     uses: int
@@ -202,6 +213,7 @@ class ContentTypePerformance:
 @dataclass
 class ContentGap:
     """Content gap analysis entry."""
+
     type_name: str
     type_category: str
     in_vault: bool
@@ -219,6 +231,7 @@ class ContentGap:
 @dataclass
 class PriceTierPerformance:
     """Performance metrics for a price tier."""
+
     price_tier: str  # e.g., "$1-5", "$6-10"
     count: int
     total_revenue: float
@@ -234,6 +247,7 @@ class PriceTierPerformance:
 @dataclass
 class OptimalPrice:
     """Optimal pricing recommendation by content type."""
+
     type_name: str
     avg_price: float
     avg_earnings: float
@@ -248,6 +262,7 @@ class OptimalPrice:
 @dataclass
 class CaptionPerformance:
     """Individual caption performance data."""
+
     caption_id: str
     preview: str  # First 60 chars
     tone: str | None
@@ -264,6 +279,7 @@ class CaptionPerformance:
 @dataclass
 class TonePerformance:
     """Performance metrics by caption tone."""
+
     tone: str
     count: int
     avg_earnings: float
@@ -276,6 +292,7 @@ class TonePerformance:
 @dataclass
 class TierComparison:
     """Creator's tier compared to other tiers."""
+
     tier: int
     tier_count: int
     tier_avg_earnings: float
@@ -291,6 +308,7 @@ class TierComparison:
 @dataclass
 class QuickWin:
     """Quick win recommendation."""
+
     action: str
     implementation: str
     expected_impact: str
@@ -303,6 +321,7 @@ class QuickWin:
 @dataclass
 class RoadmapItem:
     """90-day roadmap item."""
+
     month: int  # 1, 2, or 3
     phase: str  # Foundation, Growth, Optimization
     objective: str
@@ -316,6 +335,7 @@ class RoadmapItem:
 @dataclass
 class KPI:
     """Key Performance Indicator tracking entry."""
+
     metric: str
     current: float
     target_30d: float
@@ -330,6 +350,7 @@ class KPI:
 @dataclass
 class CreatorRanking:
     """Creator ranking entry for portfolio summaries."""
+
     creator_id: str
     page_name: str
     display_name: str
@@ -344,6 +365,7 @@ class CreatorRanking:
 @dataclass
 class CreatorAttention:
     """Creator requiring attention entry."""
+
     creator_id: str
     page_name: str
     display_name: str
@@ -359,6 +381,7 @@ class CreatorAttention:
 @dataclass
 class AnalysisError:
     """Error encountered during analysis."""
+
     creator_id: str
     page_name: str
     phase: str
@@ -374,6 +397,7 @@ class AnalysisError:
 # =============================================================================
 # QUICK ANALYSIS DATA CLASS (7-Step)
 # =============================================================================
+
 
 @dataclass
 class QuickAnalysisResult:
@@ -392,6 +416,7 @@ class QuickAnalysisResult:
     6. Assess caption health
     7. Load persona data
     """
+
     # Identity
     creator_id: str
     page_name: str
@@ -422,9 +447,15 @@ class QuickAnalysisResult:
         }
         # Handle brief and benchmarks which may be dataclasses
         if self.brief:
-            result["brief"] = asdict(self.brief) if hasattr(self.brief, "__dataclass_fields__") else self.brief
+            result["brief"] = (
+                asdict(self.brief) if hasattr(self.brief, "__dataclass_fields__") else self.brief
+            )
         if self.benchmarks:
-            result["benchmarks"] = asdict(self.benchmarks) if hasattr(self.benchmarks, "__dataclass_fields__") else self.benchmarks
+            result["benchmarks"] = (
+                asdict(self.benchmarks)
+                if hasattr(self.benchmarks, "__dataclass_fields__")
+                else self.benchmarks
+            )
         return result
 
     @classmethod
@@ -445,6 +476,7 @@ class QuickAnalysisResult:
 # DEEP ANALYSIS DATA CLASSES (9-Phase)
 # =============================================================================
 
+
 @dataclass
 class RevenueAnalysis:
     """
@@ -453,6 +485,7 @@ class RevenueAnalysis:
     Complete revenue breakdown with multi-stream analysis
     and benchmark comparisons.
     """
+
     # Revenue breakdown
     total_earnings: float
     subscription_net: float
@@ -496,6 +529,7 @@ class PPVAnalysis:
     Comprehensive PPV metrics including trends,
     volatility analysis, and benchmark comparisons.
     """
+
     # Overall metrics
     total_ppvs: int
     total_revenue: float
@@ -543,6 +577,7 @@ class TimingAnalysis:
     Hour-by-hour and day-by-day performance data
     with heatmap combinations for optimal scheduling.
     """
+
     # Performance data
     hourly_performance: list[HourlyPerformance] = field(default_factory=list)
     daily_performance: list[DailyPerformance] = field(default_factory=list)
@@ -582,6 +617,7 @@ class ContentAnalysis:
     Content type rankings, gap analysis,
     and utilization recommendations.
     """
+
     # Performance rankings
     content_rankings: list[ContentTypePerformance] = field(default_factory=list)
 
@@ -605,7 +641,9 @@ class ContentAnalysis:
     def from_dict(cls, data: dict[str, Any]) -> ContentAnalysis:
         """Create instance from dictionary."""
         return cls(
-            content_rankings=[ContentTypePerformance(**c) for c in data.get("content_rankings", [])],
+            content_rankings=[
+                ContentTypePerformance(**c) for c in data.get("content_rankings", [])
+            ],
             content_gaps=[ContentGap(**g) for g in data.get("content_gaps", [])],
             top_content_types=data.get("top_content_types", []),
             underutilized_types=data.get("underutilized_types", []),
@@ -620,6 +658,7 @@ class PricingAnalysis:
     Price tier performance and optimal pricing
     recommendations by content type.
     """
+
     # Tier performance
     price_tier_performance: list[PriceTierPerformance] = field(default_factory=list)
 
@@ -641,7 +680,9 @@ class PricingAnalysis:
     def from_dict(cls, data: dict[str, Any]) -> PricingAnalysis:
         """Create instance from dictionary."""
         return cls(
-            price_tier_performance=[PriceTierPerformance(**p) for p in data.get("price_tier_performance", [])],
+            price_tier_performance=[
+                PriceTierPerformance(**p) for p in data.get("price_tier_performance", [])
+            ],
             optimal_prices=[OptimalPrice(**o) for o in data.get("optimal_prices", [])],
             recommended_price_range=data.get("recommended_price_range", {}),
         )
@@ -655,6 +696,7 @@ class CaptionAnalysis:
     Caption library health, top performers,
     underperformers, and tone effectiveness.
     """
+
     # Library health
     total_captions: int = 0
     avg_freshness: float = 0.0
@@ -710,6 +752,7 @@ class PersonaAnalysis:
     Communication style profiling for
     persona-matched caption selection.
     """
+
     # Core persona attributes
     primary_tone: str = ""
     secondary_tone: str = ""
@@ -743,6 +786,7 @@ class PortfolioPosition:
     Creator's rank and percentile position
     within the agency portfolio.
     """
+
     # Rankings (1 = best)
     earnings_rank: int = 0
     fans_rank: int = 0
@@ -792,6 +836,7 @@ class DeepAnalysisResult:
     8. Persona & Voice Analysis
     9. Portfolio Positioning
     """
+
     # Identity
     creator_id: str
     page_name: str
@@ -854,7 +899,9 @@ class DeepAnalysisResult:
             "pricing": self.pricing.to_dict() if self.pricing else None,
             "captions": self.captions.to_dict() if self.captions else None,
             "persona": self.persona.to_dict() if self.persona else None,
-            "portfolio_position": self.portfolio_position.to_dict() if self.portfolio_position else None,
+            "portfolio_position": self.portfolio_position.to_dict()
+            if self.portfolio_position
+            else None,
             "health_score": self.health_score,
             "health_rating": self.health_rating,
             "top_priorities": self.top_priorities,
@@ -880,7 +927,9 @@ class DeepAnalysisResult:
             pricing=PricingAnalysis.from_dict(data["pricing"]) if data.get("pricing") else None,
             captions=CaptionAnalysis.from_dict(data["captions"]) if data.get("captions") else None,
             persona=PersonaAnalysis.from_dict(data["persona"]) if data.get("persona") else None,
-            portfolio_position=PortfolioPosition.from_dict(data["portfolio_position"]) if data.get("portfolio_position") else None,
+            portfolio_position=PortfolioPosition.from_dict(data["portfolio_position"])
+            if data.get("portfolio_position")
+            else None,
             health_score=data.get("health_score", 0),
             health_rating=data.get("health_rating", ""),
             top_priorities=data.get("top_priorities", []),
@@ -897,6 +946,7 @@ class DeepAnalysisResult:
 # PORTFOLIO SUMMARY DATA CLASS
 # =============================================================================
 
+
 @dataclass
 class PortfolioSummary:
     """
@@ -905,6 +955,7 @@ class PortfolioSummary:
     Provides cross-creator insights, tier distributions,
     rankings, and portfolio-wide health metrics.
     """
+
     # Metadata
     analysis_timestamp: str = ""
     total_duration_seconds: float = 0.0
@@ -1025,6 +1076,7 @@ class PortfolioSummary:
 # BATCH ANALYSIS RESULT
 # =============================================================================
 
+
 @dataclass
 class BatchAnalysisResult:
     """
@@ -1032,6 +1084,7 @@ class BatchAnalysisResult:
 
     This is the top-level container for a full portfolio analysis run.
     """
+
     # Quick analyses (7-step)
     quick_analyses: list[QuickAnalysisResult] = field(default_factory=list)
 
@@ -1052,7 +1105,9 @@ class BatchAnalysisResult:
         return {
             "quick_analyses": [q.to_dict() for q in self.quick_analyses],
             "deep_analyses": [d.to_dict() for d in self.deep_analyses],
-            "portfolio_summary": self.portfolio_summary.to_dict() if self.portfolio_summary else None,
+            "portfolio_summary": self.portfolio_summary.to_dict()
+            if self.portfolio_summary
+            else None,
             "analysis_mode": self.analysis_mode,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
@@ -1072,9 +1127,13 @@ class BatchAnalysisResult:
     def from_dict(cls, data: dict[str, Any]) -> BatchAnalysisResult:
         """Create instance from dictionary."""
         return cls(
-            quick_analyses=[QuickAnalysisResult.from_dict(q) for q in data.get("quick_analyses", [])],
+            quick_analyses=[
+                QuickAnalysisResult.from_dict(q) for q in data.get("quick_analyses", [])
+            ],
             deep_analyses=[DeepAnalysisResult.from_dict(d) for d in data.get("deep_analyses", [])],
-            portfolio_summary=PortfolioSummary.from_dict(data["portfolio_summary"]) if data.get("portfolio_summary") else None,
+            portfolio_summary=PortfolioSummary.from_dict(data["portfolio_summary"])
+            if data.get("portfolio_summary")
+            else None,
             analysis_mode=data.get("analysis_mode", ""),
             started_at=data.get("started_at", ""),
             completed_at=data.get("completed_at", ""),
@@ -1206,7 +1265,7 @@ class DatabaseManager:
             self._conn.close()
             self._conn = None
 
-    def __enter__(self) -> "DatabaseManager":
+    def __enter__(self) -> DatabaseManager:
         """Context manager entry."""
         self.connect()
         return self
@@ -1339,32 +1398,36 @@ class DatabaseManager:
 
         creators = []
         for row in rows:
-            creators.append({
-                "creator_id": row["creator_id"],
-                "page_name": row["page_name"],
-                "display_name": row["display_name"],
-                "page_type": row["page_type"],
-                "subscription_price": self._safe_float(row["subscription_price"]),
-                "timezone": self._safe_str(row["timezone"]),
-                "current_active_fans": self._safe_int(row["current_active_fans"]),
-                "current_total_earnings": self._safe_float(row["current_total_earnings"]),
-                "current_message_net": self._safe_float(row["current_message_net"]),
-                "current_subscription_net": self._safe_float(row["current_subscription_net"]),
-                "current_tips_net": self._safe_float(row["current_tips_net"]),
-                "current_avg_earnings_per_fan": self._safe_float(row["current_avg_earnings_per_fan"]),
-                "current_renew_on_pct": self._safe_float(row["current_renew_on_pct"]),
-                "current_of_ranking": self._safe_float(row["current_of_ranking"]),
-                "performance_tier": self._safe_int(row["performance_tier"]),
-                "metrics_snapshot_date": self._safe_str(row["metrics_snapshot_date"]),
-                "persona_type": self._safe_str(row["persona_type"]),
-                "account_age_days": self._safe_int(row["account_age_days"]),
-                "volume_level": self._safe_str(row["volume_level"]),
-                "primary_tone": self._safe_str(row["primary_tone"]),
-                "emoji_frequency": self._safe_str(row["emoji_frequency"]),
-                "slang_level": self._safe_str(row["slang_level"]),
-                "ppv_count_30d": self._safe_int(row["ppv_count_30d"]),
-                "ppv_revenue_30d": self._safe_float(row["ppv_revenue_30d"]),
-            })
+            creators.append(
+                {
+                    "creator_id": row["creator_id"],
+                    "page_name": row["page_name"],
+                    "display_name": row["display_name"],
+                    "page_type": row["page_type"],
+                    "subscription_price": self._safe_float(row["subscription_price"]),
+                    "timezone": self._safe_str(row["timezone"]),
+                    "current_active_fans": self._safe_int(row["current_active_fans"]),
+                    "current_total_earnings": self._safe_float(row["current_total_earnings"]),
+                    "current_message_net": self._safe_float(row["current_message_net"]),
+                    "current_subscription_net": self._safe_float(row["current_subscription_net"]),
+                    "current_tips_net": self._safe_float(row["current_tips_net"]),
+                    "current_avg_earnings_per_fan": self._safe_float(
+                        row["current_avg_earnings_per_fan"]
+                    ),
+                    "current_renew_on_pct": self._safe_float(row["current_renew_on_pct"]),
+                    "current_of_ranking": self._safe_float(row["current_of_ranking"]),
+                    "performance_tier": self._safe_int(row["performance_tier"]),
+                    "metrics_snapshot_date": self._safe_str(row["metrics_snapshot_date"]),
+                    "persona_type": self._safe_str(row["persona_type"]),
+                    "account_age_days": self._safe_int(row["account_age_days"]),
+                    "volume_level": self._safe_str(row["volume_level"]),
+                    "primary_tone": self._safe_str(row["primary_tone"]),
+                    "emoji_frequency": self._safe_str(row["emoji_frequency"]),
+                    "slang_level": self._safe_str(row["slang_level"]),
+                    "ppv_count_30d": self._safe_int(row["ppv_count_30d"]),
+                    "ppv_revenue_30d": self._safe_float(row["ppv_revenue_30d"]),
+                }
+            )
 
         return creators
 
@@ -1429,7 +1492,7 @@ class DatabaseManager:
         WHEN 'weekly_comparison' THEN 3
     END,
     sort_order;""",
-            ";"
+            ";",
         )
         # Query uses creator_id 4 times
         rows = self._execute(sql, (creator_id, creator_id, creator_id, creator_id))
@@ -1461,14 +1524,18 @@ class DatabaseManager:
                 }
 
             elif section == "monthly":
-                monthly_trends.append(MonthlyTrend(
-                    month=self._safe_str(row["view_rate_rating"]),  # month stored in this column
-                    ppv_count=self._safe_int(row["metric_int"]),
-                    revenue=self._safe_float(row["metric_float"]),
-                    avg_earnings=self._safe_float(row["metric_float2"]),
-                    purchase_rate=self._safe_float(row["rate1"]),
-                    revenue_per_send=self._safe_float(row["rate2"]),
-                ))
+                monthly_trends.append(
+                    MonthlyTrend(
+                        month=self._safe_str(
+                            row["view_rate_rating"]
+                        ),  # month stored in this column
+                        ppv_count=self._safe_int(row["metric_int"]),
+                        revenue=self._safe_float(row["metric_float"]),
+                        avg_earnings=self._safe_float(row["metric_float2"]),
+                        purchase_rate=self._safe_float(row["rate1"]),
+                        revenue_per_send=self._safe_float(row["rate2"]),
+                    )
+                )
 
             elif section == "weekly_comparison":
                 period = row["view_rate_rating"]  # period stored in this column
@@ -1493,7 +1560,9 @@ class DatabaseManager:
             curr_rate = current_week_data.get("purchase_rate", 0.0)
             prev_rate = previous_week_data.get("purchase_rate", 0.0)
 
-            revenue_change = ((curr_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0.0
+            revenue_change = (
+                ((curr_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0.0
+            )
             rate_change = ((curr_rate - prev_rate) / prev_rate * 100) if prev_rate > 0 else 0.0
 
             week_over_week = WeekOverWeek(
@@ -1513,8 +1582,10 @@ class DatabaseManager:
             earnings_values = [t.avg_earnings for t in monthly_trends if t.avg_earnings > 0]
             if earnings_values:
                 mean_earnings = sum(earnings_values) / len(earnings_values)
-                variance = sum((e - mean_earnings) ** 2 for e in earnings_values) / len(earnings_values)
-                volatility = (variance ** 0.5) / mean_earnings * 100 if mean_earnings > 0 else 0.0
+                variance = sum((e - mean_earnings) ** 2 for e in earnings_values) / len(
+                    earnings_values
+                )
+                volatility = (variance**0.5) / mean_earnings * 100 if mean_earnings > 0 else 0.0
             else:
                 volatility = 0.0
         else:
@@ -1556,7 +1627,7 @@ class DatabaseManager:
         WHEN 'heatmap' THEN 3
     END,
     rank_by_earnings;""",
-            ";"
+            ";",
         )
         # Query uses creator_id 3 times
         rows = self._execute(sql, (creator_id, creator_id, creator_id))
@@ -1569,31 +1640,37 @@ class DatabaseManager:
             section = row["section"]
 
             if section == "hourly":
-                hourly_performance.append(HourlyPerformance(
-                    hour=self._safe_int(row["key_int"]),
-                    count=self._safe_int(row["count"]),
-                    total_revenue=self._safe_float(row["total_revenue"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                    purchase_rate=self._safe_float(row["purchase_rate_pct"]),
-                    revenue_per_send=self._safe_float(row["rps"]),
-                ))
+                hourly_performance.append(
+                    HourlyPerformance(
+                        hour=self._safe_int(row["key_int"]),
+                        count=self._safe_int(row["count"]),
+                        total_revenue=self._safe_float(row["total_revenue"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                        purchase_rate=self._safe_float(row["purchase_rate_pct"]),
+                        revenue_per_send=self._safe_float(row["rps"]),
+                    )
+                )
 
             elif section == "daily":
-                daily_performance.append(DailyPerformance(
-                    day=self._safe_str(row["key_text"]),
-                    day_number=self._safe_int(row["key_int"]),
-                    count=self._safe_int(row["count"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                    purchase_rate=self._safe_float(row["purchase_rate_pct"]),
-                ))
+                daily_performance.append(
+                    DailyPerformance(
+                        day=self._safe_str(row["key_text"]),
+                        day_number=self._safe_int(row["key_int"]),
+                        count=self._safe_int(row["count"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                        purchase_rate=self._safe_float(row["purchase_rate_pct"]),
+                    )
+                )
 
             elif section == "heatmap":
-                top_combinations.append(HeatmapEntry(
-                    day=self._safe_str(row["key_text"]),
-                    hour=self._safe_int(row["key_int"]),
-                    count=self._safe_int(row["count"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                ))
+                top_combinations.append(
+                    HeatmapEntry(
+                        day=self._safe_str(row["key_text"]),
+                        hour=self._safe_int(row["key_int"]),
+                        count=self._safe_int(row["count"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                    )
+                )
 
         # Extract best hours and days (top 3 by earnings)
         sorted_hourly = sorted(hourly_performance, key=lambda x: x.avg_earnings, reverse=True)
@@ -1626,7 +1703,7 @@ class DatabaseManager:
             """ORDER BY
     CASE section WHEN 'performance' THEN 1 ELSE 2 END,
     rank_by_earnings;""",
-            ";"
+            ";",
         )
         # Query uses creator_id 2 times
         rows = self._execute(sql, (creator_id, creator_id))
@@ -1638,28 +1715,34 @@ class DatabaseManager:
             section = row["section"]
 
             if section == "performance":
-                content_rankings.append(ContentTypePerformance(
-                    type_name=self._safe_str(row["type_name"]),
-                    type_category=self._safe_str(row["type_category"]),
-                    uses=self._safe_int(row["uses"]),
-                    total_revenue=self._safe_float(row["total_revenue"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                    view_rate=self._safe_float(row["view_rate_pct"]),
-                    purchase_rate=self._safe_float(row["purchase_rate_pct"]),
-                    avg_price=self._safe_float(row["avg_price"]),
-                ))
+                content_rankings.append(
+                    ContentTypePerformance(
+                        type_name=self._safe_str(row["type_name"]),
+                        type_category=self._safe_str(row["type_category"]),
+                        uses=self._safe_int(row["uses"]),
+                        total_revenue=self._safe_float(row["total_revenue"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                        view_rate=self._safe_float(row["view_rate_pct"]),
+                        purchase_rate=self._safe_float(row["purchase_rate_pct"]),
+                        avg_price=self._safe_float(row["avg_price"]),
+                    )
+                )
 
             elif section == "gap_analysis":
-                content_gaps.append(ContentGap(
-                    type_name=self._safe_str(row["type_name"]),
-                    type_category=self._safe_str(row["type_category"]),
-                    in_vault=bool(row["in_vault"]),
-                    quantity=self._safe_int(row["quantity"]),
-                    quality_rating=row["quality_rating"] if row["quality_rating"] else None,
-                    times_used=self._safe_int(row["uses"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]) if row["avg_earnings"] else None,
-                    status=self._safe_str(row["status"]),
-                ))
+                content_gaps.append(
+                    ContentGap(
+                        type_name=self._safe_str(row["type_name"]),
+                        type_category=self._safe_str(row["type_category"]),
+                        in_vault=bool(row["in_vault"]),
+                        quantity=self._safe_int(row["quantity"]),
+                        quality_rating=row["quality_rating"] if row["quality_rating"] else None,
+                        times_used=self._safe_int(row["uses"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"])
+                        if row["avg_earnings"]
+                        else None,
+                        status=self._safe_str(row["status"]),
+                    )
+                )
 
         # Extract top content types (top 3 by earnings)
         sorted_rankings = sorted(content_rankings, key=lambda x: x.avg_earnings, reverse=True)
@@ -1695,7 +1778,7 @@ class DatabaseManager:
         WHEN 'sensitivity' THEN 3
     END,
     sort_key;""",
-            ";"
+            ";",
         )
         # Query uses creator_id 3 times
         rows = self._execute(sql, (creator_id, creator_id, creator_id))
@@ -1708,23 +1791,27 @@ class DatabaseManager:
             section = row["section"]
 
             if section == "price_tier":
-                price_tier_performance.append(PriceTierPerformance(
-                    price_tier=self._safe_str(row["key_text"]),
-                    count=self._safe_int(row["count"]),
-                    total_revenue=self._safe_float(row["total_revenue"]),
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                    purchase_rate=self._safe_float(row["purchase_rate_pct"]),
-                    revenue_per_send=self._safe_float(row["rps"]),
-                ))
+                price_tier_performance.append(
+                    PriceTierPerformance(
+                        price_tier=self._safe_str(row["key_text"]),
+                        count=self._safe_int(row["count"]),
+                        total_revenue=self._safe_float(row["total_revenue"]),
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                        purchase_rate=self._safe_float(row["purchase_rate_pct"]),
+                        revenue_per_send=self._safe_float(row["rps"]),
+                    )
+                )
 
             elif section == "optimal_by_content":
-                optimal_prices.append(OptimalPrice(
-                    type_name=self._safe_str(row["key_text"]),
-                    avg_price=self._safe_float(row["sort_key"]),  # avg_price stored as sort_key
-                    avg_earnings=self._safe_float(row["avg_earnings"]),
-                    purchase_rate=self._safe_float(row["purchase_rate_pct"]),
-                    recommended_price=None,  # Can be calculated based on pricing_recommendation
-                ))
+                optimal_prices.append(
+                    OptimalPrice(
+                        type_name=self._safe_str(row["key_text"]),
+                        avg_price=self._safe_float(row["sort_key"]),  # avg_price stored as sort_key
+                        avg_earnings=self._safe_float(row["avg_earnings"]),
+                        purchase_rate=self._safe_float(row["purchase_rate_pct"]),
+                        recommended_price=None,  # Can be calculated based on pricing_recommendation
+                    )
+                )
 
             elif section == "sensitivity":
                 segment = self._safe_str(row["key_text"])
@@ -1786,7 +1873,7 @@ class DatabaseManager:
         WHEN 'tone_effectiveness' THEN 4
     END,
     sort_order;""",
-            ";"
+            ";",
         )
         # Query uses creator_id 4 times
         rows = self._execute(sql, (creator_id, creator_id, creator_id, creator_id))
@@ -1812,33 +1899,41 @@ class DatabaseManager:
                 avg_freshness = self._safe_float(row["metric_float1"])
 
             elif section == "top_performers":
-                top_captions.append(CaptionPerformance(
-                    caption_id=self._safe_str(row["caption_id"]),
-                    preview=self._safe_str(row["preview"]),
-                    tone=row["tone"] if row["tone"] else None,
-                    performance_score=self._safe_float(row["metric_int2"]) if row["metric_int2"] else None,
-                    freshness_score=self._safe_float(row["metric_int3"]),
-                    times_used=self._safe_int(row["metric_int1"]),
-                    avg_earnings=self._safe_float(row["metric_float1"]),
-                ))
+                top_captions.append(
+                    CaptionPerformance(
+                        caption_id=self._safe_str(row["caption_id"]),
+                        preview=self._safe_str(row["preview"]),
+                        tone=row["tone"] if row["tone"] else None,
+                        performance_score=self._safe_float(row["metric_int2"])
+                        if row["metric_int2"]
+                        else None,
+                        freshness_score=self._safe_float(row["metric_int3"]),
+                        times_used=self._safe_int(row["metric_int1"]),
+                        avg_earnings=self._safe_float(row["metric_float1"]),
+                    )
+                )
 
             elif section == "underperformers":
-                bottom_captions.append(CaptionPerformance(
-                    caption_id=self._safe_str(row["caption_id"]),
-                    preview=self._safe_str(row["preview"]),
-                    tone=row["tone"] if row["tone"] else None,
-                    performance_score=None,
-                    freshness_score=self._safe_float(row["metric_int3"]),
-                    times_used=self._safe_int(row["metric_int1"]),
-                    avg_earnings=self._safe_float(row["metric_float1"]),
-                ))
+                bottom_captions.append(
+                    CaptionPerformance(
+                        caption_id=self._safe_str(row["caption_id"]),
+                        preview=self._safe_str(row["preview"]),
+                        tone=row["tone"] if row["tone"] else None,
+                        performance_score=None,
+                        freshness_score=self._safe_float(row["metric_int3"]),
+                        times_used=self._safe_int(row["metric_int1"]),
+                        avg_earnings=self._safe_float(row["metric_float1"]),
+                    )
+                )
 
             elif section == "tone_effectiveness":
-                tone_effectiveness.append(TonePerformance(
-                    tone=self._safe_str(row["tone"]),
-                    count=self._safe_int(row["metric_int1"]),
-                    avg_earnings=self._safe_float(row["metric_float1"]),
-                ))
+                tone_effectiveness.append(
+                    TonePerformance(
+                        tone=self._safe_str(row["tone"]),
+                        count=self._safe_int(row["metric_int1"]),
+                        avg_earnings=self._safe_float(row["metric_float1"]),
+                    )
+                )
 
         # Determine caption health rating
         if avg_freshness >= 70 and critical_stale_count == 0:
@@ -1941,7 +2036,7 @@ class DatabaseManager:
             """ORDER BY
     CASE section WHEN 'creator_position' THEN 1 ELSE 2 END,
     performance_tier;""",
-            ";"
+            ";",
         )
         rows = self._execute(sql, (creator_id,))
 
@@ -1962,7 +2057,9 @@ class DatabaseManager:
                     "efficiency_rank": self._safe_int(row["efficiency_rank"]),
                     "earnings_percentile": int(100 - self._safe_float(row["earnings_percentile"])),
                     "fans_percentile": int(100 - self._safe_float(row["fans_percentile"])),
-                    "efficiency_percentile": int(100 - self._safe_float(row["efficiency_percentile"])),
+                    "efficiency_percentile": int(
+                        100 - self._safe_float(row["efficiency_percentile"])
+                    ),
                     "performance_tier": self._safe_int(row["performance_tier"]),
                     "tier_avg_earnings": self._safe_float(row["tier_avg_earnings"]),
                     "tier_avg_fans": self._safe_float(row["tier_avg_fans"]),
@@ -2043,7 +2140,7 @@ class DatabaseManager:
         WHEN 'recent_ppv_30d' THEN 7
     END,
     sort_order;""",
-            ";"
+            ";",
         )
         rows = self._execute(sql)
 
@@ -2066,7 +2163,9 @@ class DatabaseManager:
                     "active_creators": self._safe_int(row["active_creators"]),
                     "total_earnings": self._safe_float(row["total_earnings"]),
                     "total_message_revenue": self._safe_float(row["total_message_revenue"]),
-                    "total_subscription_revenue": self._safe_float(row["total_subscription_revenue"]),
+                    "total_subscription_revenue": self._safe_float(
+                        row["total_subscription_revenue"]
+                    ),
                     "total_fans": self._safe_int(row["total_fans"]),
                     "avg_earnings_per_creator": self._safe_float(row["avg_earnings_per_creator"]),
                     "avg_fans_per_creator": self._safe_int(row["avg_fans_per_creator"]),
@@ -2087,32 +2186,38 @@ class DatabaseManager:
                 }
 
             elif section == "top_by_revenue":
-                result["top_by_revenue"].append({
-                    "page_name": self._safe_str(row["identifier"]),
-                    "performance_tier": self._safe_int(row["total_creators"]),
-                    "fans": self._safe_int(row["active_creators"]),
-                    "earnings": self._safe_float(row["total_earnings"]),
-                    "rank": self._safe_int(row["sort_order"]),
-                })
+                result["top_by_revenue"].append(
+                    {
+                        "page_name": self._safe_str(row["identifier"]),
+                        "performance_tier": self._safe_int(row["total_creators"]),
+                        "fans": self._safe_int(row["active_creators"]),
+                        "earnings": self._safe_float(row["total_earnings"]),
+                        "rank": self._safe_int(row["sort_order"]),
+                    }
+                )
 
             elif section == "top_by_fans":
-                result["top_by_fans"].append({
-                    "page_name": self._safe_str(row["identifier"]),
-                    "performance_tier": self._safe_int(row["total_creators"]),
-                    "fans": self._safe_int(row["active_creators"]),
-                    "earnings": self._safe_float(row["total_earnings"]),
-                    "rank": self._safe_int(row["sort_order"]),
-                })
+                result["top_by_fans"].append(
+                    {
+                        "page_name": self._safe_str(row["identifier"]),
+                        "performance_tier": self._safe_int(row["total_creators"]),
+                        "fans": self._safe_int(row["active_creators"]),
+                        "earnings": self._safe_float(row["total_earnings"]),
+                        "rank": self._safe_int(row["sort_order"]),
+                    }
+                )
 
             elif section == "top_by_efficiency":
-                result["top_by_efficiency"].append({
-                    "page_name": self._safe_str(row["identifier"]),
-                    "performance_tier": self._safe_int(row["total_creators"]),
-                    "fans": self._safe_int(row["active_creators"]),
-                    "earnings": self._safe_float(row["total_earnings"]),
-                    "efficiency": self._safe_float(row["total_message_revenue"]),
-                    "rank": self._safe_int(row["sort_order"]),
-                })
+                result["top_by_efficiency"].append(
+                    {
+                        "page_name": self._safe_str(row["identifier"]),
+                        "performance_tier": self._safe_int(row["total_creators"]),
+                        "fans": self._safe_int(row["active_creators"]),
+                        "earnings": self._safe_float(row["total_earnings"]),
+                        "efficiency": self._safe_float(row["total_message_revenue"]),
+                        "rank": self._safe_int(row["sort_order"]),
+                    }
+                )
 
             elif section == "caption_health":
                 result["caption_health"] = {
@@ -2143,10 +2248,7 @@ class DatabaseManager:
 
 
 def run_quick_analysis(
-    db: DatabaseManager,
-    creator_id: str,
-    creator_name: str,
-    display_name: str = ""
+    db: DatabaseManager, creator_id: str, creator_name: str, display_name: str = ""
 ) -> QuickAnalysisResult:
     """
     Execute 7-step quick analysis for a single creator.
@@ -2193,7 +2295,7 @@ def run_quick_analysis(
         conn=conn,
         creator_name=creator_name,
         creator_id=creator_id,
-        period_days=30  # Default 30-day analysis window
+        period_days=30,  # Default 30-day analysis window
     )
 
     if brief is None:
@@ -2206,9 +2308,7 @@ def run_quick_analysis(
         benchmarks = calculate_agency_benchmarks(conn, brief)
     except Exception as e:
         # Log warning but continue - benchmarks are optional
-        logger.warning(
-            f"Could not calculate agency benchmarks for {creator_name}: {e}"
-        )
+        logger.warning(f"Could not calculate agency benchmarks for {creator_name}: {e}")
 
     # Calculate analysis duration
     end_time = time.perf_counter()
@@ -2224,9 +2324,7 @@ def run_quick_analysis(
         analysis_duration_ms=duration_ms,
     )
 
-    logger.info(
-        f"Quick analysis complete for {creator_name} in {duration_ms}ms"
-    )
+    logger.info(f"Quick analysis complete for {creator_name} in {duration_ms}ms")
 
     return result
 
@@ -2506,109 +2604,137 @@ def generate_priorities(
     if revenue is not None:
         # Low msg:sub ratio - major revenue opportunity
         if revenue.msg_sub_ratio < 0.5:
-            priorities.append((
-                100,
-                "CRITICAL: Increase PPV messaging volume - msg:sub ratio is severely low "
-                f"({revenue.msg_sub_ratio:.2f}x). Target 1.0x minimum."
-            ))
+            priorities.append(
+                (
+                    100,
+                    "CRITICAL: Increase PPV messaging volume - msg:sub ratio is severely low "
+                    f"({revenue.msg_sub_ratio:.2f}x). Target 1.0x minimum.",
+                )
+            )
         elif revenue.msg_sub_ratio < 1.0:
-            priorities.append((
-                80,
-                f"Increase PPV messaging frequency - msg:sub ratio ({revenue.msg_sub_ratio:.2f}x) "
-                "below target. Aim for 1.5x for optimal revenue."
-            ))
+            priorities.append(
+                (
+                    80,
+                    f"Increase PPV messaging frequency - msg:sub ratio ({revenue.msg_sub_ratio:.2f}x) "
+                    "below target. Aim for 1.5x for optimal revenue.",
+                )
+            )
 
         # Low earnings per fan
         if revenue.earnings_per_fan < 5:
-            priorities.append((
-                85,
-                f"Improve monetization efficiency - earnings per fan (${revenue.earnings_per_fan:.2f}) "
-                "is below industry standard ($10+). Review pricing and engagement."
-            ))
+            priorities.append(
+                (
+                    85,
+                    f"Improve monetization efficiency - earnings per fan (${revenue.earnings_per_fan:.2f}) "
+                    "is below industry standard ($10+). Review pricing and engagement.",
+                )
+            )
         elif revenue.earnings_per_fan < 10:
-            priorities.append((
-                65,
-                f"Optimize fan monetization - earnings per fan (${revenue.earnings_per_fan:.2f}) "
-                "has room for improvement. Target $15-20 range."
-            ))
+            priorities.append(
+                (
+                    65,
+                    f"Optimize fan monetization - earnings per fan (${revenue.earnings_per_fan:.2f}) "
+                    "has room for improvement. Target $15-20 range.",
+                )
+            )
 
         # Low renewal rate
         if revenue.renew_on_pct < 20:
-            priorities.append((
-                90,
-                f"Address subscriber retention crisis - renewal rate ({revenue.renew_on_pct:.1f}%) "
-                "is critically low. Focus on engagement and value delivery."
-            ))
+            priorities.append(
+                (
+                    90,
+                    f"Address subscriber retention crisis - renewal rate ({revenue.renew_on_pct:.1f}%) "
+                    "is critically low. Focus on engagement and value delivery.",
+                )
+            )
         elif revenue.renew_on_pct < 30:
-            priorities.append((
-                70,
-                f"Improve subscriber retention - renewal rate ({revenue.renew_on_pct:.1f}%) "
-                "needs attention. Target 40%+ for stability."
-            ))
+            priorities.append(
+                (
+                    70,
+                    f"Improve subscriber retention - renewal rate ({revenue.renew_on_pct:.1f}%) "
+                    "needs attention. Target 40%+ for stability.",
+                )
+            )
 
     # --- PPV Priorities ---
     if ppv is not None:
         # Low purchase rate
         if ppv.purchase_rate_pct < 3:
-            priorities.append((
-                88,
-                f"Revamp PPV strategy - purchase rate ({ppv.purchase_rate_pct:.1f}%) "
-                "is below threshold. Review pricing, timing, and content quality."
-            ))
+            priorities.append(
+                (
+                    88,
+                    f"Revamp PPV strategy - purchase rate ({ppv.purchase_rate_pct:.1f}%) "
+                    "is below threshold. Review pricing, timing, and content quality.",
+                )
+            )
         elif ppv.purchase_rate_pct < 5:
-            priorities.append((
-                68,
-                f"Optimize PPV conversion - purchase rate ({ppv.purchase_rate_pct:.1f}%) "
-                "can be improved. Test different price points and content types."
-            ))
+            priorities.append(
+                (
+                    68,
+                    f"Optimize PPV conversion - purchase rate ({ppv.purchase_rate_pct:.1f}%) "
+                    "can be improved. Test different price points and content types.",
+                )
+            )
 
         # Low view rate
         if ppv.view_rate_pct < 40:
-            priorities.append((
-                75,
-                f"Improve message engagement - view rate ({ppv.view_rate_pct:.1f}%) "
-                "suggests timing or subject line issues. Optimize send schedule."
-            ))
+            priorities.append(
+                (
+                    75,
+                    f"Improve message engagement - view rate ({ppv.view_rate_pct:.1f}%) "
+                    "suggests timing or subject line issues. Optimize send schedule.",
+                )
+            )
 
         # Low RPS
         if ppv.revenue_per_send < 0.25:
-            priorities.append((
-                72,
-                f"Increase revenue per send (${ppv.revenue_per_send:.2f}) - "
-                "consider raising prices or improving content quality."
-            ))
+            priorities.append(
+                (
+                    72,
+                    f"Increase revenue per send (${ppv.revenue_per_send:.2f}) - "
+                    "consider raising prices or improving content quality.",
+                )
+            )
 
     # --- Caption Priorities ---
     if captions is not None:
         # Critical caption freshness
         if captions.avg_freshness < 30:
-            priorities.append((
-                95,
-                "URGENT: Caption library critically stale - average freshness "
-                f"({captions.avg_freshness:.0f}%) below minimum. Add new captions immediately."
-            ))
+            priorities.append(
+                (
+                    95,
+                    "URGENT: Caption library critically stale - average freshness "
+                    f"({captions.avg_freshness:.0f}%) below minimum. Add new captions immediately.",
+                )
+            )
         elif captions.avg_freshness < 50:
-            priorities.append((
-                60,
-                f"Refresh caption library - freshness ({captions.avg_freshness:.0f}%) "
-                "is declining. Schedule new caption creation this week."
-            ))
+            priorities.append(
+                (
+                    60,
+                    f"Refresh caption library - freshness ({captions.avg_freshness:.0f}%) "
+                    "is declining. Schedule new caption creation this week.",
+                )
+            )
 
         # Small caption pool
         if captions.total_captions < 25:
-            priorities.append((
-                78,
-                f"Expand caption library - only {captions.total_captions} captions available. "
-                "Target 75+ for adequate rotation and variety."
-            ))
+            priorities.append(
+                (
+                    78,
+                    f"Expand caption library - only {captions.total_captions} captions available. "
+                    "Target 75+ for adequate rotation and variety.",
+                )
+            )
 
         # Too many critical stale
         if captions.critical_stale_count > 10:
-            priorities.append((
-                73,
-                f"Archive stale captions - {captions.critical_stale_count} captions are critically "
-                "overused. Mark for retirement or rewrite."
-            ))
+            priorities.append(
+                (
+                    73,
+                    f"Archive stale captions - {captions.critical_stale_count} captions are critically "
+                    "overused. Mark for retirement or rewrite.",
+                )
+            )
 
     # --- Timing Priorities ---
     if timing is not None:
@@ -2620,37 +2746,47 @@ def generate_priorities(
             ]
             if best_hour_earnings and timing.hourly_performance:
                 avg_best = sum(best_hour_earnings) / len(best_hour_earnings)
-                all_avg = sum(h.avg_earnings for h in timing.hourly_performance) / len(timing.hourly_performance)
+                all_avg = sum(h.avg_earnings for h in timing.hourly_performance) / len(
+                    timing.hourly_performance
+                )
                 if avg_best > all_avg * 1.3:  # 30% better
                     best_hours_str = ", ".join(f"{h}:00" for h in timing.best_hours[:3])
-                    priorities.append((
-                        55,
-                        f"Optimize posting schedule - peak hours ({best_hours_str}) "
-                        f"show {((avg_best/all_avg)-1)*100:.0f}% better earnings. Concentrate sends here."
-                    ))
+                    priorities.append(
+                        (
+                            55,
+                            f"Optimize posting schedule - peak hours ({best_hours_str}) "
+                            f"show {((avg_best / all_avg) - 1) * 100:.0f}% better earnings. Concentrate sends here.",
+                        )
+                    )
 
     # --- Content Priorities ---
     if content is not None:
         # Underutilized content types
         if content.underutilized_types:
             untapped = ", ".join(content.underutilized_types[:3])
-            priorities.append((
-                50,
-                f"Explore untapped content types: {untapped} - "
-                "available in vault but rarely used in PPVs."
-            ))
+            priorities.append(
+                (
+                    50,
+                    f"Explore untapped content types: {untapped} - "
+                    "available in vault but rarely used in PPVs.",
+                )
+            )
 
         # Content type diversification
         if content.top_content_types and len(content.content_rankings) > 3:
-            top_revenue_share = sum(
-                c.total_revenue for c in content.content_rankings[:2]
-            ) / max(sum(c.total_revenue for c in content.content_rankings), 1) * 100
+            top_revenue_share = (
+                sum(c.total_revenue for c in content.content_rankings[:2])
+                / max(sum(c.total_revenue for c in content.content_rankings), 1)
+                * 100
+            )
             if top_revenue_share > 80:
-                priorities.append((
-                    45,
-                    f"Diversify content strategy - top 2 types account for {top_revenue_share:.0f}% "
-                    "of revenue. Test other formats to reduce dependency."
-                ))
+                priorities.append(
+                    (
+                        45,
+                        f"Diversify content strategy - top 2 types account for {top_revenue_share:.0f}% "
+                        "of revenue. Test other formats to reduce dependency.",
+                    )
+                )
 
     # Sort by urgency (highest first) and take top 5
     priorities.sort(key=lambda x: x[0], reverse=True)
@@ -2681,65 +2817,76 @@ def generate_quick_wins(
     # --- Timing Quick Wins ---
     if timing is not None and timing.best_hours:
         best_hours_str = ", ".join(f"{h}:00" for h in timing.best_hours[:3])
-        quick_wins.append(QuickWin(
-            action="Shift PPV sends to peak hours",
-            implementation=f"Schedule all PPVs for {best_hours_str} (highest performing hours)",
-            expected_impact="10-25% increase in view rate and conversions"
-        ))
+        quick_wins.append(
+            QuickWin(
+                action="Shift PPV sends to peak hours",
+                implementation=f"Schedule all PPVs for {best_hours_str} (highest performing hours)",
+                expected_impact="10-25% increase in view rate and conversions",
+            )
+        )
 
         if timing.best_days:
             best_days_str = ", ".join(timing.best_days[:3])
-            quick_wins.append(QuickWin(
-                action="Increase volume on best-performing days",
-                implementation=f"Add +1-2 extra PPVs on {best_days_str}",
-                expected_impact="15-30% revenue lift from timing optimization"
-            ))
+            quick_wins.append(
+                QuickWin(
+                    action="Increase volume on best-performing days",
+                    implementation=f"Add +1-2 extra PPVs on {best_days_str}",
+                    expected_impact="15-30% revenue lift from timing optimization",
+                )
+            )
 
     # --- Pricing Quick Wins ---
     if pricing is not None:
         if pricing.recommended_price_range:
             sweet_spot = pricing.recommended_price_range.get("sweet_spot", 0)
             if sweet_spot > 0:
-                quick_wins.append(QuickWin(
-                    action="Adjust PPV pricing to sweet spot",
-                    implementation=f"Price most PPVs at ${sweet_spot:.0f} (optimal conversion/revenue balance)",
-                    expected_impact="5-15% revenue increase from price optimization"
-                ))
+                quick_wins.append(
+                    QuickWin(
+                        action="Adjust PPV pricing to sweet spot",
+                        implementation=f"Price most PPVs at ${sweet_spot:.0f} (optimal conversion/revenue balance)",
+                        expected_impact="5-15% revenue increase from price optimization",
+                    )
+                )
 
         # Check for underpriced content
         if pricing.optimal_prices:
             underpriced = [
-                op for op in pricing.optimal_prices
-                if op.purchase_rate > 10 and op.avg_price < 12
+                op for op in pricing.optimal_prices if op.purchase_rate > 10 and op.avg_price < 12
             ]
             if underpriced:
                 content_type = underpriced[0].type_name
-                quick_wins.append(QuickWin(
-                    action=f"Increase {content_type} pricing",
-                    implementation=f"Test ${underpriced[0].avg_price + 3:.0f}-{underpriced[0].avg_price + 5:.0f} "
-                                  f"for {content_type} (high demand, low price)",
-                    expected_impact="10-20% revenue gain from price correction"
-                ))
+                quick_wins.append(
+                    QuickWin(
+                        action=f"Increase {content_type} pricing",
+                        implementation=f"Test ${underpriced[0].avg_price + 3:.0f}-{underpriced[0].avg_price + 5:.0f} "
+                        f"for {content_type} (high demand, low price)",
+                        expected_impact="10-20% revenue gain from price correction",
+                    )
+                )
 
     # --- Content Quick Wins ---
     if content is not None:
         # Use top performing content types
         if content.top_content_types:
             top_type = content.top_content_types[0]
-            quick_wins.append(QuickWin(
-                action=f"Increase {top_type} content frequency",
-                implementation=f"Schedule 2-3 additional {top_type} PPVs this week",
-                expected_impact="8-15% revenue boost from proven content"
-            ))
+            quick_wins.append(
+                QuickWin(
+                    action=f"Increase {top_type} content frequency",
+                    implementation=f"Schedule 2-3 additional {top_type} PPVs this week",
+                    expected_impact="8-15% revenue boost from proven content",
+                )
+            )
 
         # Tap into underutilized types
         if content.underutilized_types:
             untapped = content.underutilized_types[0]
-            quick_wins.append(QuickWin(
-                action=f"Test {untapped} content",
-                implementation=f"Create 2-3 PPVs with {untapped} content from vault",
-                expected_impact="Potential new revenue stream; test for audience interest"
-            ))
+            quick_wins.append(
+                QuickWin(
+                    action=f"Test {untapped} content",
+                    implementation=f"Create 2-3 PPVs with {untapped} content from vault",
+                    expected_impact="Potential new revenue stream; test for audience interest",
+                )
+            )
 
     # Limit to top 5 quick wins
     return quick_wins[:5]
@@ -2810,7 +2957,7 @@ def generate_thirty_day_plan(
     week4_actions = [
         "analyze 30-day results vs baseline",
         "identify winning strategies to scale",
-        "document learnings for next cycle"
+        "document learnings for next cycle",
     ]
     plan.append(f"Week 4 (Analysis): {'; '.join(week4_actions)}")
 
@@ -2844,33 +2991,38 @@ def generate_ninety_day_roadmap(
 
     if health_score < 50:
         month1_objective = "Stabilize performance metrics and address critical gaps"
-        month1_actions.extend([
-            "Audit and fix all data tracking issues",
-            "Establish daily performance monitoring",
-            "Create emergency content pipeline"
-        ])
+        month1_actions.extend(
+            [
+                "Audit and fix all data tracking issues",
+                "Establish daily performance monitoring",
+                "Create emergency content pipeline",
+            ]
+        )
     elif health_score < 70:
-        month1_actions.extend([
-            "Optimize existing content rotation",
-            "Implement consistent posting schedule",
-            "Refresh caption library"
-        ])
+        month1_actions.extend(
+            [
+                "Optimize existing content rotation",
+                "Implement consistent posting schedule",
+                "Refresh caption library",
+            ]
+        )
     else:
-        month1_actions.extend([
-            "Document winning strategies",
-            "Build scalable content templates",
-            "Establish efficiency benchmarks"
-        ])
+        month1_actions.extend(
+            [
+                "Document winning strategies",
+                "Build scalable content templates",
+                "Establish efficiency benchmarks",
+            ]
+        )
 
     if revenue is not None and revenue.msg_sub_ratio < 1.0:
         month1_actions.append("Increase PPV messaging to 1.0x target")
 
-    roadmap.append(RoadmapItem(
-        month=1,
-        phase="Foundation",
-        objective=month1_objective,
-        key_actions=month1_actions[:4]
-    ))
+    roadmap.append(
+        RoadmapItem(
+            month=1, phase="Foundation", objective=month1_objective, key_actions=month1_actions[:4]
+        )
+    )
 
     # --- Month 2: Growth ---
     month2_objective = "Scale proven strategies and expand reach"
@@ -2879,31 +3031,36 @@ def generate_ninety_day_roadmap(
     if position is not None:
         if position.earnings_percentile < 50:
             month2_objective = "Accelerate growth to reach top 50% of portfolio"
-            month2_actions.extend([
-                "Launch intensive content campaign",
-                "Test aggressive pricing strategies",
-                "Implement fan re-engagement program"
-            ])
+            month2_actions.extend(
+                [
+                    "Launch intensive content campaign",
+                    "Test aggressive pricing strategies",
+                    "Implement fan re-engagement program",
+                ]
+            )
         elif position.earnings_percentile < 75:
-            month2_actions.extend([
-                "Scale top-performing content types",
-                "Expand to new content categories",
-                "Optimize for peak engagement hours"
-            ])
+            month2_actions.extend(
+                [
+                    "Scale top-performing content types",
+                    "Expand to new content categories",
+                    "Optimize for peak engagement hours",
+                ]
+            )
         else:
-            month2_actions.extend([
-                "Defend market position with innovation",
-                "Test premium pricing tiers",
-                "Build exclusive content pipeline"
-            ])
+            month2_actions.extend(
+                [
+                    "Defend market position with innovation",
+                    "Test premium pricing tiers",
+                    "Build exclusive content pipeline",
+                ]
+            )
 
     month2_actions.append("Review Month 1 results and adjust strategy")
-    roadmap.append(RoadmapItem(
-        month=2,
-        phase="Growth",
-        objective=month2_objective,
-        key_actions=month2_actions[:4]
-    ))
+    roadmap.append(
+        RoadmapItem(
+            month=2, phase="Growth", objective=month2_objective, key_actions=month2_actions[:4]
+        )
+    )
 
     # --- Month 3: Optimization ---
     month3_objective = "Maximize efficiency and prepare for next quarter"
@@ -2911,18 +3068,20 @@ def generate_ninety_day_roadmap(
         "Analyze full quarter performance data",
         "Identify and eliminate underperforming strategies",
         "Double down on highest ROI activities",
-        "Plan Q+1 strategic initiatives"
+        "Plan Q+1 strategic initiatives",
     ]
 
     if revenue is not None and revenue.renew_on_pct < 40:
         month3_actions.insert(0, "Launch subscriber loyalty program")
 
-    roadmap.append(RoadmapItem(
-        month=3,
-        phase="Optimization",
-        objective=month3_objective,
-        key_actions=month3_actions[:4]
-    ))
+    roadmap.append(
+        RoadmapItem(
+            month=3,
+            phase="Optimization",
+            objective=month3_objective,
+            key_actions=month3_actions[:4],
+        )
+    )
 
     return roadmap
 
@@ -2952,38 +3111,44 @@ def generate_kpis(
         # Msg:Sub Ratio
         current_ratio = revenue.msg_sub_ratio
         target_30d = max(current_ratio * 1.15, 1.0)  # 15% improvement or 1.0 minimum
-        target_90d = max(current_ratio * 1.4, 1.5)   # 40% improvement or 1.5 minimum
-        kpis.append(KPI(
-            metric="Msg:Sub Ratio",
-            current=round(current_ratio, 2),
-            target_30d=round(target_30d, 2),
-            target_90d=round(target_90d, 2),
-            unit="x"
-        ))
+        target_90d = max(current_ratio * 1.4, 1.5)  # 40% improvement or 1.5 minimum
+        kpis.append(
+            KPI(
+                metric="Msg:Sub Ratio",
+                current=round(current_ratio, 2),
+                target_30d=round(target_30d, 2),
+                target_90d=round(target_90d, 2),
+                unit="x",
+            )
+        )
 
         # Earnings per Fan
         current_epf = revenue.earnings_per_fan
         target_30d_epf = current_epf * 1.10  # 10% improvement
         target_90d_epf = max(current_epf * 1.25, 15.0)  # 25% or $15 minimum
-        kpis.append(KPI(
-            metric="Earnings per Fan",
-            current=round(current_epf, 2),
-            target_30d=round(target_30d_epf, 2),
-            target_90d=round(target_90d_epf, 2),
-            unit="$"
-        ))
+        kpis.append(
+            KPI(
+                metric="Earnings per Fan",
+                current=round(current_epf, 2),
+                target_30d=round(target_30d_epf, 2),
+                target_90d=round(target_90d_epf, 2),
+                unit="$",
+            )
+        )
 
         # Renewal Rate
         current_renew = revenue.renew_on_pct
         target_30d_renew = min(current_renew + 5, 60)  # +5 pts
         target_90d_renew = min(current_renew + 12, 65)  # +12 pts
-        kpis.append(KPI(
-            metric="Renewal Rate",
-            current=round(current_renew, 1),
-            target_30d=round(target_30d_renew, 1),
-            target_90d=round(target_90d_renew, 1),
-            unit="%"
-        ))
+        kpis.append(
+            KPI(
+                metric="Renewal Rate",
+                current=round(current_renew, 1),
+                target_30d=round(target_30d_renew, 1),
+                target_90d=round(target_90d_renew, 1),
+                unit="%",
+            )
+        )
 
     # --- PPV KPIs ---
     if ppv is not None:
@@ -2991,37 +3156,43 @@ def generate_kpis(
         current_pr = ppv.purchase_rate_pct
         target_30d_pr = min(current_pr * 1.15, 15)  # 15% improvement, cap at 15%
         target_90d_pr = min(current_pr * 1.35, 18)  # 35% improvement, cap at 18%
-        kpis.append(KPI(
-            metric="Purchase Rate",
-            current=round(current_pr, 1),
-            target_30d=round(target_30d_pr, 1),
-            target_90d=round(target_90d_pr, 1),
-            unit="%"
-        ))
+        kpis.append(
+            KPI(
+                metric="Purchase Rate",
+                current=round(current_pr, 1),
+                target_30d=round(target_30d_pr, 1),
+                target_90d=round(target_90d_pr, 1),
+                unit="%",
+            )
+        )
 
         # View Rate
         current_vr = ppv.view_rate_pct
         target_30d_vr = min(current_vr + 5, 80)  # +5 pts
         target_90d_vr = min(current_vr + 12, 85)  # +12 pts
-        kpis.append(KPI(
-            metric="View Rate",
-            current=round(current_vr, 1),
-            target_30d=round(target_30d_vr, 1),
-            target_90d=round(target_90d_vr, 1),
-            unit="%"
-        ))
+        kpis.append(
+            KPI(
+                metric="View Rate",
+                current=round(current_vr, 1),
+                target_30d=round(target_30d_vr, 1),
+                target_90d=round(target_90d_vr, 1),
+                unit="%",
+            )
+        )
 
         # Revenue per Send
         current_rps = ppv.revenue_per_send
         target_30d_rps = current_rps * 1.12  # 12% improvement
         target_90d_rps = max(current_rps * 1.30, 0.75)  # 30% or $0.75 minimum
-        kpis.append(KPI(
-            metric="Revenue per Send",
-            current=round(current_rps, 2),
-            target_30d=round(target_30d_rps, 2),
-            target_90d=round(target_90d_rps, 2),
-            unit="$"
-        ))
+        kpis.append(
+            KPI(
+                metric="Revenue per Send",
+                current=round(current_rps, 2),
+                target_30d=round(target_30d_rps, 2),
+                target_90d=round(target_90d_rps, 2),
+                unit="$",
+            )
+        )
 
     # --- Caption KPIs ---
     if captions is not None:
@@ -3029,25 +3200,29 @@ def generate_kpis(
         current_fresh = captions.avg_freshness
         target_30d_fresh = min(current_fresh + 10, 85)  # +10 pts
         target_90d_fresh = min(current_fresh + 20, 90)  # +20 pts
-        kpis.append(KPI(
-            metric="Caption Freshness",
-            current=round(current_fresh, 0),
-            target_30d=round(target_30d_fresh, 0),
-            target_90d=round(target_90d_fresh, 0),
-            unit=""
-        ))
+        kpis.append(
+            KPI(
+                metric="Caption Freshness",
+                current=round(current_fresh, 0),
+                target_30d=round(target_30d_fresh, 0),
+                target_90d=round(target_90d_fresh, 0),
+                unit="",
+            )
+        )
 
         # Caption Pool Size
         current_pool = captions.total_captions
         target_30d_pool = max(current_pool + 15, 50)  # +15 or 50 minimum
         target_90d_pool = max(current_pool + 40, 100)  # +40 or 100 minimum
-        kpis.append(KPI(
-            metric="Caption Pool Size",
-            current=float(current_pool),
-            target_30d=float(target_30d_pool),
-            target_90d=float(target_90d_pool),
-            unit=""
-        ))
+        kpis.append(
+            KPI(
+                metric="Caption Pool Size",
+                current=float(current_pool),
+                target_30d=float(target_30d_pool),
+                target_90d=float(target_90d_pool),
+                unit="",
+            )
+        )
 
     return kpis
 
@@ -3058,10 +3233,7 @@ def generate_kpis(
 
 
 def run_deep_analysis(
-    db: DatabaseManager,
-    creator_id: str,
-    creator_name: str,
-    display_name: str = ""
+    db: DatabaseManager, creator_id: str, creator_name: str, display_name: str = ""
 ) -> DeepAnalysisResult:
     """
     Execute comprehensive 9-phase deep analysis for a single creator.
@@ -3182,11 +3354,7 @@ def run_deep_analysis(
     # --- Calculate Health Score ---
     logger.debug(f"Calculating health score for {creator_name}")
     health_score, health_rating = calculate_health_score(
-        revenue=revenue,
-        ppv=ppv,
-        captions=captions,
-        persona=persona,
-        position=position
+        revenue=revenue, ppv=ppv, captions=captions, persona=persona, position=position
     )
 
     # --- Generate Recommendations ---
@@ -3194,40 +3362,22 @@ def run_deep_analysis(
 
     # Top priorities
     top_priorities = generate_priorities(
-        revenue=revenue,
-        ppv=ppv,
-        timing=timing,
-        content=content,
-        captions=captions
+        revenue=revenue, ppv=ppv, timing=timing, content=content, captions=captions
     )
 
     # Quick wins
-    quick_wins = generate_quick_wins(
-        timing=timing,
-        pricing=pricing,
-        content=content
-    )
+    quick_wins = generate_quick_wins(timing=timing, pricing=pricing, content=content)
 
     # 30-day plan
-    thirty_day_plan = generate_thirty_day_plan(
-        revenue=revenue,
-        ppv=ppv,
-        captions=captions
-    )
+    thirty_day_plan = generate_thirty_day_plan(revenue=revenue, ppv=ppv, captions=captions)
 
     # 90-day roadmap
     ninety_day_roadmap = generate_ninety_day_roadmap(
-        health_score=health_score,
-        position=position,
-        revenue=revenue
+        health_score=health_score, position=position, revenue=revenue
     )
 
     # KPIs to track
-    kpis_to_track = generate_kpis(
-        revenue=revenue,
-        ppv=ppv,
-        captions=captions
-    )
+    kpis_to_track = generate_kpis(revenue=revenue, ppv=ppv, captions=captions)
 
     # --- Calculate Duration ---
     end_time = time.perf_counter()
@@ -3492,16 +3642,20 @@ def format_quick_analysis_markdown(result: QuickAnalysisResult) -> str:
                 hour_label += " AM"
             else:
                 hour_label += " PM"
-            hour_rows.append([
-                hour_label,
-                str(h.get("count", 0)),
-                _format_currency(h.get("avg_earnings", 0)),
-            ])
-        lines.append(format_table(
-            headers=["Hour", "PPV Count", "Avg Earnings"],
-            rows=hour_rows,
-            align=["left", "right", "right"],
-        ))
+            hour_rows.append(
+                [
+                    hour_label,
+                    str(h.get("count", 0)),
+                    _format_currency(h.get("avg_earnings", 0)),
+                ]
+            )
+        lines.append(
+            format_table(
+                headers=["Hour", "PPV Count", "Avg Earnings"],
+                rows=hour_rows,
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
 
     if brief.best_days:
@@ -3509,16 +3663,20 @@ def format_quick_analysis_markdown(result: QuickAnalysisResult) -> str:
         lines.append("")
         day_rows = []
         for d in brief.best_days[:5]:
-            day_rows.append([
-                d.get("day_name", "N/A"),
-                str(d.get("count", 0)),
-                _format_currency(d.get("avg_earnings", 0)),
-            ])
-        lines.append(format_table(
-            headers=["Day", "PPV Count", "Avg Earnings"],
-            rows=day_rows,
-            align=["left", "right", "right"],
-        ))
+            day_rows.append(
+                [
+                    d.get("day_name", "N/A"),
+                    str(d.get("count", 0)),
+                    _format_currency(d.get("avg_earnings", 0)),
+                ]
+            )
+        lines.append(
+            format_table(
+                headers=["Day", "PPV Count", "Avg Earnings"],
+                rows=day_rows,
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
 
     # Caption Health
@@ -3657,23 +3815,49 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
     exec_rows = []
     if result.revenue:
         msg_rating = result.revenue.msg_sub_rating or "N/A"
-        exec_rows.append(["Revenue Health", f"{result.revenue.msg_pct:.0f}%", f"{_get_rating_emoji(msg_rating)} {msg_rating}"])
+        exec_rows.append(
+            [
+                "Revenue Health",
+                f"{result.revenue.msg_pct:.0f}%",
+                f"{_get_rating_emoji(msg_rating)} {msg_rating}",
+            ]
+        )
     if result.ppv:
         ppv_rating = result.ppv.purchase_rate_rating or "N/A"
-        exec_rows.append(["PPV Performance", _format_percentage(result.ppv.purchase_rate_pct), f"{_get_rating_emoji(ppv_rating)} {ppv_rating}"])
+        exec_rows.append(
+            [
+                "PPV Performance",
+                _format_percentage(result.ppv.purchase_rate_pct),
+                f"{_get_rating_emoji(ppv_rating)} {ppv_rating}",
+            ]
+        )
     if result.captions:
         caption_rating = result.captions.caption_health_rating or "N/A"
-        exec_rows.append(["Caption Health", f"{result.captions.avg_freshness:.0f}", f"{_get_rating_emoji(caption_rating)} {caption_rating}"])
+        exec_rows.append(
+            [
+                "Caption Health",
+                f"{result.captions.avg_freshness:.0f}",
+                f"{_get_rating_emoji(caption_rating)} {caption_rating}",
+            ]
+        )
     if result.portfolio_position:
         pos_label = result.portfolio_position.competitive_position or "N/A"
-        exec_rows.append(["Portfolio Rank", f"#{result.portfolio_position.earnings_rank}", f"{_get_rating_emoji(pos_label)} {pos_label}"])
+        exec_rows.append(
+            [
+                "Portfolio Rank",
+                f"#{result.portfolio_position.earnings_rank}",
+                f"{_get_rating_emoji(pos_label)} {pos_label}",
+            ]
+        )
 
     if exec_rows:
-        lines.append(format_table(
-            headers=["Metric", "Value", "Rating"],
-            rows=exec_rows,
-            align=["left", "right", "left"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Metric", "Value", "Rating"],
+                rows=exec_rows,
+                align=["left", "right", "left"],
+            )
+        )
         lines.append("")
 
     # Top Priorities
@@ -3692,22 +3876,44 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         rev = result.revenue
         lines.append("## Phase 2: Revenue Architecture")
         lines.append("")
-        lines.append(format_table(
-            headers=["Revenue Source", "Amount", "% of Total"],
-            rows=[
-                ["Messages", _format_currency(rev.message_net), _format_percentage(rev.msg_pct)],
-                ["Subscriptions", _format_currency(rev.subscription_net), _format_percentage(rev.sub_pct)],
-                ["Tips", _format_currency(rev.tips_net), _format_percentage(100 - rev.msg_pct - rev.sub_pct if rev.tips_net > 0 else 0)],
-                ["Posts", _format_currency(rev.posts_net), "N/A"],
-                ["**Total**", f"**{_format_currency(rev.total_earnings)}**", "**100%**"],
-            ],
-            align=["left", "right", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Revenue Source", "Amount", "% of Total"],
+                rows=[
+                    [
+                        "Messages",
+                        _format_currency(rev.message_net),
+                        _format_percentage(rev.msg_pct),
+                    ],
+                    [
+                        "Subscriptions",
+                        _format_currency(rev.subscription_net),
+                        _format_percentage(rev.sub_pct),
+                    ],
+                    [
+                        "Tips",
+                        _format_currency(rev.tips_net),
+                        _format_percentage(
+                            100 - rev.msg_pct - rev.sub_pct if rev.tips_net > 0 else 0
+                        ),
+                    ],
+                    ["Posts", _format_currency(rev.posts_net), "N/A"],
+                    ["**Total**", f"**{_format_currency(rev.total_earnings)}**", "**100%**"],
+                ],
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
         lines.append("**Key Ratios:**")
-        lines.append(f"- Message:Subscription Ratio: **{rev.msg_sub_ratio:.2f}** ({rev.msg_sub_rating})")
-        lines.append(f"- Earnings per Fan: **{_format_currency(rev.earnings_per_fan)}** ({rev.earnings_per_fan_rating})")
-        lines.append(f"- Renewal Rate: **{_format_percentage(rev.renew_on_pct)}** ({rev.renew_on_rating})")
+        lines.append(
+            f"- Message:Subscription Ratio: **{rev.msg_sub_ratio:.2f}** ({rev.msg_sub_rating})"
+        )
+        lines.append(
+            f"- Earnings per Fan: **{_format_currency(rev.earnings_per_fan)}** ({rev.earnings_per_fan_rating})"
+        )
+        lines.append(
+            f"- Renewal Rate: **{_format_percentage(rev.renew_on_pct)}** ({rev.renew_on_rating})"
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -3717,19 +3923,33 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         ppv = result.ppv
         lines.append("## Phase 3: PPV Performance")
         lines.append("")
-        lines.append(format_table(
-            headers=["Metric", "Value", "Rating"],
-            rows=[
-                ["Total PPVs", f"{ppv.total_ppvs:,}", ""],
-                ["Total Revenue", _format_currency(ppv.total_revenue), ""],
-                ["Avg Earnings", _format_currency(ppv.avg_earnings), ""],
-                ["View Rate", _format_percentage(ppv.view_rate_pct), f"{_get_rating_emoji(ppv.view_rate_rating)} {ppv.view_rate_rating}"],
-                ["Purchase Rate", _format_percentage(ppv.purchase_rate_pct), f"{_get_rating_emoji(ppv.purchase_rate_rating)} {ppv.purchase_rate_rating}"],
-                ["Revenue/Send", _format_currency(ppv.revenue_per_send), f"{_get_rating_emoji(ppv.rps_rating)} {ppv.rps_rating}"],
-                ["Avg Price", _format_currency(ppv.avg_price), ""],
-            ],
-            align=["left", "right", "left"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Metric", "Value", "Rating"],
+                rows=[
+                    ["Total PPVs", f"{ppv.total_ppvs:,}", ""],
+                    ["Total Revenue", _format_currency(ppv.total_revenue), ""],
+                    ["Avg Earnings", _format_currency(ppv.avg_earnings), ""],
+                    [
+                        "View Rate",
+                        _format_percentage(ppv.view_rate_pct),
+                        f"{_get_rating_emoji(ppv.view_rate_rating)} {ppv.view_rate_rating}",
+                    ],
+                    [
+                        "Purchase Rate",
+                        _format_percentage(ppv.purchase_rate_pct),
+                        f"{_get_rating_emoji(ppv.purchase_rate_rating)} {ppv.purchase_rate_rating}",
+                    ],
+                    [
+                        "Revenue/Send",
+                        _format_currency(ppv.revenue_per_send),
+                        f"{_get_rating_emoji(ppv.rps_rating)} {ppv.rps_rating}",
+                    ],
+                    ["Avg Price", _format_currency(ppv.avg_price), ""],
+                ],
+                align=["left", "right", "left"],
+            )
+        )
         lines.append("")
 
         # Monthly trends
@@ -3738,18 +3958,22 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             trend_rows = []
             for trend in ppv.monthly_trends[-6:]:  # Last 6 months
-                trend_rows.append([
-                    trend.month,
-                    str(trend.ppv_count),
-                    _format_currency(trend.revenue),
-                    _format_currency(trend.avg_earnings),
-                    _format_percentage(trend.purchase_rate),
-                ])
-            lines.append(format_table(
-                headers=["Month", "PPV Count", "Revenue", "Avg Earnings", "Purchase Rate"],
-                rows=trend_rows,
-                align=["left", "right", "right", "right", "right"],
-            ))
+                trend_rows.append(
+                    [
+                        trend.month,
+                        str(trend.ppv_count),
+                        _format_currency(trend.revenue),
+                        _format_currency(trend.avg_earnings),
+                        _format_percentage(trend.purchase_rate),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Month", "PPV Count", "Revenue", "Avg Earnings", "Purchase Rate"],
+                    rows=trend_rows,
+                    align=["left", "right", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Week over week
@@ -3757,15 +3981,27 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             wow = ppv.week_over_week
             lines.append("### Week-over-Week Comparison")
             lines.append("")
-            lines.append(format_table(
-                headers=["Metric", "Current Week", "Previous Week", "Change"],
-                rows=[
-                    ["PPV Count", str(wow.current_week_ppvs), str(wow.previous_week_ppvs), ""],
-                    ["Revenue", _format_currency(wow.current_week_revenue), _format_currency(wow.previous_week_revenue), f"{wow.revenue_change_pct:+.1f}%"],
-                    ["Purchase Rate", _format_percentage(wow.current_week_purchase_rate), _format_percentage(wow.previous_week_purchase_rate), f"{wow.purchase_rate_change_pct:+.1f}%"],
-                ],
-                align=["left", "right", "right", "right"],
-            ))
+            lines.append(
+                format_table(
+                    headers=["Metric", "Current Week", "Previous Week", "Change"],
+                    rows=[
+                        ["PPV Count", str(wow.current_week_ppvs), str(wow.previous_week_ppvs), ""],
+                        [
+                            "Revenue",
+                            _format_currency(wow.current_week_revenue),
+                            _format_currency(wow.previous_week_revenue),
+                            f"{wow.revenue_change_pct:+.1f}%",
+                        ],
+                        [
+                            "Purchase Rate",
+                            _format_percentage(wow.current_week_purchase_rate),
+                            _format_percentage(wow.previous_week_purchase_rate),
+                            f"{wow.purchase_rate_change_pct:+.1f}%",
+                        ],
+                    ],
+                    align=["left", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         lines.append("---")
@@ -3787,22 +4023,28 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         if timing.hourly_performance:
             lines.append("### Hourly Performance (Top 8)")
             lines.append("")
-            sorted_hours = sorted(timing.hourly_performance, key=lambda x: x.total_revenue, reverse=True)[:8]
+            sorted_hours = sorted(
+                timing.hourly_performance, key=lambda x: x.total_revenue, reverse=True
+            )[:8]
             hour_rows = []
             for hp in sorted_hours:
                 hour_label = f"{hp.hour:02d}:00"
-                hour_rows.append([
-                    hour_label,
-                    str(hp.count),
-                    _format_currency(hp.total_revenue),
-                    _format_currency(hp.avg_earnings),
-                    _format_percentage(hp.purchase_rate),
-                ])
-            lines.append(format_table(
-                headers=["Hour", "Count", "Total Revenue", "Avg Earnings", "Purchase Rate"],
-                rows=hour_rows,
-                align=["left", "right", "right", "right", "right"],
-            ))
+                hour_rows.append(
+                    [
+                        hour_label,
+                        str(hp.count),
+                        _format_currency(hp.total_revenue),
+                        _format_currency(hp.avg_earnings),
+                        _format_percentage(hp.purchase_rate),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Hour", "Count", "Total Revenue", "Avg Earnings", "Purchase Rate"],
+                    rows=hour_rows,
+                    align=["left", "right", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Daily performance
@@ -3811,17 +4053,21 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             day_rows = []
             for dp in timing.daily_performance:
-                day_rows.append([
-                    dp.day,
-                    str(dp.count),
-                    _format_currency(dp.avg_earnings),
-                    _format_percentage(dp.purchase_rate),
-                ])
-            lines.append(format_table(
-                headers=["Day", "Count", "Avg Earnings", "Purchase Rate"],
-                rows=day_rows,
-                align=["left", "right", "right", "right"],
-            ))
+                day_rows.append(
+                    [
+                        dp.day,
+                        str(dp.count),
+                        _format_currency(dp.avg_earnings),
+                        _format_percentage(dp.purchase_rate),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Day", "Count", "Avg Earnings", "Purchase Rate"],
+                    rows=day_rows,
+                    align=["left", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Top combinations (heatmap style)
@@ -3830,16 +4076,20 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             combo_rows = []
             for entry in timing.top_combinations[:10]:
-                combo_rows.append([
-                    f"{entry.day} {entry.hour:02d}:00",
-                    str(entry.count),
-                    _format_currency(entry.avg_earnings),
-                ])
-            lines.append(format_table(
-                headers=["Time Slot", "Count", "Avg Earnings"],
-                rows=combo_rows,
-                align=["left", "right", "right"],
-            ))
+                combo_rows.append(
+                    [
+                        f"{entry.day} {entry.hour:02d}:00",
+                        str(entry.count),
+                        _format_currency(entry.avg_earnings),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Time Slot", "Count", "Avg Earnings"],
+                    rows=combo_rows,
+                    align=["left", "right", "right"],
+                )
+            )
             lines.append("")
 
         lines.append("---")
@@ -3863,41 +4113,58 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             content_rows = []
             for ct in content.content_rankings[:10]:
-                content_rows.append([
-                    ct.type_name,
-                    ct.type_category,
-                    str(ct.uses),
-                    _format_currency(ct.total_revenue),
-                    _format_currency(ct.avg_earnings),
-                    _format_percentage(ct.purchase_rate),
-                ])
-            lines.append(format_table(
-                headers=["Type", "Category", "Uses", "Revenue", "Avg Earnings", "Purchase Rate"],
-                rows=content_rows,
-                align=["left", "left", "right", "right", "right", "right"],
-            ))
+                content_rows.append(
+                    [
+                        ct.type_name,
+                        ct.type_category,
+                        str(ct.uses),
+                        _format_currency(ct.total_revenue),
+                        _format_currency(ct.avg_earnings),
+                        _format_percentage(ct.purchase_rate),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=[
+                        "Type",
+                        "Category",
+                        "Uses",
+                        "Revenue",
+                        "Avg Earnings",
+                        "Purchase Rate",
+                    ],
+                    rows=content_rows,
+                    align=["left", "left", "right", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Content gaps
         if content.content_gaps:
-            gaps_needing_attention = [g for g in content.content_gaps if g.status in ("UNTAPPED", "NEEDS CONTENT")]
+            gaps_needing_attention = [
+                g for g in content.content_gaps if g.status in ("UNTAPPED", "NEEDS CONTENT")
+            ]
             if gaps_needing_attention:
                 lines.append("### Content Gaps")
                 lines.append("")
                 gap_rows = []
                 for gap in gaps_needing_attention[:5]:
-                    gap_rows.append([
-                        gap.type_name,
-                        "Yes" if gap.in_vault else "No",
-                        str(gap.quantity),
-                        str(gap.times_used),
-                        gap.status,
-                    ])
-                lines.append(format_table(
-                    headers=["Type", "In Vault", "Qty", "Times Used", "Status"],
-                    rows=gap_rows,
-                    align=["left", "center", "right", "right", "left"],
-                ))
+                    gap_rows.append(
+                        [
+                            gap.type_name,
+                            "Yes" if gap.in_vault else "No",
+                            str(gap.quantity),
+                            str(gap.times_used),
+                            gap.status,
+                        ]
+                    )
+                lines.append(
+                    format_table(
+                        headers=["Type", "In Vault", "Qty", "Times Used", "Status"],
+                        rows=gap_rows,
+                        align=["left", "center", "right", "right", "left"],
+                    )
+                )
                 lines.append("")
 
         lines.append("---")
@@ -3911,7 +4178,9 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
 
         if pricing.recommended_price_range:
             rpr = pricing.recommended_price_range
-            lines.append(f"**Recommended Price Range:** {_format_currency(rpr.get('min', 0))} - {_format_currency(rpr.get('max', 0))}")
+            lines.append(
+                f"**Recommended Price Range:** {_format_currency(rpr.get('min', 0))} - {_format_currency(rpr.get('max', 0))}"
+            )
             lines.append(f"**Sweet Spot:** {_format_currency(rpr.get('sweet_spot', 0))}")
             lines.append("")
 
@@ -3921,18 +4190,22 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             tier_rows = []
             for tier in pricing.price_tier_performance:
-                tier_rows.append([
-                    tier.price_tier,
-                    str(tier.count),
-                    _format_currency(tier.total_revenue),
-                    _format_currency(tier.avg_earnings),
-                    _format_percentage(tier.purchase_rate),
-                ])
-            lines.append(format_table(
-                headers=["Price Tier", "Count", "Revenue", "Avg Earnings", "Purchase Rate"],
-                rows=tier_rows,
-                align=["left", "right", "right", "right", "right"],
-            ))
+                tier_rows.append(
+                    [
+                        tier.price_tier,
+                        str(tier.count),
+                        _format_currency(tier.total_revenue),
+                        _format_currency(tier.avg_earnings),
+                        _format_percentage(tier.purchase_rate),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Price Tier", "Count", "Revenue", "Avg Earnings", "Purchase Rate"],
+                    rows=tier_rows,
+                    align=["left", "right", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Optimal prices by content type
@@ -3941,18 +4214,22 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             opt_rows = []
             for op in pricing.optimal_prices[:8]:
-                opt_rows.append([
-                    op.type_name,
-                    _format_currency(op.avg_price),
-                    _format_currency(op.avg_earnings),
-                    _format_percentage(op.purchase_rate),
-                    _format_currency(op.recommended_price) if op.recommended_price else "N/A",
-                ])
-            lines.append(format_table(
-                headers=["Type", "Avg Price", "Avg Earnings", "Purchase Rate", "Recommended"],
-                rows=opt_rows,
-                align=["left", "right", "right", "right", "right"],
-            ))
+                opt_rows.append(
+                    [
+                        op.type_name,
+                        _format_currency(op.avg_price),
+                        _format_currency(op.avg_earnings),
+                        _format_percentage(op.purchase_rate),
+                        _format_currency(op.recommended_price) if op.recommended_price else "N/A",
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Type", "Avg Price", "Avg Earnings", "Purchase Rate", "Recommended"],
+                    rows=opt_rows,
+                    align=["left", "right", "right", "right", "right"],
+                )
+            )
             lines.append("")
 
         lines.append("---")
@@ -3965,17 +4242,19 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         lines.append("")
         lines.append(f"**Caption Health Rating:** {captions.caption_health_rating}")
         lines.append("")
-        lines.append(format_table(
-            headers=["Metric", "Value"],
-            rows=[
-                ["Total Captions", f"{captions.total_captions:,}"],
-                ["Avg Freshness", f"{captions.avg_freshness:.1f}"],
-                ["Fresh (>= 80)", f"{captions.fresh_count:,}"],
-                ["Stale (< 50)", f"{captions.stale_count:,}"],
-                ["Critical (< 30)", f"{captions.critical_stale_count:,}"],
-            ],
-            align=["left", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Metric", "Value"],
+                rows=[
+                    ["Total Captions", f"{captions.total_captions:,}"],
+                    ["Avg Freshness", f"{captions.avg_freshness:.1f}"],
+                    ["Fresh (>= 80)", f"{captions.fresh_count:,}"],
+                    ["Stale (< 50)", f"{captions.stale_count:,}"],
+                    ["Critical (< 30)", f"{captions.critical_stale_count:,}"],
+                ],
+                align=["left", "right"],
+            )
+        )
         lines.append("")
 
         # Top captions
@@ -3984,17 +4263,21 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             top_rows = []
             for cap in captions.top_captions[:5]:
-                top_rows.append([
-                    cap.preview[:40] + "..." if len(cap.preview) > 40 else cap.preview,
-                    cap.tone or "N/A",
-                    _format_currency(cap.avg_earnings),
-                    str(cap.times_used),
-                ])
-            lines.append(format_table(
-                headers=["Preview", "Tone", "Avg Earnings", "Uses"],
-                rows=top_rows,
-                align=["left", "left", "right", "right"],
-            ))
+                top_rows.append(
+                    [
+                        cap.preview[:40] + "..." if len(cap.preview) > 40 else cap.preview,
+                        cap.tone or "N/A",
+                        _format_currency(cap.avg_earnings),
+                        str(cap.times_used),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Preview", "Tone", "Avg Earnings", "Uses"],
+                    rows=top_rows,
+                    align=["left", "left", "right", "right"],
+                )
+            )
             lines.append("")
 
         # Tone effectiveness
@@ -4003,16 +4286,20 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("")
             tone_rows = []
             for tone in captions.tone_effectiveness[:6]:
-                tone_rows.append([
-                    tone.tone,
-                    str(tone.count),
-                    _format_currency(tone.avg_earnings),
-                ])
-            lines.append(format_table(
-                headers=["Tone", "Count", "Avg Earnings"],
-                rows=tone_rows,
-                align=["left", "right", "right"],
-            ))
+                tone_rows.append(
+                    [
+                        tone.tone,
+                        str(tone.count),
+                        _format_currency(tone.avg_earnings),
+                    ]
+                )
+            lines.append(
+                format_table(
+                    headers=["Tone", "Count", "Avg Earnings"],
+                    rows=tone_rows,
+                    align=["left", "right", "right"],
+                )
+            )
             lines.append("")
 
         lines.append("---")
@@ -4023,20 +4310,22 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         persona = result.persona
         lines.append("## Phase 8: Persona Profile")
         lines.append("")
-        lines.append(format_table(
-            headers=["Attribute", "Value"],
-            rows=[
-                ["Primary Tone", persona.primary_tone],
-                ["Secondary Tone", persona.secondary_tone or "N/A"],
-                ["Emoji Frequency", persona.emoji_frequency],
-                ["Favorite Emojis", persona.favorite_emojis or "N/A"],
-                ["Slang Level", persona.slang_level],
-                ["Avg Caption Length", f"{persona.avg_caption_length} chars"],
-                ["Communication Style", persona.communication_style or "N/A"],
-                ["Sentiment", f"{persona.sentiment_label} ({persona.avg_sentiment:.2f})"],
-            ],
-            align=["left", "left"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Attribute", "Value"],
+                rows=[
+                    ["Primary Tone", persona.primary_tone],
+                    ["Secondary Tone", persona.secondary_tone or "N/A"],
+                    ["Emoji Frequency", persona.emoji_frequency],
+                    ["Favorite Emojis", persona.favorite_emojis or "N/A"],
+                    ["Slang Level", persona.slang_level],
+                    ["Avg Caption Length", f"{persona.avg_caption_length} chars"],
+                    ["Communication Style", persona.communication_style or "N/A"],
+                    ["Sentiment", f"{persona.sentiment_label} ({persona.avg_sentiment:.2f})"],
+                ],
+                align=["left", "left"],
+            )
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -4048,15 +4337,17 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
         lines.append("")
         lines.append(f"**Competitive Position:** {pos.competitive_position}")
         lines.append("")
-        lines.append(format_table(
-            headers=["Metric", "Rank", "Percentile"],
-            rows=[
-                ["Earnings", f"#{pos.earnings_rank}", f"{pos.earnings_percentile}th"],
-                ["Fans", f"#{pos.fans_rank}", f"{pos.fans_percentile}th"],
-                ["Efficiency", f"#{pos.efficiency_rank}", f"{pos.efficiency_percentile}th"],
-            ],
-            align=["left", "right", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Metric", "Rank", "Percentile"],
+                rows=[
+                    ["Earnings", f"#{pos.earnings_rank}", f"{pos.earnings_percentile}th"],
+                    ["Fans", f"#{pos.fans_rank}", f"{pos.fans_percentile}th"],
+                    ["Efficiency", f"#{pos.efficiency_rank}", f"{pos.efficiency_percentile}th"],
+                ],
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
 
         if pos.tier_comparison:
@@ -4064,16 +4355,18 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             lines.append("### Tier Comparison")
             lines.append("")
             lines.append(f"**Tier {tc.tier}** ({tc.tier_count} creators)")
-            lines.append(format_table(
-                headers=["Tier Avg", "Value"],
-                rows=[
-                    ["Earnings", _format_currency(tc.tier_avg_earnings)],
-                    ["Fans", f"{tc.tier_avg_fans:,.0f}"],
-                    ["Efficiency", _format_currency(tc.tier_avg_efficiency)],
-                    ["Renewal %", _format_percentage(tc.tier_avg_renew_pct)],
-                ],
-                align=["left", "right"],
-            ))
+            lines.append(
+                format_table(
+                    headers=["Tier Avg", "Value"],
+                    rows=[
+                        ["Earnings", _format_currency(tc.tier_avg_earnings)],
+                        ["Fans", f"{tc.tier_avg_fans:,.0f}"],
+                        ["Efficiency", _format_currency(tc.tier_avg_efficiency)],
+                        ["Renewal %", _format_percentage(tc.tier_avg_renew_pct)],
+                    ],
+                    align=["left", "right"],
+                )
+            )
             lines.append("")
 
         lines.append("---")
@@ -4125,11 +4418,13 @@ def format_deep_analysis_markdown(result: DeepAnalysisResult) -> str:
             target_30 = f"{kpi.target_30d:.1f}{unit}" if unit else f"{kpi.target_30d:.1f}"
             target_90 = f"{kpi.target_90d:.1f}{unit}" if unit else f"{kpi.target_90d:.1f}"
             kpi_rows.append([kpi.metric, current, target_30, target_90])
-        lines.append(format_table(
-            headers=["KPI", "Current", "30-Day Target", "90-Day Target"],
-            rows=kpi_rows,
-            align=["left", "right", "right", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["KPI", "Current", "30-Day Target", "90-Day Target"],
+                rows=kpi_rows,
+                align=["left", "right", "right", "right"],
+            )
+        )
         lines.append("")
 
     lines.append("---")
@@ -4190,38 +4485,54 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
     # Portfolio Overview
     lines.append("## Portfolio Overview")
     lines.append("")
-    lines.append(format_table(
-        headers=["Metric", "Value"],
-        rows=[
-            ["Total Creators", str(summary.total_creators)],
-            ["Active Creators", str(summary.active_creators)],
-            ["Paid Pages", str(summary.paid_pages)],
-            ["Free Pages", str(summary.free_pages)],
-        ],
-        align=["left", "right"],
-    ))
+    lines.append(
+        format_table(
+            headers=["Metric", "Value"],
+            rows=[
+                ["Total Creators", str(summary.total_creators)],
+                ["Active Creators", str(summary.active_creators)],
+                ["Paid Pages", str(summary.paid_pages)],
+                ["Free Pages", str(summary.free_pages)],
+            ],
+            align=["left", "right"],
+        )
+    )
     lines.append("")
 
     # Revenue Breakdown
     lines.append("## Revenue Breakdown")
     lines.append("")
-    lines.append(format_table(
-        headers=["Revenue Source", "Amount", "% of Total"],
-        rows=[
-            [
-                "Messages",
-                _format_currency(summary.total_message_revenue),
-                _format_percentage(summary.total_message_revenue / summary.total_portfolio_earnings * 100) if summary.total_portfolio_earnings > 0 else "0%",
+    lines.append(
+        format_table(
+            headers=["Revenue Source", "Amount", "% of Total"],
+            rows=[
+                [
+                    "Messages",
+                    _format_currency(summary.total_message_revenue),
+                    _format_percentage(
+                        summary.total_message_revenue / summary.total_portfolio_earnings * 100
+                    )
+                    if summary.total_portfolio_earnings > 0
+                    else "0%",
+                ],
+                [
+                    "Subscriptions",
+                    _format_currency(summary.total_subscription_revenue),
+                    _format_percentage(
+                        summary.total_subscription_revenue / summary.total_portfolio_earnings * 100
+                    )
+                    if summary.total_portfolio_earnings > 0
+                    else "0%",
+                ],
+                [
+                    "**Total Portfolio**",
+                    f"**{_format_currency(summary.total_portfolio_earnings)}**",
+                    "**100%**",
+                ],
             ],
-            [
-                "Subscriptions",
-                _format_currency(summary.total_subscription_revenue),
-                _format_percentage(summary.total_subscription_revenue / summary.total_portfolio_earnings * 100) if summary.total_portfolio_earnings > 0 else "0%",
-            ],
-            ["**Total Portfolio**", f"**{_format_currency(summary.total_portfolio_earnings)}**", "**100%**"],
-        ],
-        align=["left", "right", "right"],
-    ))
+            align=["left", "right", "right"],
+        )
+    )
     lines.append("")
     lines.append(f"**Avg Earnings/Creator:** {_format_currency(summary.avg_earnings_per_creator)}")
     lines.append(f"**Avg Fans/Creator:** {summary.avg_fans_per_creator:,.0f}")
@@ -4240,11 +4551,13 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
             count = summary.tier_distribution[tier]
             pct = (count / summary.active_creators * 100) if summary.active_creators > 0 else 0
             tier_rows.append([f"Tier {tier}", str(count), _format_percentage(pct)])
-        lines.append(format_table(
-            headers=["Tier", "Count", "% of Portfolio"],
-            rows=tier_rows,
-            align=["left", "right", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Tier", "Count", "% of Portfolio"],
+                rows=tier_rows,
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
 
     # Volume Distribution
@@ -4255,11 +4568,13 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         for level, count in summary.volume_distribution.items():
             pct = (count / summary.active_creators * 100) if summary.active_creators > 0 else 0
             vol_rows.append([level, str(count), _format_percentage(pct)])
-        lines.append(format_table(
-            headers=["Volume Level", "Count", "% of Portfolio"],
-            rows=vol_rows,
-            align=["left", "right", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Volume Level", "Count", "% of Portfolio"],
+                rows=vol_rows,
+                align=["left", "right", "right"],
+            )
+        )
         lines.append("")
 
     lines.append("---")
@@ -4275,12 +4590,16 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         lines.append("")
         rev_rows = []
         for cr in summary.top_5_by_revenue:
-            rev_rows.append([f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)])
-        lines.append(format_table(
-            headers=["Rank", "Creator", "Earnings"],
-            rows=rev_rows,
-            align=["right", "left", "right"],
-        ))
+            rev_rows.append(
+                [f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)]
+            )
+        lines.append(
+            format_table(
+                headers=["Rank", "Creator", "Earnings"],
+                rows=rev_rows,
+                align=["right", "left", "right"],
+            )
+        )
         lines.append("")
 
     # Top 5 by Fans
@@ -4290,11 +4609,13 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         fans_rows = []
         for cr in summary.top_5_by_fans:
             fans_rows.append([f"#{cr.rank}", cr.display_name or cr.page_name, f"{cr.value:,.0f}"])
-        lines.append(format_table(
-            headers=["Rank", "Creator", "Fans"],
-            rows=fans_rows,
-            align=["right", "left", "right"],
-        ))
+        lines.append(
+            format_table(
+                headers=["Rank", "Creator", "Fans"],
+                rows=fans_rows,
+                align=["right", "left", "right"],
+            )
+        )
         lines.append("")
 
     # Top 5 by Efficiency
@@ -4303,12 +4624,16 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         lines.append("")
         eff_rows = []
         for cr in summary.top_5_by_efficiency:
-            eff_rows.append([f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)])
-        lines.append(format_table(
-            headers=["Rank", "Creator", "$/Fan"],
-            rows=eff_rows,
-            align=["right", "left", "right"],
-        ))
+            eff_rows.append(
+                [f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)]
+            )
+        lines.append(
+            format_table(
+                headers=["Rank", "Creator", "$/Fan"],
+                rows=eff_rows,
+                align=["right", "left", "right"],
+            )
+        )
         lines.append("")
 
     # Bottom 5 by Revenue
@@ -4317,12 +4642,16 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         lines.append("")
         bottom_rows = []
         for cr in summary.bottom_5_by_revenue:
-            bottom_rows.append([f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)])
-        lines.append(format_table(
-            headers=["Rank", "Creator", "Earnings"],
-            rows=bottom_rows,
-            align=["right", "left", "right"],
-        ))
+            bottom_rows.append(
+                [f"#{cr.rank}", cr.display_name or cr.page_name, _format_currency(cr.value)]
+            )
+        lines.append(
+            format_table(
+                headers=["Rank", "Creator", "Earnings"],
+                rows=bottom_rows,
+                align=["right", "left", "right"],
+            )
+        )
         lines.append("")
 
     lines.append("---")
@@ -4333,7 +4662,11 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         lines.append("## Creators Needing Attention")
         lines.append("")
         for creator in summary.needs_attention:
-            severity_indicator = "-" if creator.severity == "critical" else ("~" if creator.severity == "high" else "")
+            severity_indicator = (
+                "-"
+                if creator.severity == "critical"
+                else ("~" if creator.severity == "high" else "")
+            )
             lines.append(f"### {severity_indicator} {creator.display_name or creator.page_name}")
             lines.append(f"- **Reason:** {creator.reason}")
             lines.append(f"- **Severity:** {creator.severity.capitalize()}")
@@ -4351,16 +4684,18 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
     # Caption Health Portfolio-Wide
     lines.append("## Caption Health (Portfolio-Wide)")
     lines.append("")
-    lines.append(format_table(
-        headers=["Metric", "Value"],
-        rows=[
-            ["Total Captions", f"{summary.total_captions:,}"],
-            ["Fresh Captions", f"{summary.fresh_captions:,}"],
-            ["Stale Captions", f"{summary.stale_captions:,}"],
-            ["Avg Freshness", f"{summary.avg_freshness:.1f}"],
-        ],
-        align=["left", "right"],
-    ))
+    lines.append(
+        format_table(
+            headers=["Metric", "Value"],
+            rows=[
+                ["Total Captions", f"{summary.total_captions:,}"],
+                ["Fresh Captions", f"{summary.fresh_captions:,}"],
+                ["Stale Captions", f"{summary.stale_captions:,}"],
+                ["Avg Freshness", f"{summary.avg_freshness:.1f}"],
+            ],
+            align=["left", "right"],
+        )
+    )
     lines.append("")
 
     # Fresh/stale ratio
@@ -4377,16 +4712,27 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
     # Processing Stats
     lines.append("## Processing Statistics")
     lines.append("")
-    lines.append(format_table(
-        headers=["Metric", "Value"],
-        rows=[
-            ["Successful Analyses", str(summary.successful_analyses)],
-            ["Failed Analyses", str(summary.failed_analyses)],
-            ["Success Rate", _format_percentage(summary.successful_analyses / (summary.successful_analyses + summary.failed_analyses) * 100) if (summary.successful_analyses + summary.failed_analyses) > 0 else "N/A"],
-            ["Total Duration", f"{summary.total_duration_seconds:.1f}s"],
-        ],
-        align=["left", "right"],
-    ))
+    lines.append(
+        format_table(
+            headers=["Metric", "Value"],
+            rows=[
+                ["Successful Analyses", str(summary.successful_analyses)],
+                ["Failed Analyses", str(summary.failed_analyses)],
+                [
+                    "Success Rate",
+                    _format_percentage(
+                        summary.successful_analyses
+                        / (summary.successful_analyses + summary.failed_analyses)
+                        * 100
+                    )
+                    if (summary.successful_analyses + summary.failed_analyses) > 0
+                    else "N/A",
+                ],
+                ["Total Duration", f"{summary.total_duration_seconds:.1f}s"],
+            ],
+            align=["left", "right"],
+        )
+    )
     lines.append("")
 
     # Error Log
@@ -4394,7 +4740,9 @@ def format_portfolio_summary_markdown(summary: PortfolioSummary) -> str:
         lines.append("## Error Log")
         lines.append("")
         for error in summary.errors:
-            lines.append(f"- **{error.page_name}** ({error.phase}): {error.error_type} - {error.error_message}")
+            lines.append(
+                f"- **{error.page_name}** ({error.phase}): {error.error_type} - {error.error_message}"
+            )
         lines.append("")
 
     lines.append("---")
@@ -4510,7 +4858,7 @@ def save_creator_analysis(
     creator_name: str,
     quick_result: QuickAnalysisResult | None,
     deep_result: DeepAnalysisResult | None,
-    mode: AnalysisMode = AnalysisMode.FULL
+    mode: AnalysisMode = AnalysisMode.FULL,
 ) -> None:
     """
     Save all analysis files for a single creator.
@@ -4589,7 +4937,7 @@ def calculate_portfolio_summary(
     deep_results: list[DeepAnalysisResult],
     errors: list[AnalysisError],
     start_time: float,
-    end_time: float
+    end_time: float,
 ) -> PortfolioSummary:
     """
     Calculate aggregate portfolio statistics from all creator analyses.
@@ -4640,21 +4988,21 @@ def calculate_portfolio_summary(
 
         if qr.brief:
             # Revenue metrics
-            earnings = qr.brief.total_earnings if hasattr(qr.brief, 'total_earnings') else 0.0
+            earnings = qr.brief.total_earnings if hasattr(qr.brief, "total_earnings") else 0.0
             total_earnings += earnings
 
             # Fan metrics
-            fans = qr.brief.active_fans if hasattr(qr.brief, 'active_fans') else 0
+            fans = qr.brief.active_fans if hasattr(qr.brief, "active_fans") else 0
             total_fans += fans
 
             # Revenue breakdown (from brief if available)
-            if hasattr(qr.brief, 'message_net'):
+            if hasattr(qr.brief, "message_net"):
                 total_message_revenue += qr.brief.message_net
-            if hasattr(qr.brief, 'subscription_net'):
+            if hasattr(qr.brief, "subscription_net"):
                 total_subscription_revenue += qr.brief.subscription_net
 
             # Volume level distribution
-            vol_level = qr.brief.volume_level if hasattr(qr.brief, 'volume_level') else "unknown"
+            vol_level = qr.brief.volume_level if hasattr(qr.brief, "volume_level") else "unknown"
             volume_distribution[vol_level] = volume_distribution.get(vol_level, 0) + 1
 
             # Rankings data
@@ -4667,7 +5015,9 @@ def calculate_portfolio_summary(
 
         if qr.benchmarks:
             # Tier distribution
-            tier = qr.benchmarks.performance_tier if hasattr(qr.benchmarks, 'performance_tier') else 0
+            tier = (
+                qr.benchmarks.performance_tier if hasattr(qr.benchmarks, "performance_tier") else 0
+            )
             tier_distribution[tier] = tier_distribution.get(tier, 0) + 1
 
     # Aggregate from deep results (for caption health and detailed metrics)
@@ -4693,63 +5043,73 @@ def calculate_portfolio_summary(
 
             # Check for critical caption health
             if dr.captions.caption_health_rating == "Critical":
-                attention_list.append(CreatorAttention(
-                    creator_id=dr.creator_id,
-                    page_name=dr.page_name,
-                    display_name=dr.display_name,
-                    reason="Critical caption health - stale captions need refresh",
-                    severity="critical",
-                    metrics={
-                        "avg_freshness": dr.captions.avg_freshness,
-                        "critical_stale_count": dr.captions.critical_stale_count,
-                    }
-                ))
+                attention_list.append(
+                    CreatorAttention(
+                        creator_id=dr.creator_id,
+                        page_name=dr.page_name,
+                        display_name=dr.display_name,
+                        reason="Critical caption health - stale captions need refresh",
+                        severity="critical",
+                        metrics={
+                            "avg_freshness": dr.captions.avg_freshness,
+                            "critical_stale_count": dr.captions.critical_stale_count,
+                        },
+                    )
+                )
 
         # Revenue warnings
         if dr.revenue:
             if dr.revenue.msg_sub_rating == "POOR":
-                attention_list.append(CreatorAttention(
-                    creator_id=dr.creator_id,
-                    page_name=dr.page_name,
-                    display_name=dr.display_name,
-                    reason="Poor message:subscription ratio - PPV underperforming",
-                    severity="high",
-                    metrics={
-                        "msg_sub_ratio": dr.revenue.msg_sub_ratio,
-                        "msg_pct": dr.revenue.msg_pct,
-                    }
-                ))
+                attention_list.append(
+                    CreatorAttention(
+                        creator_id=dr.creator_id,
+                        page_name=dr.page_name,
+                        display_name=dr.display_name,
+                        reason="Poor message:subscription ratio - PPV underperforming",
+                        severity="high",
+                        metrics={
+                            "msg_sub_ratio": dr.revenue.msg_sub_ratio,
+                            "msg_pct": dr.revenue.msg_pct,
+                        },
+                    )
+                )
 
         # Portfolio position warnings
         if dr.portfolio_position:
             if dr.portfolio_position.earnings_percentile < 25:
-                attention_list.append(CreatorAttention(
-                    creator_id=dr.creator_id,
-                    page_name=dr.page_name,
-                    display_name=dr.display_name,
-                    reason="Bottom quartile earnings - growth opportunity",
-                    severity="medium",
-                    metrics={
-                        "earnings_rank": dr.portfolio_position.earnings_rank,
-                        "earnings_percentile": dr.portfolio_position.earnings_percentile,
-                    }
-                ))
+                attention_list.append(
+                    CreatorAttention(
+                        creator_id=dr.creator_id,
+                        page_name=dr.page_name,
+                        display_name=dr.display_name,
+                        reason="Bottom quartile earnings - growth opportunity",
+                        severity="medium",
+                        metrics={
+                            "earnings_rank": dr.portfolio_position.earnings_rank,
+                            "earnings_percentile": dr.portfolio_position.earnings_percentile,
+                        },
+                    )
+                )
 
         # Health score warnings
         if dr.health_score < 40:
             # Avoid duplicate if already flagged
-            if not any(a.creator_id == dr.creator_id and a.severity == "critical" for a in attention_list):
-                attention_list.append(CreatorAttention(
-                    creator_id=dr.creator_id,
-                    page_name=dr.page_name,
-                    display_name=dr.display_name,
-                    reason=f"Low health score ({dr.health_score}/100) - needs strategic review",
-                    severity="high",
-                    metrics={
-                        "health_score": dr.health_score,
-                        "health_rating": dr.health_rating,
-                    }
-                ))
+            if not any(
+                a.creator_id == dr.creator_id and a.severity == "critical" for a in attention_list
+            ):
+                attention_list.append(
+                    CreatorAttention(
+                        creator_id=dr.creator_id,
+                        page_name=dr.page_name,
+                        display_name=dr.display_name,
+                        reason=f"Low health score ({dr.health_score}/100) - needs strategic review",
+                        severity="high",
+                        metrics={
+                            "health_score": dr.health_score,
+                            "health_rating": dr.health_rating,
+                        },
+                    )
+                )
 
     # Calculate creator counts
     summary.total_creators = len(processed_creators)
@@ -4778,37 +5138,21 @@ def calculate_portfolio_summary(
 
     # Top 5 by revenue
     summary.top_5_by_revenue = [
-        CreatorRanking(
-            creator_id=r[0],
-            page_name=r[1],
-            display_name=r[2],
-            value=r[3],
-            rank=i + 1
-        )
+        CreatorRanking(creator_id=r[0], page_name=r[1], display_name=r[2], value=r[3], rank=i + 1)
         for i, r in enumerate(revenue_rankings[:5])
     ]
 
     # Top 5 by fans
     summary.top_5_by_fans = [
         CreatorRanking(
-            creator_id=r[0],
-            page_name=r[1],
-            display_name=r[2],
-            value=float(r[3]),
-            rank=i + 1
+            creator_id=r[0], page_name=r[1], display_name=r[2], value=float(r[3]), rank=i + 1
         )
         for i, r in enumerate(fan_rankings[:5])
     ]
 
     # Top 5 by efficiency
     summary.top_5_by_efficiency = [
-        CreatorRanking(
-            creator_id=r[0],
-            page_name=r[1],
-            display_name=r[2],
-            value=r[3],
-            rank=i + 1
-        )
+        CreatorRanking(creator_id=r[0], page_name=r[1], display_name=r[2], value=r[3], rank=i + 1)
         for i, r in enumerate(efficiency_rankings[:5])
     ]
 
@@ -4819,7 +5163,7 @@ def calculate_portfolio_summary(
             page_name=r[1],
             display_name=r[2],
             value=r[3],
-            rank=len(revenue_rankings) - i
+            rank=len(revenue_rankings) - i,
         )
         for i, r in enumerate(reversed(revenue_rankings[-5:]))
     ]
@@ -4833,7 +5177,9 @@ def calculate_portfolio_summary(
     summary.total_captions = total_captions
     summary.fresh_captions = total_fresh
     summary.stale_captions = total_stale
-    summary.avg_freshness = sum(freshness_scores) / len(freshness_scores) if freshness_scores else 0.0
+    summary.avg_freshness = (
+        sum(freshness_scores) / len(freshness_scores) if freshness_scores else 0.0
+    )
 
     return summary
 
@@ -4844,7 +5190,7 @@ def run_batch_analysis(
     mode: AnalysisMode = AnalysisMode.FULL,
     creators: list[str] | None = None,
     verbose: bool = False,
-    progress_callback: Callable[[int, int, str, str], None] | None = None
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> BatchAnalysisResult:
     """
     Main batch processing loop for portfolio analysis.
@@ -4896,7 +5242,7 @@ def run_batch_analysis(
 
     # Filter to specific creators if requested
     if creators:
-        creator_set = set(c.lower() for c in creators)
+        creator_set = {c.lower() for c in creators}
         all_creators = [c for c in all_creators if c["page_name"].lower() in creator_set]
         logger.info(f"Filtered to {len(all_creators)} specified creators")
 
@@ -4950,14 +5296,16 @@ def run_batch_analysis(
                 if verbose:
                     print(f"FAILED: {error_msg}")
 
-                errors.append(AnalysisError(
-                    creator_id=creator_id,
-                    page_name=page_name,
-                    phase="quick_analysis",
-                    error_type=type(e).__name__,
-                    error_message=error_msg,
-                    timestamp=datetime.now().isoformat(),
-                ))
+                errors.append(
+                    AnalysisError(
+                        creator_id=creator_id,
+                        page_name=page_name,
+                        phase="quick_analysis",
+                        error_type=type(e).__name__,
+                        error_message=error_msg,
+                        timestamp=datetime.now().isoformat(),
+                    )
+                )
 
         # Run deep analysis
         if mode in (AnalysisMode.DEEP, AnalysisMode.FULL):
@@ -4984,14 +5332,16 @@ def run_batch_analysis(
                 if verbose:
                     print(f"FAILED: {error_msg}")
 
-                errors.append(AnalysisError(
-                    creator_id=creator_id,
-                    page_name=page_name,
-                    phase="deep_analysis",
-                    error_type=type(e).__name__,
-                    error_message=error_msg,
-                    timestamp=datetime.now().isoformat(),
-                ))
+                errors.append(
+                    AnalysisError(
+                        creator_id=creator_id,
+                        page_name=page_name,
+                        phase="deep_analysis",
+                        error_type=type(e).__name__,
+                        error_message=error_msg,
+                        timestamp=datetime.now().isoformat(),
+                    )
+                )
 
         # Save files immediately (incremental save)
         try:
@@ -5143,12 +5493,7 @@ def _get_colors() -> TerminalColors | None:
     return None
 
 
-def print_progress(
-    current: int,
-    total: int,
-    width: int = 40,
-    show_percentage: bool = True
-) -> None:
+def print_progress(current: int, total: int, width: int = 40, show_percentage: bool = True) -> None:
     """
     Print a text-based progress bar that updates in-place.
 
@@ -5166,7 +5511,7 @@ def print_progress(
     bar = "\u2588" * filled + "\u2591" * (width - filled)
 
     if show_percentage:
-        status = f"{current}/{total} {pct*100:.0f}%"
+        status = f"{current}/{total} {pct * 100:.0f}%"
     else:
         status = f"{current}/{total}"
 
@@ -5258,10 +5603,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
     Returns:
         Configured ArgumentParser instance.
     """
+
     # Custom formatter for better help text
     class CustomFormatter(
-        argparse.RawDescriptionHelpFormatter,
-        argparse.ArgumentDefaultsHelpFormatter
+        argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter
     ):
         pass
 
@@ -5331,12 +5676,14 @@ Exit codes:
     output_group = parser.add_argument_group("Output Control")
     verbosity = output_group.add_mutually_exclusive_group()
     verbosity.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show detailed progress output",
     )
     verbosity.add_argument(
-        "--quiet", "-q",
+        "--quiet",
+        "-q",
         action="store_true",
         help="Minimal output (errors only)",
     )
@@ -5363,11 +5710,7 @@ Exit codes:
     return parser
 
 
-def run_test_mode(
-    db_path: Path,
-    test_creator: str | None,
-    output: CLIOutput
-) -> int:
+def run_test_mode(db_path: Path, test_creator: str | None, output: CLIOutput) -> int:
     """
     Run test mode: analyze single creator and display results.
 
@@ -5393,12 +5736,13 @@ def run_test_mode(
             # Select test creator
             if test_creator:
                 creator_data = next(
-                    (c for c in creators if c["page_name"].lower() == test_creator.lower()),
-                    None
+                    (c for c in creators if c["page_name"].lower() == test_creator.lower()), None
                 )
                 if not creator_data:
                     output.error(f"Creator '{test_creator}' not found")
-                    output.info(f"Available creators: {', '.join(c['page_name'] for c in creators[:5])}...")
+                    output.info(
+                        f"Available creators: {', '.join(c['page_name'] for c in creators[:5])}..."
+                    )
                     return EXIT_INVALID_ARGS
             else:
                 creator_data = creators[0]
@@ -5446,7 +5790,9 @@ def run_test_mode(
                 deep_duration = (time.perf_counter() - deep_start) * 1000
 
                 output.success(f"  Deep analysis: Done ({deep_duration:.0f}ms)")
-                output.detail(f"    Health score: {deep_result.health_score}/100 ({deep_result.health_rating})")
+                output.detail(
+                    f"    Health score: {deep_result.health_score}/100 ({deep_result.health_rating})"
+                )
                 if deep_result.revenue:
                     output.detail(f"    Total earnings: ${deep_result.revenue.total_earnings:,.2f}")
             except Exception as e:
@@ -5471,7 +5817,7 @@ def run_dry_run(
     mode: AnalysisMode,
     creators: list[str] | None,
     output_dir: Path | None,
-    output: CLIOutput
+    output: CLIOutput,
 ) -> int:
     """
     Show what would be done without executing.
@@ -5494,7 +5840,7 @@ def run_dry_run(
             all_creators = db.get_all_active_creators()
 
             if creators:
-                creator_set = set(c.lower() for c in creators)
+                creator_set = {c.lower() for c in creators}
                 target_creators = [c for c in all_creators if c["page_name"].lower() in creator_set]
             else:
                 target_creators = all_creators
@@ -5550,7 +5896,7 @@ def run_batch_mode(
     mode: AnalysisMode,
     creators: list[str] | None,
     output_dir: Path | None,
-    output: CLIOutput
+    output: CLIOutput,
 ) -> int:
     """
     Run batch analysis on portfolio.
@@ -5573,7 +5919,7 @@ def run_batch_mode(
             # Get creator count for display
             all_creators = db.get_all_active_creators()
             if creators:
-                creator_set = set(c.lower() for c in creators)
+                creator_set = {c.lower() for c in creators}
                 target_creators = [c for c in all_creators if c["page_name"].lower() in creator_set]
                 creator_count = len(target_creators)
             else:
@@ -5594,7 +5940,6 @@ def run_batch_mode(
 
             # Progress tracking
             processed = 0
-            errors_list: list[str] = []
 
             def progress_callback(current: int, total: int, name: str, status: str) -> None:
                 nonlocal processed
@@ -5623,7 +5968,6 @@ def run_batch_mode(
                 print()  # New line after progress bar
 
             # Calculate success/failure counts
-            total_processed = len(result.quick_analyses) + len(result.deep_analyses)
             error_count = len(result.portfolio_summary.errors) if result.portfolio_summary else 0
             success_count = creator_count - error_count
 
@@ -5640,14 +5984,18 @@ def run_batch_mode(
             if error_count > 0:
                 output.warning(f"Failed: {error_count} (see portfolio_summary.json for details)")
             else:
-                output.info(f"Failed: 0")
+                output.info("Failed: 0")
 
             output.info(f"Duration: {format_duration(duration)}")
 
             if result.portfolio_summary:
-                output.detail(f"\nPortfolio earnings: ${result.portfolio_summary.total_portfolio_earnings:,.2f}")
+                output.detail(
+                    f"\nPortfolio earnings: ${result.portfolio_summary.total_portfolio_earnings:,.2f}"
+                )
                 if result.portfolio_summary.needs_attention:
-                    output.detail(f"Creators needing attention: {len(result.portfolio_summary.needs_attention)}")
+                    output.detail(
+                        f"Creators needing attention: {len(result.portfolio_summary.needs_attention)}"
+                    )
 
             output.info(f"\nOutput saved to: {resolved_output}/")
 

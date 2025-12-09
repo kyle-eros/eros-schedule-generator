@@ -32,7 +32,6 @@ Usage:
 
 import argparse
 import json
-import os
 import random
 import re
 import sqlite3
@@ -42,20 +41,9 @@ from pathlib import Path
 from typing import Any
 
 # Path resolution for database
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
 SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH  # noqa: E402
 
 # Enhancement thresholds
 MAX_LENGTH_CHANGE = 0.15  # 15% maximum length change
@@ -64,27 +52,138 @@ MAX_CHANGE_SCORE = 0.15  # Maximum acceptable change score before rollback
 
 # Stopwords to exclude from word preservation calculation
 STOPWORDS = {
-    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-    "should", "may", "might", "must", "shall", "can", "to", "of", "in",
-    "for", "on", "with", "at", "by", "from", "as", "into", "through",
-    "during", "before", "after", "above", "below", "between", "under",
-    "again", "further", "then", "once", "here", "there", "when", "where",
-    "why", "how", "all", "each", "few", "more", "most", "other", "some",
-    "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-    "too", "very", "just", "and", "but", "if", "or", "because", "until",
-    "while", "although", "though", "after", "i", "me", "my", "myself",
-    "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
-    "yourselves", "he", "him", "his", "himself", "she", "her", "hers",
-    "herself", "it", "its", "itself", "they", "them", "their", "theirs",
-    "themselves", "what", "which", "who", "whom", "this", "that", "these",
-    "those", "am", "about", "against", "both", "also", "any",
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "must",
+    "shall",
+    "can",
+    "to",
+    "of",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "as",
+    "into",
+    "through",
+    "during",
+    "before",
+    "after",
+    "above",
+    "below",
+    "between",
+    "under",
+    "again",
+    "further",
+    "then",
+    "once",
+    "here",
+    "there",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "each",
+    "few",
+    "more",
+    "most",
+    "other",
+    "some",
+    "such",
+    "no",
+    "nor",
+    "not",
+    "only",
+    "own",
+    "same",
+    "so",
+    "than",
+    "too",
+    "very",
+    "just",
+    "and",
+    "but",
+    "if",
+    "or",
+    "because",
+    "until",
+    "while",
+    "although",
+    "though",
+    "i",
+    "me",
+    "my",
+    "myself",
+    "we",
+    "our",
+    "ours",
+    "ourselves",
+    "you",
+    "your",
+    "yours",
+    "yourself",
+    "yourselves",
+    "he",
+    "him",
+    "his",
+    "himself",
+    "she",
+    "her",
+    "hers",
+    "herself",
+    "it",
+    "its",
+    "itself",
+    "they",
+    "them",
+    "their",
+    "theirs",
+    "themselves",
+    "what",
+    "which",
+    "who",
+    "whom",
+    "this",
+    "that",
+    "these",
+    "those",
+    "am",
+    "about",
+    "against",
+    "both",
+    "also",
+    "any",
 }
 
 
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
+
 
 @dataclass
 class EnhancementResult:
@@ -128,6 +227,7 @@ class PersonaContext:
 # =============================================================================
 # CAPTION ENHANCER CLASS
 # =============================================================================
+
 
 class CaptionEnhancer:
     """
@@ -197,15 +297,48 @@ class CaptionEnhancer:
 
     # Emoji pools by emotion/context
     EMOJI_POOLS = {
-        "excitement": ["\U0001F525", "\U0001F60D", "\U0001F975", "\U0001F495", "\u2728"],  # fire, heart_eyes, hot_face, two_hearts, sparkles
-        "teasing": ["\U0001F60F", "\U0001F440", "\U0001F608", "\U0001F92D", "\U0001F48B"],  # smirk, eyes, imp, face_with_hand_over_mouth, kiss
-        "urgency": ["\u23F0", "\U0001F6A8", "\u26A1", "\U0001F4A6"],  # alarm_clock, rotating_light, zap, sweat_droplets
-        "affection": ["\U0001F495", "\u2764\uFE0F", "\U0001F970", "\U0001F618", "\U0001F497"],  # two_hearts, red_heart, smiling_face_with_hearts, kiss_face, growing_heart
+        "excitement": [
+            "\U0001f525",
+            "\U0001f60d",
+            "\U0001f975",
+            "\U0001f495",
+            "\u2728",
+        ],  # fire, heart_eyes, hot_face, two_hearts, sparkles
+        "teasing": [
+            "\U0001f60f",
+            "\U0001f440",
+            "\U0001f608",
+            "\U0001f92d",
+            "\U0001f48b",
+        ],  # smirk, eyes, imp, face_with_hand_over_mouth, kiss
+        "urgency": [
+            "\u23f0",
+            "\U0001f6a8",
+            "\u26a1",
+            "\U0001f4a6",
+        ],  # alarm_clock, rotating_light, zap, sweat_droplets
+        "affection": [
+            "\U0001f495",
+            "\u2764\ufe0f",
+            "\U0001f970",
+            "\U0001f618",
+            "\U0001f497",
+        ],  # two_hearts, red_heart, smiling_face_with_hearts, kiss_face, growing_heart
     }
 
     # Context keywords for emoji matching
     EMOJI_CONTEXT_KEYWORDS = {
-        "excitement": ["new", "just", "finally", "omg", "wow", "amazing", "incredible", "hot", "sexy"],
+        "excitement": [
+            "new",
+            "just",
+            "finally",
+            "omg",
+            "wow",
+            "amazing",
+            "incredible",
+            "hot",
+            "sexy",
+        ],
         "teasing": ["peek", "sneak", "tease", "curious", "want", "see", "show", "secret"],
         "urgency": ["now", "today", "limited", "hurry", "quick", "fast", "last", "ends"],
         "affection": ["love", "miss", "thinking", "special", "appreciate", "thank", "baby", "babe"],
@@ -231,23 +364,16 @@ class CaptionEnhancer:
         for formal, _ in self.CONTRACTIONS.items():
             if formal not in self._contraction_patterns:
                 self._contraction_patterns[formal] = re.compile(
-                    rf"\b{re.escape(formal)}\b",
-                    re.IGNORECASE
+                    rf"\b{re.escape(formal)}\b", re.IGNORECASE
                 )
 
         # Compile slang patterns (case-insensitive, word boundaries)
         for word, _ in self.HEAVY_SLANG.items():
             if word not in self._slang_patterns:
-                self._slang_patterns[word] = re.compile(
-                    rf"\b{re.escape(word)}\b",
-                    re.IGNORECASE
-                )
+                self._slang_patterns[word] = re.compile(rf"\b{re.escape(word)}\b", re.IGNORECASE)
 
     def enhance_caption(
-        self,
-        caption_id: int,
-        original_text: str,
-        context: dict[str, Any] | None = None
+        self, caption_id: int, original_text: str, context: dict[str, Any] | None = None
     ) -> EnhancementResult:
         """
         Apply minor tweaks to a caption based on persona.
@@ -294,10 +420,7 @@ class CaptionEnhancer:
 
         # 5. Apply emoji matching (based on persona emoji frequency)
         if self.persona.emoji_frequency in ("heavy", "moderate"):
-            text, emoji_tweaks = self.apply_emoji_matching(
-                text,
-                self.persona.emoji_frequency
-            )
+            text, emoji_tweaks = self.apply_emoji_matching(text, self.persona.emoji_frequency)
             tweaks.extend(emoji_tweaks)
 
         # Update result
@@ -331,7 +454,8 @@ class CaptionEnhancer:
             pattern = self._contraction_patterns.get(formal)
             if pattern and pattern.search(modified):
                 # Preserve case of first character
-                def replace_match(m: re.Match) -> str:
+                # Bind loop variable to avoid B023
+                def replace_match(m: re.Match, casual: str = casual) -> str:
                     matched = m.group(0)
                     if matched[0].isupper():
                         # Capitalize first letter of replacement
@@ -345,11 +469,7 @@ class CaptionEnhancer:
 
         return modified, tweaks
 
-    def apply_emoji_matching(
-        self,
-        text: str,
-        target_emoji_style: str
-    ) -> tuple[str, list[str]]:
+    def apply_emoji_matching(self, text: str, target_emoji_style: str) -> tuple[str, list[str]]:
         """
         Add emojis to match creator's emoji frequency.
 
@@ -367,17 +487,17 @@ class CaptionEnhancer:
 
         # Count existing emojis
         emoji_pattern = re.compile(
-            "[\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U0001F900-\U0001F9FF"
-            "\U0001FA00-\U0001FA6F"
-            "\U0001FA70-\U0001FAFF"
-            "\U00002600-\U000026FF"
+            "[\U0001f600-\U0001f64f"
+            "\U0001f300-\U0001f5ff"
+            "\U0001f680-\U0001f6ff"
+            "\U0001f1e0-\U0001f1ff"
+            "\U00002702-\U000027b0"
+            "\U0001f900-\U0001f9ff"
+            "\U0001fa00-\U0001fa6f"
+            "\U0001fa70-\U0001faff"
+            "\U00002600-\U000026ff"
             "]+",
-            flags=re.UNICODE
+            flags=re.UNICODE,
         )
         existing_emojis = emoji_pattern.findall(text)
         existing_count = sum(len(e) for e in existing_emojis)
@@ -536,11 +656,7 @@ class CaptionEnhancer:
 
         return modified, tweaks
 
-    def rotate_pet_names(
-        self,
-        text: str,
-        used_names: set[str]
-    ) -> tuple[str, list[str]]:
+    def rotate_pet_names(self, text: str, used_names: set[str]) -> tuple[str, list[str]]:
         """
         Rotate pet names to avoid repetition.
 
@@ -562,13 +678,15 @@ class CaptionEnhancer:
             if pattern.search(modified) and pet_name.lower() in {n.lower() for n in used_names}:
                 # Find an alternative that hasn't been used
                 alternatives = [
-                    name for name in self.PET_NAMES_POOL
+                    name
+                    for name in self.PET_NAMES_POOL
                     if name.lower() not in {n.lower() for n in used_names}
                 ]
                 if alternatives:
                     replacement = random.choice(alternatives)
 
-                    def replace_preserving_case(m: re.Match) -> str:
+                    # Bind loop variable to avoid B023
+                    def replace_preserving_case(m: re.Match, replacement: str = replacement) -> str:
                         original = m.group(0)
                         if original[0].isupper():
                             return replacement.capitalize()
@@ -582,11 +700,7 @@ class CaptionEnhancer:
 
         return modified, tweaks
 
-    def validate_enhancement(
-        self,
-        original: str,
-        enhanced: str
-    ) -> tuple[bool, list[str]]:
+    def validate_enhancement(self, original: str, enhanced: str) -> tuple[bool, list[str]]:
         """
         Validate that enhancement stayed within bounds.
 
@@ -616,19 +730,19 @@ class CaptionEnhancer:
 
         # Core words preserved check (85%+)
         # Extract words, excluding stopwords and contractions
-        orig_words = set(
-            w.lower() for w in re.findall(r"\b\w+\b", original.lower())
+        orig_words = {
+            w.lower()
+            for w in re.findall(r"\b\w+\b", original.lower())
             if w.lower() not in STOPWORDS and len(w) > 2
-        )
+        }
         # For new_words, also extract short words to catch slang abbreviations
-        new_words = set(
-            w.lower() for w in re.findall(r"\b\w+\b", enhanced.lower())
+        new_words = {
+            w.lower()
+            for w in re.findall(r"\b\w+\b", enhanced.lower())
             if w.lower() not in STOPWORDS and len(w) > 2
-        )
+        }
         # Separately extract short words that might be slang abbreviations
-        new_words_all = set(
-            w.lower() for w in re.findall(r"\b\w+\b", enhanced.lower())
-        )
+        new_words_all = {w.lower() for w in re.findall(r"\b\w+\b", enhanced.lower())}
 
         if orig_words:
             # Check how many original content words are still present
@@ -804,7 +918,11 @@ class CaptionEnhancer:
         # Don't count contractions, slang abbreviations, or rotated pet names as "new" words
         added_count = 0
         for word in new_set:
-            if word not in orig_set and word not in contraction_components and word not in slang_components:
+            if (
+                word not in orig_set
+                and word not in contraction_components
+                and word not in slang_components
+            ):
                 # Pet name rotation is allowed - doesn't count as added
                 if word in pet_names_lower and has_pet_name_in_orig:
                     continue  # Pet name was rotated in, not new
@@ -829,10 +947,7 @@ class CaptionEnhancer:
         return min(1.0, combined_score)
 
     def enhance_with_rollback(
-        self,
-        caption_id: int,
-        original_text: str,
-        context: dict[str, Any] | None = None
+        self, caption_id: int, original_text: str, context: dict[str, Any] | None = None
     ) -> EnhancementResult:
         """
         Enhance caption with automatic rollback if validation fails.
@@ -869,6 +984,7 @@ class CaptionEnhancer:
 # ANTI-AI RED FLAGS DETECTOR
 # =============================================================================
 
+
 def detect_ai_red_flags(text: str) -> list[str]:
     """
     Detect patterns that suggest AI-generated content.
@@ -903,7 +1019,9 @@ def detect_ai_red_flags(text: str) -> list[str]:
 
     # Perfect grammar with no personality (no contractions in long text)
     if len(text) > 100:
-        has_contractions = any(c in text_lower for c in ["'m", "'re", "'ve", "'ll", "'t", "'d", "'s"])
+        has_contractions = any(
+            c in text_lower for c in ["'m", "'re", "'ve", "'ll", "'t", "'d", "'s"]
+        )
         if not has_contractions:
             flags.append("no contractions in long text")
 
@@ -941,7 +1059,7 @@ def detect_ai_red_flags(text: str) -> list[str]:
 # AUTHENTICITY VERIFICATION PROMPT (for LLM use)
 # =============================================================================
 
-AUTHENTICITY_VERIFICATION_PROMPT = '''
+AUTHENTICITY_VERIFICATION_PROMPT = """
 ## Authenticity Verification
 
 Compare ORIGINAL vs ENHANCED caption:
@@ -957,7 +1075,7 @@ Answer YES or NO:
 
 If ANY answer is NO, return: {{"use_original": true, "reason": "..."}}
 If ALL answers are YES, return: {{"use_enhanced": true}}
-'''
+"""
 
 
 def build_authenticity_prompt(original: str, enhanced: str) -> str:
@@ -981,10 +1099,9 @@ def build_authenticity_prompt(original: str, enhanced: str) -> str:
 # DATABASE OPERATIONS
 # =============================================================================
 
+
 def get_persona_from_db(
-    conn: sqlite3.Connection,
-    creator_name: str | None = None,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, creator_name: str | None = None, creator_id: str | None = None
 ) -> PersonaContext | None:
     """
     Load persona context from database.
@@ -1054,9 +1171,7 @@ def get_persona_from_db(
 
 
 def load_captions_from_db(
-    conn: sqlite3.Connection,
-    creator_id: str,
-    limit: int = 50
+    conn: sqlite3.Connection, creator_id: str, limit: int = 50
 ) -> list[dict[str, Any]]:
     """
     Load captions from database for enhancement.
@@ -1083,10 +1198,12 @@ def load_captions_from_db(
 
     captions = []
     for row in cursor.fetchall():
-        captions.append({
-            "caption_id": row["caption_id"],
-            "caption_text": row["caption_text"],
-        })
+        captions.append(
+            {
+                "caption_id": row["caption_id"],
+                "caption_text": row["caption_text"],
+            }
+        )
 
     return captions
 
@@ -1095,10 +1212,8 @@ def load_captions_from_db(
 # OUTPUT FORMATTING
 # =============================================================================
 
-def format_markdown(
-    persona: PersonaContext,
-    results: list[EnhancementResult]
-) -> str:
+
+def format_markdown(persona: PersonaContext, results: list[EnhancementResult]) -> str:
     """
     Format enhancement results as Markdown report.
 
@@ -1127,17 +1242,19 @@ def format_markdown(
     rollback_count = sum(1 for r in results if r.used_original)
     validation_failures = sum(1 for r in results if not r.validation_passed)
 
-    lines.extend([
-        "## Summary",
-        "",
-        "| Metric | Count |",
-        "|--------|-------|",
-        f"| Total Captions | {len(results)} |",
-        f"| Enhanced | {enhanced_count} |",
-        f"| Rolled Back | {rollback_count} |",
-        f"| Validation Failures | {validation_failures} |",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Summary",
+            "",
+            "| Metric | Count |",
+            "|--------|-------|",
+            f"| Total Captions | {len(results)} |",
+            f"| Enhanced | {enhanced_count} |",
+            f"| Rolled Back | {rollback_count} |",
+            f"| Validation Failures | {validation_failures} |",
+            "",
+        ]
+    )
 
     # Tweak frequency
     tweak_counts: dict[str, int] = {}
@@ -1147,34 +1264,40 @@ def format_markdown(
             tweak_counts[tweak_type] = tweak_counts.get(tweak_type, 0) + 1
 
     if tweak_counts:
-        lines.extend([
-            "## Tweak Frequency",
-            "",
-            "| Tweak Type | Count |",
-            "|------------|-------|",
-        ])
+        lines.extend(
+            [
+                "## Tweak Frequency",
+                "",
+                "| Tweak Type | Count |",
+                "|------------|-------|",
+            ]
+        )
         for tweak_type, count in sorted(tweak_counts.items(), key=lambda x: -x[1]):
             lines.append(f"| {tweak_type} | {count} |")
         lines.append("")
 
     # Detailed results
-    lines.extend([
-        "## Detailed Results",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Detailed Results",
+            "",
+        ]
+    )
 
     for r in results[:30]:  # Limit display
         status = "ROLLBACK" if r.used_original else "ENHANCED"
-        lines.extend([
-            f"### Caption {r.caption_id} [{status}]",
-            "",
-            f"**Original:** {r.original_text[:200]}{'...' if len(r.original_text) > 200 else ''}",
-            "",
-            f"**Enhanced:** {r.enhanced_text[:200]}{'...' if len(r.enhanced_text) > 200 else ''}",
-            "",
-            f"**Change Score:** {r.change_score:.3f}",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### Caption {r.caption_id} [{status}]",
+                "",
+                f"**Original:** {r.original_text[:200]}{'...' if len(r.original_text) > 200 else ''}",
+                "",
+                f"**Enhanced:** {r.enhanced_text[:200]}{'...' if len(r.enhanced_text) > 200 else ''}",
+                "",
+                f"**Change Score:** {r.change_score:.3f}",
+                "",
+            ]
+        )
 
         if r.tweaks_applied:
             lines.append(f"**Tweaks:** {', '.join(r.tweaks_applied)}")
@@ -1194,10 +1317,7 @@ def format_markdown(
     return "\n".join(lines)
 
 
-def format_json(
-    persona: PersonaContext,
-    results: list[EnhancementResult]
-) -> str:
+def format_json(persona: PersonaContext, results: list[EnhancementResult]) -> str:
     """
     Format enhancement results as JSON.
 
@@ -1232,6 +1352,7 @@ def format_json(
 # CLI ENTRY POINT
 # =============================================================================
 
+
 def main():
     """Main entry point for CLI."""
     parser = argparse.ArgumentParser(
@@ -1254,50 +1375,33 @@ Examples:
     python caption_enhancer.py --caption "Check this out babe" --creator missalexa
     python caption_enhancer.py --file captions.json --creator missalexa --output enhanced.json
     python caption_enhancer.py --creator missalexa --limit 20 --format json
-        """
+        """,
     )
 
+    parser.add_argument("--caption", "-t", help="Single caption text to enhance")
+    parser.add_argument("--creator", "-c", help="Creator page name for persona context")
+    parser.add_argument("--creator-id", help="Creator UUID for persona context")
     parser.add_argument(
-        "--caption", "-t",
-        help="Single caption text to enhance"
-    )
-    parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name for persona context"
-    )
-    parser.add_argument(
-        "--creator-id",
-        help="Creator UUID for persona context"
-    )
-    parser.add_argument(
-        "--file", "-f",
-        help="JSON file with captions to enhance (array of {caption_id, caption_text})"
+        "--file",
+        "-f",
+        help="JSON file with captions to enhance (array of {caption_id, caption_text})",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=50,
-        help="Maximum captions to process from database (default: 50)"
+        help="Maximum captions to process from database (default: 50)",
     )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
         "--format",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
     parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
-    parser.add_argument(
-        "--check-ai-flags",
-        action="store_true",
-        help="Also check for AI red flags in captions"
+        "--check-ai-flags", action="store_true", help="Also check for AI red flags in captions"
     )
 
     args = parser.parse_args()
@@ -1323,9 +1427,7 @@ Examples:
         # Load persona
         if conn and (args.creator or args.creator_id):
             persona = get_persona_from_db(
-                conn,
-                creator_name=args.creator,
-                creator_id=args.creator_id
+                conn, creator_name=args.creator, creator_id=args.creator_id
             )
             if not persona:
                 print("Error: Creator not found", file=sys.stderr)
@@ -1364,10 +1466,7 @@ Examples:
         # Enhance captions
         results = []
         for cap in captions:
-            result = enhancer.enhance_with_rollback(
-                cap["caption_id"],
-                cap["caption_text"]
-            )
+            result = enhancer.enhance_with_rollback(cap["caption_id"], cap["caption_text"])
 
             # Optionally check AI flags
             if args.check_ai_flags:

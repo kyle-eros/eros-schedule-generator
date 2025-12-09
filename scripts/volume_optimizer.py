@@ -37,32 +37,17 @@ Hard Caps:
 
 import argparse
 import json
-import os
 import sqlite3
 import sys
-from dataclasses import dataclass, field, asdict, replace
-from datetime import date, datetime, timedelta
+from dataclasses import asdict, dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
 
-# Database path resolution with multiple candidate locations
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
-HOME_DIR = Path.home()
-
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH  # noqa: E402
 
 # ==============================================================================
 # CONSTANTS AND CONFIGURATION
@@ -73,18 +58,18 @@ DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES
 # NEW STRATEGY (2025-12-06): Minimum 2 PPV/day for ALL creators, max 6 for high performers
 # Base volumes are floors; actual volume determined by get_volume_tier() based on performance
 PAID_PAGE_CONFIG: dict[tuple[int, int | None], tuple[str, int, int]] = {
-    (0, 999):       ("Base", 2, 2),     # Base tier: 2 PPV/day minimum (14/week)
-    (1000, 4999):   ("Growth", 3, 2),   # Growth tier: 3 PPV/day (21/week)
-    (5000, 14999):  ("Scale", 4, 3),    # Scale tier: 4 PPV/day (28/week)
-    (15000, None):  ("High", 5, 4),     # High tier: 5 PPV/day (35/week)
+    (0, 999): ("Base", 2, 2),  # Base tier: 2 PPV/day minimum (14/week)
+    (1000, 4999): ("Growth", 3, 2),  # Growth tier: 3 PPV/day (21/week)
+    (5000, 14999): ("Scale", 4, 3),  # Scale tier: 4 PPV/day (28/week)
+    (15000, None): ("High", 5, 4),  # High tier: 5 PPV/day (35/week)
 }
 
 # FREE pages use same minimum floor but can scale higher
 FREE_PAGE_CONFIG: dict[tuple[int, int | None], tuple[str, int, int]] = {
-    (0, 999):       ("Base", 2, 2),     # Base tier: 2 PPV/day minimum (14/week)
-    (1000, 4999):   ("Growth", 3, 2),   # Growth tier: 3 PPV/day (21/week)
-    (5000, 19999):  ("Scale", 4, 3),    # Scale tier: 4 PPV/day (28/week)
-    (20000, None):  ("High", 5, 4),     # High tier: 5 PPV/day (35/week)
+    (0, 999): ("Base", 2, 2),  # Base tier: 2 PPV/day minimum (14/week)
+    (1000, 4999): ("Growth", 3, 2),  # Growth tier: 3 PPV/day (21/week)
+    (5000, 19999): ("Scale", 4, 3),  # Scale tier: 4 PPV/day (28/week)
+    (20000, None): ("High", 5, 4),  # High tier: 5 PPV/day (35/week)
 }
 
 # Performance tier multipliers (1 = top tier, 3 = bottom tier)
@@ -128,8 +113,8 @@ NICHE_FACTORS: dict[str, float] = {
 # Subscription price factors (higher price = lower PPV tolerance)
 # Format: (min_price, max_price, factor)
 SUB_PRICE_FACTORS: list[tuple[float, float, float]] = [
-    (0.00, 0.00, 1.10),    # Free pages: +10%
-    (0.01, 9.99, 1.05),    # Low price: +5%
+    (0.00, 0.00, 1.10),  # Free pages: +10%
+    (0.01, 9.99, 1.05),  # Low price: +5%
     (10.00, 14.99, 1.00),  # Standard price: baseline
     (15.00, 24.99, 0.85),  # Premium price: -15%
     (25.00, 50.00, 0.70),  # Ultra premium: -30%
@@ -138,10 +123,10 @@ SUB_PRICE_FACTORS: list[tuple[float, float, float]] = [
 # Account age factors (newer accounts need time to build)
 # Format: (min_days, max_days, factor)
 ACCOUNT_AGE_FACTORS: list[tuple[int, int | None, float]] = [
-    (0, 30, 0.60),      # First month: 60%
-    (31, 60, 0.75),     # Second month: 75%
-    (61, 90, 0.85),     # Third month: 85%
-    (91, 180, 0.95),    # 3-6 months: 95%
+    (0, 30, 0.60),  # First month: 60%
+    (31, 60, 0.75),  # Second month: 75%
+    (61, 90, 0.85),  # Third month: 85%
+    (91, 180, 0.95),  # 3-6 months: 95%
     (181, None, 1.00),  # 6+ months: full volume
 ]
 
@@ -149,16 +134,16 @@ ACCOUNT_AGE_FACTORS: list[tuple[int, int | None, float]] = [
 # Softened penalties to support new 2-6 PPV/day strategy
 # These apply a final adjustment based on calculated weekly volume
 FREE_PAGE_VOLUME_EFFICIENCY: list[tuple[int, int | None, float]] = [
-    (0, 21, 1.00),     # 0-21 PPV/week (up to 3/day): no penalty
-    (22, 35, 0.90),    # 22-35 PPV/week (3-5/day): 10% reduction
-    (36, 42, 0.80),    # 36-42 PPV/week (5-6/day): 20% reduction
+    (0, 21, 1.00),  # 0-21 PPV/week (up to 3/day): no penalty
+    (22, 35, 0.90),  # 22-35 PPV/week (3-5/day): 10% reduction
+    (36, 42, 0.80),  # 36-42 PPV/week (5-6/day): 20% reduction
     (43, None, 0.70),  # 42+ PPV/week: efficiency protection
 ]
 
 PAID_PAGE_VOLUME_TOLERANCE: list[tuple[int, int | None, float]] = [
-    (0, 21, 1.00),     # 0-21 PPV/week (up to 3/day): no penalty
-    (22, 35, 0.90),    # 22-35 PPV/week (3-5/day): 10% reduction
-    (36, 42, 0.80),    # 36-42 PPV/week (5-6/day): 20% reduction
+    (0, 21, 1.00),  # 0-21 PPV/week (up to 3/day): no penalty
+    (22, 35, 0.90),  # 22-35 PPV/week (3-5/day): 10% reduction
+    (36, 42, 0.80),  # 36-42 PPV/week (5-6/day): 20% reduction
     (43, None, 0.70),  # 42+ PPV/week: efficiency protection
 ]
 
@@ -168,15 +153,15 @@ SWEET_SPOT_MIN = 14
 SWEET_SPOT_MAX = 35
 
 # Thresholds for proven performers who can exceed sweet spot
-PROVEN_PERFORMER_MIN_REV_PER_SEND = 100.0   # $100+ per send
+PROVEN_PERFORMER_MIN_REV_PER_SEND = 100.0  # $100+ per send
 PROVEN_PERFORMER_MIN_PURCHASE_RATE = 0.005  # 0.5%+ purchase rate
 
 # Hard caps (UPDATED 2025-12-06 for new volume strategy)
 # New: 2 PPV/day minimum, 6 PPV/day maximum for high performers
-PAID_PAGE_MIN_PPV_WEEK = 14      # 2 PPV/day * 7 = 14/week minimum
-PAID_PAGE_MAX_PPV_WEEK = 42      # 6 PPV/day * 7 = 42/week maximum
-FREE_PAGE_MIN_PPV_DAY = 2        # Minimum 2 PPV/day for ALL creators
-FREE_PAGE_MAX_PPV_DAY = 6        # Maximum 6 PPV/day for high performers
+PAID_PAGE_MIN_PPV_WEEK = 14  # 2 PPV/day * 7 = 14/week minimum
+PAID_PAGE_MAX_PPV_WEEK = 42  # 6 PPV/day * 7 = 42/week maximum
+FREE_PAGE_MIN_PPV_DAY = 2  # Minimum 2 PPV/day for ALL creators
+FREE_PAGE_MAX_PPV_DAY = 6  # Maximum 6 PPV/day for high performers
 
 # Bump strategy
 MIN_BUMP_PER_DAY = 1
@@ -191,27 +176,28 @@ BUMP_DELAY_RANGES = {
     "Ultra": (15, 25),
     "Mid": (20, 40),
     "Low": (25, 45),
-    "Base": (25, 45),    # Added for new Base tier
+    "Base": (25, 45),  # Added for new Base tier
     "Growth": (20, 40),  # Added for new Growth tier
-    "Scale": (15, 35),   # Added for new Scale tier
+    "Scale": (15, 35),  # Added for new Scale tier
 }
 
 # Day-of-week volume modifiers (from VOLUME_STRATEGY_FINAL_REPORT.md)
 # Based on analysis showing Thursday has best $/PPV ($137)
 DAY_OF_WEEK_MODIFIERS: dict[str, float] = {
-    "Thursday": 1.3,    # Best $/PPV ($137)
-    "Wednesday": 1.2,   # Peak efficiency
-    "Friday": 1.2,      # Strong performer
-    "Tuesday": 1.1,     # Good engagement
-    "Monday": 1.0,      # Baseline
-    "Sunday": 0.9,      # Recovery day
-    "Saturday": 0.8,    # Lower value
+    "Thursday": 1.3,  # Best $/PPV ($137)
+    "Wednesday": 1.2,  # Peak efficiency
+    "Friday": 1.2,  # Strong performer
+    "Tuesday": 1.1,  # Good engagement
+    "Monday": 1.0,  # Baseline
+    "Sunday": 0.9,  # Recovery day
+    "Saturday": 0.8,  # Lower value
 }
 
 
 # ==============================================================================
 # HELPER FUNCTIONS
 # ==============================================================================
+
 
 def get_niche_factor(persona_type: str) -> float:
     """
@@ -340,9 +326,7 @@ def get_conversion_factor(conversion_rate: float) -> float:
 
 
 def get_volume_tier(
-    conv_rate: float,
-    dollars_per_ppv: float,
-    total_revenue: float
+    conv_rate: float, dollars_per_ppv: float, total_revenue: float
 ) -> tuple[str, int]:
     """
     Determine volume tier based on performance metrics.
@@ -438,6 +422,7 @@ def get_weekly_day_distribution(base_ppv_per_day: int) -> dict[str, int]:
 # ==============================================================================
 # DATA CLASSES
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class CreatorMetrics:
@@ -544,6 +529,7 @@ class VolumeStrategy:
 # MAIN OPTIMIZER CLASS
 # ==============================================================================
 
+
 class MultiFactorVolumeOptimizer:
     """
     Multi-factor volume optimizer for OnlyFans creators.
@@ -563,9 +549,7 @@ class MultiFactorVolumeOptimizer:
         self.conn.row_factory = sqlite3.Row
 
     def calculate_optimal_volume(
-        self,
-        creator_id: str,
-        fan_count: int | None = None
+        self, creator_id: str, fan_count: int | None = None
     ) -> VolumeStrategy:
         """
         Calculate optimal volume for a creator.
@@ -603,13 +587,7 @@ class MultiFactorVolumeOptimizer:
         age_factor = self._get_age_factor(metrics.account_age_days)
 
         # Calculate combined factor
-        combined_factor = (
-            tier_factor *
-            conversion_factor *
-            niche_factor *
-            price_factor *
-            age_factor
-        )
+        combined_factor = tier_factor * conversion_factor * niche_factor * price_factor * age_factor
 
         # Calculate raw volume
         raw_daily_volume = base_ppv * combined_factor
@@ -622,7 +600,7 @@ class MultiFactorVolumeOptimizer:
         tier_name, tier_ppv_per_day = get_volume_tier(
             conv_rate=metrics.avg_purchase_rate,
             dollars_per_ppv=metrics.avg_revenue_per_send,
-            total_revenue=metrics.total_earnings
+            total_revenue=metrics.total_earnings,
         )
         notes.append(f"Volume tier: {tier_name} (max {tier_ppv_per_day}/day)")
 
@@ -631,7 +609,7 @@ class MultiFactorVolumeOptimizer:
             # FREE pages: minimum 2/day, maximum from tier (up to 6/day)
             capped_daily_ppv = max(
                 FREE_PAGE_MIN_PPV_DAY,  # 2 PPV/day minimum
-                min(tier_ppv_per_day, FREE_PAGE_MAX_PPV_DAY, round(raw_daily_volume))
+                min(tier_ppv_per_day, FREE_PAGE_MAX_PPV_DAY, round(raw_daily_volume)),
             )
             capped_weekly_ppv = capped_daily_ppv * 7
         else:
@@ -640,7 +618,7 @@ class MultiFactorVolumeOptimizer:
             tier_weekly_max = tier_ppv_per_day * 7
             capped_weekly_ppv = max(
                 PAID_PAGE_MIN_PPV_WEEK,  # 14 PPV/week minimum (2/day)
-                min(tier_weekly_max, PAID_PAGE_MAX_PPV_WEEK, round(raw_weekly_volume))
+                min(tier_weekly_max, PAID_PAGE_MAX_PPV_WEEK, round(raw_weekly_volume)),
             )
             capped_daily_ppv = max(2, round(capped_weekly_ppv / 7))  # Enforce 2/day floor
 
@@ -654,11 +632,7 @@ class MultiFactorVolumeOptimizer:
             notes.append(f"Page type efficiency factor: {page_type_factor:.2f}")
 
         # Apply sweet spot gravity (14-35 PPV/week optimal per new strategy)
-        final_weekly_ppv = self._apply_sweet_spot_gravity(
-            capped_weekly_ppv,
-            metrics,
-            notes
-        )
+        final_weekly_ppv = self._apply_sweet_spot_gravity(capped_weekly_ppv, metrics, notes)
 
         # CRITICAL: Enforce final 2 PPV/day floor after all adjustments
         # This is non-negotiable per user requirements
@@ -789,7 +763,9 @@ class MultiFactorVolumeOptimizer:
         """
         metrics_cursor = self.conn.execute(metrics_query, (row["creator_id"],))
         metrics_row = metrics_cursor.fetchone()
-        avg_purchase_rate = metrics_row["avg_rate"] if metrics_row and metrics_row["avg_rate"] else 0.0
+        avg_purchase_rate = (
+            metrics_row["avg_rate"] if metrics_row and metrics_row["avg_rate"] else 0.0
+        )
 
         # Calculate average revenue per PPV message (not per fan send)
         avg_revenue_per_send = 0.0
@@ -920,10 +896,7 @@ class MultiFactorVolumeOptimizer:
         )
 
     def _apply_sweet_spot_gravity(
-        self,
-        weekly_ppv: int,
-        metrics: CreatorMetrics,
-        notes: list[str]
+        self, weekly_ppv: int, metrics: CreatorMetrics, notes: list[str]
     ) -> int:
         """
         Apply sweet spot gravity to pull volume toward 14-35 PPV/week.
@@ -944,8 +917,6 @@ class MultiFactorVolumeOptimizer:
         Returns:
             Adjusted weekly PPV volume
         """
-        original = weekly_ppv
-
         if weekly_ppv < SWEET_SPOT_MIN:
             # Below sweet spot: enforce minimum 14/week (2/day floor)
             adjusted = SWEET_SPOT_MIN  # Always at least 14/week
@@ -1000,11 +971,7 @@ class MultiFactorVolumeOptimizer:
         # Default to paid
         return False
 
-    def _get_base_volume(
-        self,
-        fan_count: int,
-        is_free_page: bool
-    ) -> tuple[str, int, int]:
+    def _get_base_volume(self, fan_count: int, is_free_page: bool) -> tuple[str, int, int]:
         """
         Get base volume from fan count brackets.
 
@@ -1128,10 +1095,7 @@ class MultiFactorVolumeOptimizer:
         else:
             return "Ultra"
 
-    def populate_volume_assignments(
-        self,
-        dry_run: bool = True
-    ) -> list[dict[str, Any]]:
+    def populate_volume_assignments(self, dry_run: bool = True) -> list[dict[str, Any]]:
         """
         Populate volume assignments for all active creators.
 
@@ -1178,7 +1142,7 @@ class MultiFactorVolumeOptimizer:
                         SET is_active = 0
                         WHERE creator_id = ? AND is_active = 1
                         """,
-                        (strategy.creator_id,)
+                        (strategy.creator_id,),
                     )
 
                     # Insert new assignment
@@ -1196,15 +1160,17 @@ class MultiFactorVolumeOptimizer:
                             strategy.bump_per_day,
                             "fan_count_bracket",
                             assignment["notes"],
-                        )
+                        ),
                     )
 
             except (ValueError, KeyError, sqlite3.Error) as e:
-                assignments.append({
-                    "creator_id": row["creator_id"],
-                    "page_name": row["page_name"],
-                    "error": str(e),
-                })
+                assignments.append(
+                    {
+                        "creator_id": row["creator_id"],
+                        "page_name": row["page_name"],
+                        "error": str(e),
+                    }
+                )
 
         if not dry_run:
             self.conn.commit()
@@ -1215,6 +1181,7 @@ class MultiFactorVolumeOptimizer:
 # ==============================================================================
 # VALIDATION FUNCTIONS
 # ==============================================================================
+
 
 def validate_volume_strategy(strategy: VolumeStrategy) -> list[str]:
     """
@@ -1248,9 +1215,7 @@ def validate_volume_strategy(strategy: VolumeStrategy) -> list[str]:
             )
 
     if strategy.bump_per_day < MIN_BUMP_PER_DAY:
-        errors.append(
-            f"Bump per day ({strategy.bump_per_day}) below minimum ({MIN_BUMP_PER_DAY})"
-        )
+        errors.append(f"Bump per day ({strategy.bump_per_day}) below minimum ({MIN_BUMP_PER_DAY})")
     if strategy.bump_per_day > MAX_BUMP_PER_DAY:
         errors.append(
             f"Bump per day ({strategy.bump_per_day}) exceeds maximum ({MAX_BUMP_PER_DAY})"
@@ -1293,6 +1258,7 @@ def get_volume_warnings(strategy: VolumeStrategy) -> list[str]:
 # ==============================================================================
 # OUTPUT FORMATTING
 # ==============================================================================
+
 
 def format_strategy_table(strategies: list[VolumeStrategy]) -> str:
     """
@@ -1366,7 +1332,7 @@ def format_strategy_detail(strategy: VolumeStrategy) -> str:
     lines.append(f"  Niche Factor:      {strategy.niche_factor:.3f}")
     lines.append(f"  Price Factor:      {strategy.price_factor:.3f}")
     lines.append(f"  Age Factor:        {strategy.age_factor:.3f}")
-    lines.append(f"  --------------------------------")
+    lines.append("  --------------------------------")
     lines.append(f"  Combined Factor:   {strategy.combined_factor:.3f}")
     lines.append(f"  Raw Daily Volume:  {strategy.raw_daily_volume:.2f}")
     lines.append(f"  Capped Daily:      {strategy.capped_daily_volume}")
@@ -1413,6 +1379,7 @@ def format_strategy_detail(strategy: VolumeStrategy) -> str:
 # CLI INTERFACE
 # ==============================================================================
 
+
 def get_db_connection(db_path: Path | None = None) -> sqlite3.Connection:
     """Get database connection with row factory."""
     path = db_path or DB_PATH
@@ -1446,48 +1413,27 @@ Examples:
 
     # Write to database
     python volume_optimizer.py --populate
-        """
+        """,
     )
 
     # Creator selection
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "-c", "--creator",
-        help="Creator page_name or creator_id"
-    )
-    group.add_argument(
-        "-a", "--all",
-        action="store_true",
-        help="Calculate for all active creators"
-    )
-    group.add_argument(
-        "--populate",
-        action="store_true",
-        help="Populate volume_assignments table"
-    )
+    group.add_argument("-c", "--creator", help="Creator page_name or creator_id")
+    group.add_argument("-a", "--all", action="store_true", help="Calculate for all active creators")
+    group.add_argument("--populate", action="store_true", help="Populate volume_assignments table")
 
     # Options
+    parser.add_argument("--fan-count", type=int, help="Override fan count for calculation")
     parser.add_argument(
-        "--fan-count",
-        type=int,
-        help="Override fan count for calculation"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without writing to database"
+        "--dry-run", action="store_true", help="Preview changes without writing to database"
     )
     parser.add_argument(
         "--format",
         choices=["json", "table", "detail"],
         default="detail",
-        help="Output format (default: detail)"
+        help="Output format (default: detail)",
     )
-    parser.add_argument(
-        "--db",
-        type=Path,
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", type=Path, help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -1497,10 +1443,7 @@ Examples:
 
         if args.creator:
             # Single creator calculation
-            strategy = optimizer.calculate_optimal_volume(
-                args.creator,
-                fan_count=args.fan_count
-            )
+            strategy = optimizer.calculate_optimal_volume(args.creator, fan_count=args.fan_count)
 
             if args.format == "json":
                 print(json.dumps(strategy.to_dict(), indent=2))
@@ -1544,7 +1487,9 @@ Examples:
                 print(json.dumps(assignments, indent=2))
             else:
                 print("-" * 80)
-                print(f"{'Creator':<25} {'Level':<8} {'PPV/Day':<10} {'Bump/Day':<10} {'Status':<15}")
+                print(
+                    f"{'Creator':<25} {'Level':<8} {'PPV/Day':<10} {'Bump/Day':<10} {'Status':<15}"
+                )
                 print("-" * 80)
 
                 for a in assignments:
@@ -1576,6 +1521,7 @@ Examples:
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         return 1
 

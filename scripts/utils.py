@@ -10,7 +10,8 @@ This module provides:
 from __future__ import annotations
 
 import random
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar
 
 __all__ = ["VoseAliasSelector"]
 
@@ -102,8 +103,8 @@ class VoseAliasSelector(Generic[T]):
         # Handle remaining items (due to floating point errors)
         for g in large:
             self.prob[g] = 1.0
-        for l in small:
-            self.prob[l] = 1.0
+        for s_idx in small:
+            self.prob[s_idx] = 1.0
 
     def select(self) -> T:
         """

@@ -22,7 +22,6 @@ Usage:
 import argparse
 import json
 import math
-import os
 import sqlite3
 import sys
 from dataclasses import dataclass
@@ -33,21 +32,7 @@ from typing import Any
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
 
-# Database path resolution with multiple candidate locations
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
-HOME_DIR = Path.home()
-
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH  # noqa: E402
 
 # Default configuration
 DEFAULT_HALF_LIFE_DAYS = 14.0
@@ -79,7 +64,7 @@ def calculate_freshness(
     reference_date: date | None = None,
     half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
     times_used: int = 0,
-    performance_score: float = 50.0
+    performance_score: float = 50.0,
 ) -> tuple[float, int | None, list[str]]:
     """
     Calculate freshness score using exponential decay with adjustments.
@@ -175,7 +160,9 @@ def calculate_freshness(
         excess_uses = times_used - HEAVY_USE_THRESHOLD
         penalty = excess_uses * HEAVY_USE_PENALTY
         freshness -= penalty
-        adjustments.append(f"Heavy use penalty: -{penalty:.1f} ({excess_uses} uses above {HEAVY_USE_THRESHOLD})")
+        adjustments.append(
+            f"Heavy use penalty: -{penalty:.1f} ({excess_uses} uses above {HEAVY_USE_THRESHOLD})"
+        )
 
     # Apply winner bonus
     if performance_score >= WINNER_THRESHOLD:
@@ -199,8 +186,7 @@ def get_db_connection() -> sqlite3.Connection:
 
 
 def calculate_caption_freshness(
-    conn: sqlite3.Connection,
-    caption_id: int
+    conn: sqlite3.Connection, caption_id: int
 ) -> FreshnessResult | None:
     """
     Calculate freshness for a single caption.
@@ -233,7 +219,7 @@ def calculate_caption_freshness(
     new_freshness, days_since, adjustments = calculate_freshness(
         last_used_date=row["last_used_date"],
         times_used=row["times_used"] or 0,
-        performance_score=row["performance_score"] or 50.0
+        performance_score=row["performance_score"] or 50.0,
     )
 
     return FreshnessResult(
@@ -244,14 +230,12 @@ def calculate_caption_freshness(
         days_since_used=days_since,
         times_used=row["times_used"] or 0,
         performance_score=row["performance_score"] or 50.0,
-        adjustments=adjustments
+        adjustments=adjustments,
     )
 
 
 def update_all_freshness_scores(
-    conn: sqlite3.Connection,
-    dry_run: bool = True,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, dry_run: bool = True, creator_id: str | None = None
 ) -> list[FreshnessResult]:
     """
     Calculate and optionally update freshness for all captions.
@@ -292,18 +276,20 @@ def update_all_freshness_scores(
         new_freshness, days_since, adjustments = calculate_freshness(
             last_used_date=row["last_used_date"],
             times_used=row["times_used"] or 0,
-            performance_score=row["performance_score"] or 50.0
+            performance_score=row["performance_score"] or 50.0,
         )
 
         result = FreshnessResult(
             caption_id=row["caption_id"],
-            caption_text=row["caption_text"][:100] + "..." if row["caption_text"] and len(row["caption_text"]) > 100 else row["caption_text"],
+            caption_text=row["caption_text"][:100] + "..."
+            if row["caption_text"] and len(row["caption_text"]) > 100
+            else row["caption_text"],
             current_freshness=row["freshness_score"] or 100.0,
             new_freshness=new_freshness,
             days_since_used=days_since,
             times_used=row["times_used"] or 0,
             performance_score=row["performance_score"] or 50.0,
-            adjustments=adjustments
+            adjustments=adjustments,
         )
         results.append(result)
 
@@ -315,7 +301,7 @@ def update_all_freshness_scores(
     if not dry_run and updates:
         conn.executemany(
             "UPDATE caption_bank SET freshness_score = ?, updated_at = datetime('now') WHERE caption_id = ?",
-            updates
+            updates,
         )
         conn.commit()
 
@@ -335,11 +321,13 @@ def format_markdown(results: list[FreshnessResult], updated: bool = False) -> st
         "## Results",
         "",
         "| ID | Days Since | Times Used | Perf | Current | New | Change | Adjustments |",
-        "|----|------------|------------|------|---------|-----|--------|-------------|"
+        "|----|------------|------------|------|---------|-----|--------|-------------|",
     ]
 
     # Sort by change magnitude
-    results_sorted = sorted(results, key=lambda r: abs(r.new_freshness - r.current_freshness), reverse=True)
+    results_sorted = sorted(
+        results, key=lambda r: abs(r.new_freshness - r.current_freshness), reverse=True
+    )
 
     for r in results_sorted[:50]:  # Limit to top 50
         days_str = str(r.days_since_used) if r.days_since_used is not None else "Never"
@@ -362,21 +350,27 @@ def format_markdown(results: list[FreshnessResult], updated: bool = False) -> st
     avg_current = sum(r.current_freshness for r in results) / len(results) if results else 0
     avg_new = sum(r.new_freshness for r in results) / len(results) if results else 0
     exhausted = sum(1 for r in results if r.new_freshness < DEFAULT_EXHAUSTION_THRESHOLD)
-    stale = sum(1 for r in results if DEFAULT_EXHAUSTION_THRESHOLD <= r.new_freshness < DEFAULT_MIN_FRESHNESS)
+    stale = sum(
+        1
+        for r in results
+        if DEFAULT_EXHAUSTION_THRESHOLD <= r.new_freshness < DEFAULT_MIN_FRESHNESS
+    )
     fresh = sum(1 for r in results if r.new_freshness >= DEFAULT_MIN_FRESHNESS)
 
-    lines.extend([
-        "## Summary",
-        "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
-        f"| Average Current | {avg_current:.1f} |",
-        f"| Average New | {avg_new:.1f} |",
-        f"| Fresh (>= {DEFAULT_MIN_FRESHNESS}) | {fresh} |",
-        f"| Stale ({DEFAULT_EXHAUSTION_THRESHOLD}-{DEFAULT_MIN_FRESHNESS}) | {stale} |",
-        f"| Exhausted (< {DEFAULT_EXHAUSTION_THRESHOLD}) | {exhausted} |",
-        ""
-    ])
+    lines.extend(
+        [
+            "## Summary",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| Average Current | {avg_current:.1f} |",
+            f"| Average New | {avg_new:.1f} |",
+            f"| Fresh (>= {DEFAULT_MIN_FRESHNESS}) | {fresh} |",
+            f"| Stale ({DEFAULT_EXHAUSTION_THRESHOLD}-{DEFAULT_MIN_FRESHNESS}) | {stale} |",
+            f"| Exhausted (< {DEFAULT_EXHAUSTION_THRESHOLD}) | {exhausted} |",
+            "",
+        ]
+    )
 
     return "\n".join(lines)
 
@@ -391,7 +385,7 @@ def format_json(results: list[FreshnessResult]) -> str:
             "days_since_used": r.days_since_used,
             "times_used": r.times_used,
             "performance_score": r.performance_score,
-            "adjustments": r.adjustments
+            "adjustments": r.adjustments,
         }
         for r in results
     ]
@@ -422,49 +416,33 @@ Examples:
     python calculate_freshness.py --batch
     python calculate_freshness.py --caption-id 12345
     python calculate_freshness.py --creator missalexa --update
-        """
+        """,
     )
 
+    parser.add_argument("--batch", "-b", action="store_true", help="Process all active captions")
+    parser.add_argument("--caption-id", type=int, help="Calculate for specific caption ID")
+    parser.add_argument("--creator", "-c", help="Filter by creator page name")
     parser.add_argument(
-        "--batch", "-b",
+        "--update",
+        "-u",
         action="store_true",
-        help="Process all active captions"
+        help="Update database with new scores (default: dry run)",
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--caption-id",
-        type=int,
-        help="Calculate for specific caption ID"
-    )
-    parser.add_argument(
-        "--creator", "-c",
-        help="Filter by creator page name"
-    )
-    parser.add_argument(
-        "--update", "-u",
-        action="store_true",
-        help="Update database with new scores (default: dry run)"
-    )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
     parser.add_argument(
         "--half-life",
         type=float,
         default=DEFAULT_HALF_LIFE_DAYS,
-        help=f"Half-life in days (default: {DEFAULT_HALF_LIFE_DAYS})"
+        help=f"Half-life in days (default: {DEFAULT_HALF_LIFE_DAYS})",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -493,7 +471,7 @@ Examples:
             if args.update:
                 conn.execute(
                     "UPDATE caption_bank SET freshness_score = ?, updated_at = datetime('now') WHERE caption_id = ?",
-                    (result.new_freshness, result.caption_id)
+                    (result.new_freshness, result.caption_id),
                 )
                 conn.commit()
         else:
@@ -502,16 +480,14 @@ Examples:
             if args.creator:
                 cursor = conn.execute(
                     "SELECT creator_id FROM creators WHERE page_name = ? OR display_name = ?",
-                    (args.creator, args.creator)
+                    (args.creator, args.creator),
                 )
                 row = cursor.fetchone()
                 if row:
                     creator_id = row["creator_id"]
 
             results = update_all_freshness_scores(
-                conn,
-                dry_run=not args.update,
-                creator_id=creator_id
+                conn, dry_run=not args.update, creator_id=creator_id
             )
 
         # Format output

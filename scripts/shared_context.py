@@ -129,17 +129,33 @@ class CreatorProfile:
     bump_per_day: int = 3
 
 
-@dataclass(frozen=False)
+@dataclass(frozen=True, slots=True)
 class PersonaProfile:
-    """Creator persona for voice/tone matching."""
+    """Canonical persona profile - single source of truth.
+
+    All modules MUST import from shared_context, not define their own.
+
+    Attributes:
+        creator_id: Unique creator identifier.
+        page_name: Creator's page name.
+        primary_tone: Primary voice tone (playful, seductive, aggressive, etc.).
+        secondary_tone: Optional secondary tone for matching.
+        emoji_frequency: Emoji usage level (none, light, moderate, heavy).
+        favorite_emojis: Tuple of preferred emojis.
+        slang_level: Slang usage level (none, light, heavy).
+        avg_sentiment: Average sentiment score (0.0-1.0).
+        avg_caption_length: Average caption character length.
+    """
 
     creator_id: str
-    primary_tone: str  # playful, seductive, aggressive, etc.
-    emoji_frequency: str  # none, light, moderate, heavy
-    favorite_emojis: str
-    slang_level: str  # none, light, heavy
-    avg_sentiment: float
-    avg_caption_length: int
+    page_name: str
+    primary_tone: str
+    secondary_tone: str | None = None
+    emoji_frequency: str = "moderate"
+    favorite_emojis: tuple[str, ...] = ()
+    slang_level: str = "light"
+    avg_sentiment: float = 0.5
+    avg_caption_length: int = 100
 
 
 @dataclass(frozen=False)
@@ -260,6 +276,30 @@ class ScheduleContext:
     execution_start: str = ""
     execution_end: str = ""
 
+    # Payday context (from Phase 1 - economic timing optimization)
+    high_value_days: list[date] = field(default_factory=list)
+    """Days identified as high-value (e.g., paydays, weekends) for premium pricing."""
+    flash_sale_day: date | None = None
+    """Single day designated for flash sale pricing strategy."""
+    payday_multipliers: dict[str, float] = field(default_factory=dict)
+    """Day-specific pricing multipliers based on economic patterns (e.g., {'Friday': 1.15})."""
+
+    # Timing confidence metrics
+    best_hours_confidence: float = 0.0
+    """Confidence score (0.0-1.0) for peak hour recommendations. Higher = more historical data."""
+    fallback_hours_used: bool = False
+    """True if static default hours were used instead of data-driven recommendations."""
+
+    # Inventory signals for caption selection
+    low_caption_inventory: bool = False
+    """True if creator has fewer than optimal captions available for variety."""
+    content_types_exhausted: list[str] = field(default_factory=list)
+    """Content types that have run out of fresh captions (freshness < 30)."""
+
+    # Hook tracking (from Phase 3 - prevents repetition in follow-ups)
+    hooks_used_this_week: list[str] = field(default_factory=list)
+    """Psychological hooks already used this week to avoid repetition (e.g., 'scarcity', 'fomo')."""
+
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary for serialization."""
         return {
@@ -276,6 +316,18 @@ class ScheduleContext:
             "has_revenue_projection": self.revenue_projection is not None,
             "has_page_type_rules": self.page_type_rules is not None,
             "has_validation": self.validation_result is not None,
+            # Payday context
+            "high_value_days": [d.isoformat() for d in self.high_value_days],
+            "flash_sale_day": self.flash_sale_day.isoformat() if self.flash_sale_day else None,
+            "payday_multipliers": self.payday_multipliers,
+            # Timing confidence
+            "best_hours_confidence": self.best_hours_confidence,
+            "fallback_hours_used": self.fallback_hours_used,
+            # Inventory signals
+            "low_caption_inventory": self.low_caption_inventory,
+            "content_types_exhausted": self.content_types_exhausted,
+            # Hook tracking
+            "hooks_used_this_week": self.hooks_used_this_week,
         }
 
     def mark_agent_used(self, agent_name: str) -> None:

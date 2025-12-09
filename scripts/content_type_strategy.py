@@ -25,8 +25,7 @@ Usage:
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 __all__ = [
     "ContentTypePool",
@@ -56,6 +55,7 @@ MAX_SLOT_RATIO: float = 0.40  # Variety ceiling - no type exceeds 40% of slots
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
+
 
 @dataclass
 class ContentTypePool:
@@ -94,6 +94,7 @@ class ContentTypePool:
 # =============================================================================
 # CONTENT TYPE STRATEGY CLASS
 # =============================================================================
+
 
 class ContentTypeStrategy:
     """
@@ -165,9 +166,7 @@ class ContentTypeStrategy:
             ORDER BY creator_avg_earnings DESC NULLS LAST, global_avg_earnings DESC NULLS LAST
         """
 
-        cursor = self.conn.execute(
-            query, (self.creator_id, self.creator_id, self.creator_id)
-        )
+        cursor = self.conn.execute(query, (self.creator_id, self.creator_id, self.creator_id))
 
         content_types = []
         for row in cursor.fetchall():
@@ -182,15 +181,17 @@ class ContentTypeStrategy:
             else:
                 expected = DEFAULT_EXPECTED_EARNINGS
 
-            content_types.append(ContentTypePool(
-                content_type_id=row["content_type_id"],
-                type_name=row["type_name"],
-                priority_tier=row["priority_tier"] or 2,
-                creator_avg_earnings=creator_avg,
-                global_avg_earnings=global_avg,
-                expected_earnings=expected,
-                caption_count=row["caption_count"] or 0,
-            ))
+            content_types.append(
+                ContentTypePool(
+                    content_type_id=row["content_type_id"],
+                    type_name=row["type_name"],
+                    priority_tier=row["priority_tier"] or 2,
+                    creator_avg_earnings=creator_avg,
+                    global_avg_earnings=global_avg,
+                    expected_earnings=expected,
+                    caption_count=row["caption_count"] or 0,
+                )
+            )
 
         # Sort by expected earnings descending
         content_types.sort(key=lambda x: x.expected_earnings, reverse=True)
@@ -236,10 +237,7 @@ class ContentTypeStrategy:
         total_weight = sum(weights.values())
         if total_weight < 1.0:
             # Find uncapped types to receive redistribution
-            uncapped = [
-                name for name, w in weights.items()
-                if w < MAX_SLOT_RATIO
-            ]
+            uncapped = [name for name, w in weights.items() if w < MAX_SLOT_RATIO]
             if uncapped:
                 excess = 1.0 - total_weight
                 per_type_boost = excess / len(uncapped)
@@ -255,10 +253,7 @@ class ContentTypeStrategy:
         return weights
 
     def allocate_slots_by_content_type(
-        self,
-        total_slots: int,
-        min_per_type: int | None = None,
-        max_ratio: float | None = None
+        self, total_slots: int, min_per_type: int | None = None, max_ratio: float | None = None
     ) -> dict[str, int]:
         """
         Allocate total slots across content types based on earnings weights.
@@ -289,7 +284,7 @@ class ContentTypeStrategy:
             content_type_earnings=earnings_dict,
             total_slots=total_slots,
             min_per_type=min_per_type,
-            max_ratio=max_ratio
+            max_ratio=max_ratio,
         )
 
     def get_premium_content_types(self, top_n: int = 3) -> list[str]:
@@ -328,10 +323,8 @@ class ContentTypeStrategy:
 # STANDALONE FUNCTIONS
 # =============================================================================
 
-def get_content_type_earnings(
-    conn: sqlite3.Connection,
-    creator_id: str
-) -> dict[str, float]:
+
+def get_content_type_earnings(conn: sqlite3.Connection, creator_id: str) -> dict[str, float]:
     """
     Get average earnings per content type for a creator.
 
@@ -379,7 +372,7 @@ def allocate_slots_weighted(
     content_type_earnings: dict[str, float],
     total_slots: int,
     min_per_type: int = MIN_SLOTS_PER_TYPE,
-    max_ratio: float = MAX_SLOT_RATIO
+    max_ratio: float = MAX_SLOT_RATIO,
 ) -> dict[str, int]:
     """
     Allocate slots proportional to earnings with constraints.
@@ -467,7 +460,8 @@ def allocate_slots_weighted(
 
     # Step 3: Redistribute excess to uncapped types
     uncapped_types = [
-        name for name in allocation.keys()
+        name
+        for name in allocation.keys()
         if name not in capped_types and allocation[name] < max_slots
     ]
 
@@ -485,10 +479,7 @@ def allocate_slots_weighted(
                     remaining_excess -= 1
 
             # Remove types that hit the cap
-            uncapped_types = [
-                name for name in uncapped_types
-                if allocation[name] < max_slots
-            ]
+            uncapped_types = [name for name in uncapped_types if allocation[name] < max_slots]
 
     # Step 4: Ensure total matches exactly
     current_total = sum(allocation.values())
@@ -496,10 +487,7 @@ def allocate_slots_weighted(
 
     if difference > 0:
         # Add remaining slots to highest earners
-        sorted_types = sorted(
-            allocation.keys(),
-            key=lambda x: -content_type_earnings[x]
-        )
+        sorted_types = sorted(allocation.keys(), key=lambda x: -content_type_earnings[x])
         for type_name in sorted_types:
             if difference <= 0:
                 break
@@ -509,10 +497,7 @@ def allocate_slots_weighted(
 
     elif difference < 0:
         # Remove excess slots from lowest earners
-        sorted_types = sorted(
-            allocation.keys(),
-            key=lambda x: content_type_earnings[x]
-        )
+        sorted_types = sorted(allocation.keys(), key=lambda x: content_type_earnings[x])
         for type_name in sorted_types:
             if difference >= 0:
                 break
@@ -523,10 +508,7 @@ def allocate_slots_weighted(
     return allocation
 
 
-def get_premium_content_types(
-    content_type_earnings: dict[str, float],
-    top_n: int = 3
-) -> list[str]:
+def get_premium_content_types(content_type_earnings: dict[str, float], top_n: int = 3) -> list[str]:
     """
     Return top N earning content types for premium slots.
 
@@ -543,11 +525,7 @@ def get_premium_content_types(
     if not content_type_earnings:
         return []
 
-    sorted_types = sorted(
-        content_type_earnings.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
+    sorted_types = sorted(content_type_earnings.items(), key=lambda x: x[1], reverse=True)
 
     return [type_name for type_name, _ in sorted_types[:top_n]]
 
@@ -555,6 +533,7 @@ def get_premium_content_types(
 # =============================================================================
 # MAIN (FOR TESTING)
 # =============================================================================
+
 
 def main() -> None:
     """Test the content type strategy module."""
@@ -599,10 +578,12 @@ def main() -> None:
 
         print("\n1. Allowed Content Types:")
         for ct in strategy.get_allowed_content_types():
-            print(f"   {ct.type_name}: ${ct.expected_earnings:.2f} "
-                  f"(creator: ${ct.creator_avg_earnings or 0:.2f}, "
-                  f"global: ${ct.global_avg_earnings:.2f}, "
-                  f"captions: {ct.caption_count})")
+            print(
+                f"   {ct.type_name}: ${ct.expected_earnings:.2f} "
+                f"(creator: ${ct.creator_avg_earnings or 0:.2f}, "
+                f"global: ${ct.global_avg_earnings:.2f}, "
+                f"captions: {ct.caption_count})"
+            )
 
         print("\n2. Slot Weights:")
         weights = strategy.calculate_slot_weights()

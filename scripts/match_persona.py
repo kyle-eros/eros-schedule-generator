@@ -32,7 +32,6 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import sqlite3
 import sys
@@ -40,21 +39,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Path resolution for database
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
-SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
+from shared_context import PersonaProfile
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+# Path resolution for database
+SCRIPT_DIR = Path(__file__).parent
+
+from database import DB_PATH  # noqa: E402
 
 # Boost configuration
 PRIMARY_TONE_BOOST = 1.20
@@ -71,60 +61,203 @@ TONE_OPTIONS = ["playful", "aggressive", "sweet", "dominant", "bratty", "seducti
 # Tone keyword patterns for text-based detection
 TONE_KEYWORDS: dict[str, list[str]] = {
     "playful": [
-        "hehe", "haha", "lol", "tease", "fun", "silly", "naughty", "game",
-        "peek", "sneak", "surprise", "wink", "giggle", "oops", "whoops"
+        "hehe",
+        "haha",
+        "lol",
+        "tease",
+        "fun",
+        "silly",
+        "naughty",
+        "game",
+        "peek",
+        "sneak",
+        "surprise",
+        "wink",
+        "giggle",
+        "oops",
+        "whoops",
     ],
     "aggressive": [
-        "now", "demand", "obey", "serve", "worship", "kneel", "beg",
-        "command", "order", "submit", "punish", "must", "immediately"
+        "now",
+        "demand",
+        "obey",
+        "serve",
+        "worship",
+        "kneel",
+        "beg",
+        "command",
+        "order",
+        "submit",
+        "punish",
+        "must",
+        "immediately",
     ],
     "sweet": [
-        "baby", "honey", "sweetheart", "darling", "love", "miss you",
-        "thinking of you", "xoxo", "kisses", "hugs", "cuddle", "appreciate"
+        "baby",
+        "honey",
+        "sweetheart",
+        "darling",
+        "love",
+        "miss you",
+        "thinking of you",
+        "xoxo",
+        "kisses",
+        "hugs",
+        "cuddle",
+        "appreciate",
     ],
     "dominant": [
-        "control", "power", "dominate", "boss", "authority", "rule",
-        "permission", "allow", "decide", "own", "master", "mistress"
+        "control",
+        "power",
+        "dominate",
+        "boss",
+        "authority",
+        "rule",
+        "permission",
+        "allow",
+        "decide",
+        "own",
+        "master",
+        "mistress",
     ],
     "bratty": [
-        "whatever", "duh", "like", "omg", "totally", "ugh", "please",
-        "pretty please", "spoil", "deserve", "want", "gimme", "fine"
+        "whatever",
+        "duh",
+        "like",
+        "omg",
+        "totally",
+        "ugh",
+        "please",
+        "pretty please",
+        "spoil",
+        "deserve",
+        "want",
+        "gimme",
+        "fine",
     ],
     "seductive": [
-        "seduce", "tempt", "desire", "crave", "lust", "sensual", "intimate",
-        "taste", "explore", "pleasure", "fantasy", "dream", "whisper"
+        "seduce",
+        "tempt",
+        "desire",
+        "crave",
+        "lust",
+        "sensual",
+        "intimate",
+        "taste",
+        "explore",
+        "pleasure",
+        "fantasy",
+        "dream",
+        "whisper",
     ],
     "direct": [
-        "exclusive", "deal", "unlock", "sale", "limited", "offer", "price",
-        "only", "today", "special", "save", "worth", "value", "get",
-        "discount", "dm", "tip", "subscribe", "free", "trial", "vip",
-        "access", "link", "check out", "available", "content", "bundle"
-    ]
+        "exclusive",
+        "deal",
+        "unlock",
+        "sale",
+        "limited",
+        "offer",
+        "price",
+        "only",
+        "today",
+        "special",
+        "save",
+        "worth",
+        "value",
+        "get",
+        "discount",
+        "dm",
+        "tip",
+        "subscribe",
+        "free",
+        "trial",
+        "vip",
+        "access",
+        "link",
+        "check out",
+        "available",
+        "content",
+        "bundle",
+    ],
 }
 
 # Slang patterns for text-based detection
 SLANG_PATTERNS: dict[str, list[str]] = {
     "heavy": [
-        "af", "asf", "ngl", "fr", "lowkey", "highkey", "bussin", "sus",
-        "bet", "cap", "no cap", "periodt", "slay", "goated", "lit"
+        "af",
+        "asf",
+        "ngl",
+        "fr",
+        "lowkey",
+        "highkey",
+        "bussin",
+        "sus",
+        "bet",
+        "cap",
+        "no cap",
+        "periodt",
+        "slay",
+        "goated",
+        "lit",
     ],
     "light": [
-        "gonna", "wanna", "gotta", "kinda", "sorta", "ya", "yea", "nah",
-        "btw", "tbh", "omg", "lmao", "lol", "rn", "imo"
+        "gonna",
+        "wanna",
+        "gotta",
+        "kinda",
+        "sorta",
+        "ya",
+        "yea",
+        "nah",
+        "btw",
+        "tbh",
+        "omg",
+        "lmao",
+        "lol",
+        "rn",
+        "imo",
     ],
-    "none": []  # Formal language, no slang markers
+    "none": [],  # Formal language, no slang markers
 }
 
 # Sentiment word lists for alignment scoring
 POSITIVE_WORDS = [
-    "love", "amazing", "incredible", "best", "perfect", "beautiful", "gorgeous",
-    "hot", "sexy", "exclusive", "special", "favorite", "lucky", "reward",
-    "treat", "gift", "worth", "premium", "quality", "stunning", "wow"
+    "love",
+    "amazing",
+    "incredible",
+    "best",
+    "perfect",
+    "beautiful",
+    "gorgeous",
+    "hot",
+    "sexy",
+    "exclusive",
+    "special",
+    "favorite",
+    "lucky",
+    "reward",
+    "treat",
+    "gift",
+    "worth",
+    "premium",
+    "quality",
+    "stunning",
+    "wow",
 ]
 
 NEGATIVE_WORDS = [
-    "miss", "regret", "hurry", "limited", "last", "final", "ending", "gone",
-    "sold out", "missed", "never", "don't miss"
+    "miss",
+    "regret",
+    "hurry",
+    "limited",
+    "last",
+    "final",
+    "ending",
+    "gone",
+    "sold out",
+    "missed",
+    "never",
+    "don't miss",
 ]
 
 # Emoji frequency levels
@@ -133,6 +266,7 @@ EMOJI_FREQUENCY_OPTIONS = ["heavy", "moderate", "light", "none"]
 # Slang levels
 SLANG_LEVEL_OPTIONS = ["none", "light", "heavy"]
 
+
 # =============================================================================
 # PRE-COMPILED PATTERNS FOR PERFORMANCE
 # These are compiled once at module load instead of on every function call
@@ -140,25 +274,22 @@ SLANG_LEVEL_OPTIONS = ["none", "light", "heavy"]
 
 # Pre-compiled emoji pattern
 EMOJI_PATTERN = re.compile(
-    "[\U0001F600-\U0001F64F"  # Emoticons
-    "\U0001F300-\U0001F5FF"  # Misc Symbols and Pictographs
-    "\U0001F680-\U0001F6FF"  # Transport and Map
-    "\U0001F1E0-\U0001F1FF"  # Flags
-    "\U00002702-\U000027B0"  # Dingbats
-    "\U0001F900-\U0001F9FF"  # Supplemental Symbols
-    "\U0001FA00-\U0001FA6F"  # Chess Symbols
-    "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
-    "\U00002600-\U000026FF"  # Misc Symbols
+    "[\U0001f600-\U0001f64f"  # Emoticons
+    "\U0001f300-\U0001f5ff"  # Misc Symbols and Pictographs
+    "\U0001f680-\U0001f6ff"  # Transport and Map
+    "\U0001f1e0-\U0001f1ff"  # Flags
+    "\U00002702-\U000027b0"  # Dingbats
+    "\U0001f900-\U0001f9ff"  # Supplemental Symbols
+    "\U0001fa00-\U0001fa6f"  # Chess Symbols
+    "\U0001fa70-\U0001faff"  # Symbols and Pictographs Extended-A
+    "\U00002600-\U000026ff"  # Misc Symbols
     "]+",
-    flags=re.UNICODE
+    flags=re.UNICODE,
 )
 
 # Pre-compiled tone keyword patterns: dict[tone, list[tuple[keyword, pattern, is_phrase]]]
 TONE_COMPILED_PATTERNS: dict[str, list[tuple[str, re.Pattern, bool]]] = {
-    tone: [
-        (kw, re.compile(rf"\b{re.escape(kw)}\b", re.IGNORECASE), " " in kw)
-        for kw in keywords
-    ]
+    tone: [(kw, re.compile(rf"\b{re.escape(kw)}\b", re.IGNORECASE), " " in kw) for kw in keywords]
     for tone, keywords in TONE_KEYWORDS.items()
 }
 
@@ -179,22 +310,7 @@ NEGATIVE_COMPILED_PATTERNS: list[tuple[str, re.Pattern | None]] = [
 ]
 
 
-@dataclass(frozen=True, slots=True)
-class PersonaProfile:
-    """Creator persona profile."""
-
-    creator_id: str
-    page_name: str
-    primary_tone: str
-    secondary_tone: str | None = None
-    emoji_frequency: str = "moderate"
-    favorite_emojis: tuple[str, ...] = ()
-    slang_level: str = "light"
-    avg_sentiment: float = 0.5
-    avg_caption_length: int = 100
-
-
-@dataclass
+@dataclass(slots=True)
 class PersonaMatchResult:
     """Result of persona matching for a caption."""
 
@@ -383,9 +499,7 @@ def calculate_sentiment(text: str) -> float:
 
 
 def check_sentiment_alignment(
-    caption_sentiment: float,
-    persona_sentiment: float,
-    tolerance: float = 0.25
+    caption_sentiment: float, persona_sentiment: float, tolerance: float = 0.25
 ) -> bool:
     """
     Check if caption sentiment aligns with persona's average sentiment.
@@ -402,9 +516,7 @@ def check_sentiment_alignment(
 
 
 def get_persona_profile(
-    conn: sqlite3.Connection,
-    creator_name: str | None = None,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, creator_name: str | None = None, creator_id: str | None = None
 ) -> PersonaProfile | None:
     """
     Load creator persona profile from database.
@@ -416,6 +528,9 @@ def get_persona_profile(
 
     Returns:
         PersonaProfile or None if not found
+
+    Raises:
+        ValueError: If neither creator_name nor creator_id is provided.
     """
     if not creator_name and not creator_id:
         raise ValueError("Must provide either creator_name or creator_id")
@@ -479,7 +594,7 @@ def get_persona_profile(
         favorite_emojis=favorite_emojis,
         slang_level=row["slang_level"] or "light",
         avg_sentiment=row["avg_sentiment"] or 0.5,
-        avg_caption_length=row["avg_caption_length"] or 100
+        avg_caption_length=row["avg_caption_length"] or 100,
     )
 
 
@@ -489,7 +604,7 @@ def calculate_persona_boost(
     caption_slang_level: str | None,
     persona: PersonaProfile,
     caption_text: str | None = None,
-    use_text_detection: bool = True
+    use_text_detection: bool = True,
 ) -> PersonaMatchResult:
     """
     Calculate persona boost factor for a caption.
@@ -527,7 +642,7 @@ def calculate_persona_boost(
         caption_text=caption_text,
         caption_tone=caption_tone,
         caption_emoji_style=caption_emoji_style,
-        caption_slang_level=caption_slang_level
+        caption_slang_level=caption_slang_level,
     )
 
     total_boost = 1.0
@@ -611,19 +726,19 @@ def calculate_persona_boost(
             )
 
     # Check if ANY persona signal matched
-    has_any_match = any([
-        result.tone_match,
-        result.emoji_match,
-        result.slang_match,
-        result.sentiment_match,
-    ])
+    has_any_match = any(
+        [
+            result.tone_match,
+            result.emoji_match,
+            result.slang_match,
+            result.sentiment_match,
+        ]
+    )
 
     if not has_any_match:
         # No persona signals matched - apply 5% penalty
         result.total_boost = NO_MATCH_PENALTY
-        result.match_details.append(
-            f"No persona match - penalty applied: {NO_MATCH_PENALTY:.2f}x"
-        )
+        result.match_details.append(f"No persona match - penalty applied: {NO_MATCH_PENALTY:.2f}x")
     else:
         # Cap at maximum boost (existing logic)
         result.total_boost = min(total_boost, MAX_COMBINED_BOOST)
@@ -641,7 +756,7 @@ def match_captions_to_persona(
     persona: PersonaProfile,
     caption_id: int | None = None,
     limit: int = 100,
-    use_text_detection: bool = True
+    use_text_detection: bool = True,
 ) -> list[PersonaMatchResult]:
     """
     Match captions to a persona and calculate boosts.
@@ -694,7 +809,7 @@ def match_captions_to_persona(
             caption_slang_level=row["slang_level"],
             persona=persona,
             caption_text=row["caption_text"],
-            use_text_detection=use_text_detection
+            use_text_detection=use_text_detection,
         )
 
         match_result.caption_id = row["caption_id"]
@@ -707,24 +822,21 @@ def match_captions_to_persona(
     return results
 
 
-def format_markdown(
-    persona: PersonaProfile,
-    results: list[PersonaMatchResult]
-) -> str:
+def format_markdown(persona: PersonaProfile, results: list[PersonaMatchResult]) -> str:
     """Format results as Markdown."""
     lines = [
         f"# Persona Match Results: {persona.page_name}",
         "",
         "## Persona Profile",
         "",
-        f"| Attribute | Value |",
-        f"|-----------|-------|",
+        "| Attribute | Value |",
+        "|-----------|-------|",
         f"| Primary Tone | {persona.primary_tone} |",
         f"| Emoji Frequency | {persona.emoji_frequency} |",
         f"| Slang Level | {persona.slang_level} |",
         f"| Avg Sentiment | {persona.avg_sentiment:.2f} |",
         f"| Avg Caption Length | {persona.avg_caption_length} |",
-        ""
+        "",
     ]
 
     if persona.favorite_emojis:
@@ -739,27 +851,31 @@ def format_markdown(
     sentiment_aligned = sum(1 for r in results if r.sentiment_match)
     detected_tones = sum(1 for r in results if r.detected_tone)
 
-    lines.extend([
-        "## Match Summary",
-        "",
-        f"| Category | Count |",
-        f"|----------|-------|",
-        f"| Perfect Match (>= 1.30x) | {perfect_matches} |",
-        f"| Good Match (1.10-1.30x) | {good_matches} |",
-        f"| Neutral (1.0x) | {neutral_matches} |",
-        f"| Penalized (0.95x) | {penalized} |",
-        f"| Sentiment Aligned | {sentiment_aligned} |",
-        f"| Tones Detected (text) | {detected_tones} |",
-        f"| Total Captions | {len(results)} |",
-        ""
-    ])
+    lines.extend(
+        [
+            "## Match Summary",
+            "",
+            "| Category | Count |",
+            "|----------|-------|",
+            f"| Perfect Match (>= 1.30x) | {perfect_matches} |",
+            f"| Good Match (1.10-1.30x) | {good_matches} |",
+            f"| Neutral (1.0x) | {neutral_matches} |",
+            f"| Penalized (0.95x) | {penalized} |",
+            f"| Sentiment Aligned | {sentiment_aligned} |",
+            f"| Tones Detected (text) | {detected_tones} |",
+            f"| Total Captions | {len(results)} |",
+            "",
+        ]
+    )
 
-    lines.extend([
-        "## Caption Matches",
-        "",
-        "| ID | Tone | Emoji | Slang | Sent | Boost | Details |",
-        "|----|------|-------|-------|------|-------|---------|"
-    ])
+    lines.extend(
+        [
+            "## Caption Matches",
+            "",
+            "| ID | Tone | Emoji | Slang | Sent | Boost | Details |",
+            "|----|------|-------|-------|------|-------|---------|",
+        ]
+    )
 
     for r in results[:50]:  # Limit display
         tone_check = "Y" if r.tone_match else "-"
@@ -780,10 +896,7 @@ def format_markdown(
     return "\n".join(lines)
 
 
-def format_json(
-    persona: PersonaProfile,
-    results: list[PersonaMatchResult]
-) -> str:
+def format_json(persona: PersonaProfile, results: list[PersonaMatchResult]) -> str:
     """Format results as JSON."""
     data = {
         "persona": {
@@ -793,7 +906,7 @@ def format_json(
             "emoji_frequency": persona.emoji_frequency,
             "slang_level": persona.slang_level,
             "avg_sentiment": persona.avg_sentiment,
-            "favorite_emojis": persona.favorite_emojis
+            "favorite_emojis": persona.favorite_emojis,
         },
         "summary": {
             "total_captions": len(results),
@@ -802,7 +915,7 @@ def format_json(
             "neutral_matches": sum(1 for r in results if r.total_boost == 1.0),
             "penalized": sum(1 for r in results if r.total_boost == NO_MATCH_PENALTY),
             "sentiment_aligned": sum(1 for r in results if r.sentiment_match),
-            "tones_detected": sum(1 for r in results if r.detected_tone)
+            "tones_detected": sum(1 for r in results if r.detected_tone),
         },
         "matches": [
             {
@@ -818,10 +931,10 @@ def format_json(
                 "slang_match": r.slang_match,
                 "sentiment_match": r.sentiment_match,
                 "total_boost": round(r.total_boost, 2),
-                "match_details": r.match_details
+                "match_details": r.match_details,
             }
             for r in results
-        ]
+        ],
     }
     return json.dumps(data, indent=2)
 
@@ -852,43 +965,27 @@ Examples:
     python match_persona.py --creator missalexa
     python match_persona.py --creator-id abc123 --output matches.json
     python match_persona.py --creator missalexa --caption-id 12345
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
-    )
-    parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
-    parser.add_argument(
-        "--caption-id",
-        type=int,
-        help="Specific caption ID to match"
-    )
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
+    parser.add_argument("--caption-id", type=int, help="Specific caption ID to match")
     parser.add_argument(
         "--limit",
         type=int,
         default=100,
-        help="Maximum number of captions to process (default: 100)"
+        help="Maximum number of captions to process (default: 100)",
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -905,11 +1002,7 @@ Examples:
         conn.row_factory = sqlite3.Row
 
         # Load persona
-        persona = get_persona_profile(
-            conn,
-            creator_name=args.creator,
-            creator_id=args.creator_id
-        )
+        persona = get_persona_profile(conn, creator_name=args.creator, creator_id=args.creator_id)
 
         if not persona:
             print("Error: Creator not found", file=sys.stderr)
@@ -917,10 +1010,7 @@ Examples:
 
         # Match captions
         results = match_captions_to_persona(
-            conn,
-            persona,
-            caption_id=args.caption_id,
-            limit=args.limit
+            conn, persona, caption_id=args.caption_id, limit=args.limit
         )
 
         if not results:

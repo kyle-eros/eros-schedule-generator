@@ -11,10 +11,9 @@ Designed for use with Claude Code's native agent system.
 import hashlib
 import json
 import os
-import sqlite3
 import sys
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -25,8 +24,6 @@ from shared_context import (
     AgentResponse,
     FollowUpSequence,
     PageTypeRules,
-    PersonaProfile,
-    PipelineState,
     PricingStrategy,
     RevenueProjection,
     RotationStrategy,
@@ -75,7 +72,7 @@ AGENT_CONFIGS: dict[str, AgentConfig] = {
     ),
     "volume-calibrator": AgentConfig(
         name="volume-calibrator",
-        model="sonnet",
+        model="haiku",  # Changed from sonnet - rule-based calculation
         timeout_seconds=30,
         cache_duration_days=3,
         tools=["Read", "Bash"],
@@ -157,7 +154,10 @@ class AgentInvoker:
             if env_db.exists():
                 return str(env_db)
             # Warn but continue to fallbacks
-            print(f"  [WARNING] EROS_DATABASE_PATH={env_path} not found, trying fallbacks", file=sys.stderr)
+            print(
+                f"  [WARNING] EROS_DATABASE_PATH={env_path} not found, trying fallbacks",
+                file=sys.stderr,
+            )
 
         # Priority 2-4: Standard locations
         fallback_paths = [
@@ -170,7 +170,9 @@ class AgentInvoker:
             if path.exists():
                 return str(path)
 
-        raise FileNotFoundError("EROS database not found. Set EROS_DATABASE_PATH or place database at ~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db")
+        raise FileNotFoundError(
+            "EROS database not found. Set EROS_DATABASE_PATH or place database at ~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db"
+        )
 
     def _ensure_cache_dir(self) -> None:
         """Ensure cache directory exists."""
@@ -426,17 +428,26 @@ class AgentInvoker:
                 if result is not None and not fallback_used:
                     if self._validate_agent_output(agent_name, result):
                         return result, False
-                    print(f"  [AGENT] {agent_name} output validation failed, retrying...", file=sys.stderr)
+                    print(
+                        f"  [AGENT] {agent_name} output validation failed, retrying...",
+                        file=sys.stderr,
+                    )
                 else:
                     return result, fallback_used
 
             except Exception as e:
                 last_error = e
-                print(f"  [AGENT] {agent_name} attempt {attempt + 1}/{max_retries} failed: {e}", file=sys.stderr)
+                print(
+                    f"  [AGENT] {agent_name} attempt {attempt + 1}/{max_retries} failed: {e}",
+                    file=sys.stderr,
+                )
 
         # All retries exhausted - use fallback
         if last_error:
-            print(f"  [AGENT] {agent_name} failed after {max_retries} attempts, using fallback", file=sys.stderr)
+            print(
+                f"  [AGENT] {agent_name} failed after {max_retries} attempts, using fallback",
+                file=sys.stderr,
+            )
 
         context.mark_fallback_used(agent_name)
         return fallback_fn(context), True
@@ -453,17 +464,17 @@ class AgentInvoker:
         # Basic type checks based on agent
         try:
             if agent_name == "timezone-optimizer":
-                return hasattr(result, 'peak_windows') and hasattr(result, 'timezone')
+                return hasattr(result, "peak_windows") and hasattr(result, "timezone")
             elif agent_name == "volume-calibrator":
-                return hasattr(result, 'rules_applied') and hasattr(result, 'page_type')
+                return hasattr(result, "rules_applied") and hasattr(result, "page_type")
             elif agent_name == "revenue-optimizer":
-                return hasattr(result, 'content_type_prices') or hasattr(result, 'projections')
+                return hasattr(result, "content_type_prices") or hasattr(result, "projections")
             elif agent_name == "content-strategy-optimizer":
-                return hasattr(result, 'weekly_rotation')
+                return hasattr(result, "weekly_rotation")
             elif agent_name == "multi-touch-sequencer":
-                return hasattr(result, 'sequence')
+                return hasattr(result, "sequence")
             elif agent_name == "validation-guardian":
-                return hasattr(result, 'validation_passed')
+                return hasattr(result, "validation_passed")
             else:
                 return True  # Unknown agent, assume valid
         except Exception:
@@ -474,41 +485,117 @@ class AgentInvoker:
     # ========================================================================
 
     def get_fallback_pricing(self, context: ScheduleContext) -> PricingStrategy:
-        """Generate fallback pricing when agent unavailable."""
-        # Default tier-based pricing
+        """
+        Generate fallback pricing when agent unavailable.
+
+        Context-aware enhancements:
+        - Uses page_type to apply conservative pricing for free pages (10-15% lower)
+        - Applies payday_multipliers from context if available
+        - Uses performance_tier to adjust base prices
+        """
         profile = context.creator_profile
         is_paid = profile.page_type == "paid" if profile else True
 
+        # Base prices - apply 10-15% reduction for free pages (conservative approach)
+        free_page_discount = 0.85  # 15% lower for free pages
         base_prices = {
-            "solo": 15.0 if is_paid else 12.0,
-            "bundle": 25.0 if is_paid else 20.0,
-            "sextape": 30.0 if is_paid else 25.0,
-            "bg": 35.0 if is_paid else 30.0,
-            "winner": 20.0 if is_paid else 15.0,
-            "custom": 40.0 if is_paid else 35.0,
+            "solo": 15.0 if is_paid else 15.0 * free_page_discount,
+            "bundle": 25.0 if is_paid else 25.0 * free_page_discount,
+            "sextape": 30.0 if is_paid else 30.0 * free_page_discount,
+            "bg": 35.0 if is_paid else 35.0 * free_page_discount,
+            "winner": 20.0 if is_paid else 20.0 * free_page_discount,
+            "custom": 40.0 if is_paid else 40.0 * free_page_discount,
         }
+
+        # Adjust based on performance tier (if available)
+        tier_adjustment = 1.0
+        if profile:
+            tier = profile.performance_tier
+            if tier == 1:
+                # Tier 1 creators can command premium prices
+                tier_adjustment = 1.10
+            elif tier == 3:
+                # Tier 3 creators should use more competitive pricing
+                tier_adjustment = 0.90
+
+        # Apply tier adjustment
+        for ct in base_prices:
+            base_prices[ct] = round(base_prices[ct] * tier_adjustment, 2)
+
+        # Build content type prices with reasoning
+        reasoning = "Default tier pricing"
+        if not is_paid:
+            reasoning += " (free page discount applied)"
+        if tier_adjustment != 1.0:
+            reasoning += f" (tier {profile.performance_tier if profile else 2} adjustment)"
 
         return PricingStrategy(
             content_type_prices={
-                ct: {"base": price, "optimized": price, "reasoning": "Default tier pricing"}
+                ct: {"base": price, "optimized": price, "reasoning": reasoning}
                 for ct, price in base_prices.items()
             },
-            page_type_modifier=1.0 if is_paid else 0.85,
+            page_type_modifier=1.0 if is_paid else free_page_discount,
             weekly_revenue_projection=0.0,
             generated_at=datetime.now().isoformat(),
         )
 
     def get_fallback_timing(self, context: ScheduleContext) -> TimingStrategy:
-        """Generate fallback timing when agent unavailable."""
+        """
+        Generate fallback timing when agent unavailable.
+
+        Context-aware enhancements:
+        - If context.timing is partially populated (e.g., from cached data), use those values
+        - Sets fallback_hours_used flag on context
+        - Uses 0.7 confidence instead of static defaults when partial data available
+        """
+        # Mark that we're using fallback hours
+        context.fallback_hours_used = True
+
+        # Check if we have partial timing data in context to use
+        if context.timing is not None:
+            # We have some timing data - use it with reduced confidence
+            context.best_hours_confidence = 0.7  # Partial data confidence
+            existing = context.timing
+
+            # Use existing data where available, fill gaps with defaults
+            return TimingStrategy(
+                timezone=existing.timezone or "America/New_York",
+                peak_windows=existing.peak_windows
+                if existing.peak_windows
+                else [
+                    {"start": "18:00", "end": "22:00", "tier": 1, "expected_lift": 1.35},
+                    {"start": "10:00", "end": "12:00", "tier": 2, "expected_lift": 1.15},
+                ],
+                avoid_windows=existing.avoid_windows
+                if existing.avoid_windows
+                else [{"start": "03:00", "end": "06:00", "reason": "lowest_engagement"}],
+                best_days=existing.best_days
+                if existing.best_days
+                else ["Sunday", "Friday", "Saturday"],
+                daily_schedule=existing.daily_schedule
+                if existing.daily_schedule
+                else {
+                    "Monday": ["10:00", "18:00", "21:00"],
+                    "Tuesday": ["10:00", "14:00", "19:00", "22:00"],
+                    "Wednesday": ["10:00", "18:00", "21:00"],
+                    "Thursday": ["10:00", "14:00", "19:00", "22:00"],
+                    "Friday": ["10:00", "18:00", "21:00", "23:00"],
+                    "Saturday": ["12:00", "18:00", "21:00", "23:00"],
+                    "Sunday": ["12:00", "18:00", "21:00"],
+                },
+                generated_at=datetime.now().isoformat(),
+            )
+
+        # No existing data - use static defaults with low confidence
+        context.best_hours_confidence = 0.5  # Static default confidence
+
         return TimingStrategy(
             timezone="America/New_York",
             peak_windows=[
                 {"start": "18:00", "end": "22:00", "tier": 1, "expected_lift": 1.35},
                 {"start": "10:00", "end": "12:00", "tier": 2, "expected_lift": 1.15},
             ],
-            avoid_windows=[
-                {"start": "03:00", "end": "06:00", "reason": "lowest_engagement"}
-            ],
+            avoid_windows=[{"start": "03:00", "end": "06:00", "reason": "lowest_engagement"}],
             best_days=["Sunday", "Friday", "Saturday"],
             daily_schedule={
                 "Monday": ["10:00", "18:00", "21:00"],
@@ -545,23 +632,61 @@ class AgentInvoker:
         )
 
     def get_fallback_page_type_rules(self, context: ScheduleContext) -> PageTypeRules:
-        """Generate fallback page type rules when agent unavailable."""
+        """
+        Generate fallback page type rules when agent unavailable.
+
+        Context-aware enhancements:
+        - Uses performance_tier to adjust base volume targets:
+          - Tier 1: +1 to daily targets (high performers can handle more volume)
+          - Tier 2: no change (baseline)
+          - Tier 3: -1 to daily targets (protect engagement quality)
+        """
         profile = context.creator_profile
         is_paid = profile.page_type == "paid" if profile else True
 
+        # Calculate tier-based volume adjustment
+        tier_volume_adjustment = 0
+        if profile:
+            tier = profile.performance_tier
+            if tier == 1:
+                tier_volume_adjustment = 1  # Tier 1: +1 to daily targets
+            elif tier == 3:
+                tier_volume_adjustment = -1  # Tier 3: -1 to daily targets
+            # Tier 2: no change (tier_volume_adjustment = 0)
+
+        adjustments_made = ["Applied default page type rules"]
+        if tier_volume_adjustment != 0:
+            adjustments_made.append(
+                f"Tier {profile.performance_tier if profile else 2} volume adjustment: "
+                f"{'+' if tier_volume_adjustment > 0 else ''}{tier_volume_adjustment}/day"
+            )
+
         if is_paid:
+            base_weekly_cap = 5
+            base_daily_ppv = 3
+            base_daily_bump = 3
+
             rules = {
-                "ppv_weekly_cap": 5,
+                "ppv_weekly_cap": base_weekly_cap
+                + (tier_volume_adjustment * 2),  # Weekly scales 2x daily
                 "ppv_daily_cap": None,
+                "ppv_daily_target": max(2, base_daily_ppv + tier_volume_adjustment),
+                "bump_daily_target": max(2, base_daily_bump + tier_volume_adjustment),
                 "price_floor": 15,
                 "price_ceiling": 50,
                 "bump_strategy": "conservative",
                 "engagement_focus": "quality_over_quantity",
             }
         else:
+            base_daily_cap = 5
+            base_daily_ppv = 4
+            base_daily_bump = 4
+
             rules = {
                 "ppv_weekly_cap": None,
-                "ppv_daily_cap": 5,
+                "ppv_daily_cap": max(3, base_daily_cap + tier_volume_adjustment),
+                "ppv_daily_target": max(3, base_daily_ppv + tier_volume_adjustment),
+                "bump_daily_target": max(3, base_daily_bump + tier_volume_adjustment),
                 "price_floor": 10,
                 "price_ceiling": 35,
                 "bump_strategy": "aggressive",
@@ -571,7 +696,7 @@ class AgentInvoker:
         return PageTypeRules(
             page_type="paid" if is_paid else "free",
             rules_applied=rules,
-            adjustments_made=["Applied default page type rules"],
+            adjustments_made=adjustments_made,
             generated_at=datetime.now().isoformat(),
         )
 
@@ -935,7 +1060,8 @@ class AgentInvoker:
         This is the main entry point for full agent-enhanced schedule generation.
         Phase 1 agents run in parallel (Haiku - fast), Phase 2+ run sequentially.
         """
-        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import TimeoutError as FuturesTimeoutError
 
         # Phase 1: Timing and page type (Haiku - fast, PARALLEL)
         try:
@@ -961,7 +1087,10 @@ class AgentInvoker:
                     context.page_type_rules = self.get_fallback_page_type_rules(context)
                     context.mark_fallback_used("volume-calibrator")
         except Exception as e:
-            print(f"  [AGENT] Phase 1 parallel execution failed: {e}, using fallbacks", file=sys.stderr)
+            print(
+                f"  [AGENT] Phase 1 parallel execution failed: {e}, using fallbacks",
+                file=sys.stderr,
+            )
             context.timing = self.get_fallback_timing(context)
             context.page_type_rules = self.get_fallback_page_type_rules(context)
             context.mark_fallback_used("timezone-optimizer")
@@ -1008,16 +1137,24 @@ def main():
     print(f"  timezone-optimizer: peak_windows={len(timing.peak_windows)}, fallback={fallback}")
 
     page_rules, fallback = invoker.invoke_page_type_optimizer(context)
-    print(f"  volume-calibrator (via page-type-optimizer): rules={len(page_rules.rules_applied)}, fallback={fallback}")
+    print(
+        f"  volume-calibrator (via page-type-optimizer): rules={len(page_rules.rules_applied)}, fallback={fallback}"
+    )
 
     pricing, fallback = invoker.invoke_pricing_strategist(context)
-    print(f"  revenue-optimizer (via pricing-strategist): prices={len(pricing.content_type_prices)}, fallback={fallback}")
+    print(
+        f"  revenue-optimizer (via pricing-strategist): prices={len(pricing.content_type_prices)}, fallback={fallback}"
+    )
 
     rotation, fallback = invoker.invoke_content_rotation_architect(context)
-    print(f"  content-strategy-optimizer (via content-rotation-architect): rotation={len(rotation.weekly_rotation)}, fallback={fallback}")
+    print(
+        f"  content-strategy-optimizer (via content-rotation-architect): rotation={len(rotation.weekly_rotation)}, fallback={fallback}"
+    )
 
     revenue, fallback = invoker.invoke_revenue_forecaster(context)
-    print(f"  revenue-optimizer (via revenue-forecaster): projections={len(revenue.projections)}, fallback={fallback}")
+    print(
+        f"  revenue-optimizer (via revenue-forecaster): projections={len(revenue.projections)}, fallback={fallback}"
+    )
 
     followup, fallback = invoker.invoke_multi_touch_sequencer(context, 1, "solo")
     print(f"  multi-touch-sequencer: touches={len(followup.sequence)}, fallback={fallback}")

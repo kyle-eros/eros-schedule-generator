@@ -125,7 +125,7 @@ def get_database_path() -> str:
     """Get database path from environment or default location."""
     return os.environ.get(
         "EROS_DATABASE_PATH",
-        os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db")
+        os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db"),
     )
 
 
@@ -133,7 +133,7 @@ def fetch_captions_for_classification(
     conn: sqlite3.Connection,
     creator_name: str | None = None,
     caption_ids: list[int] | None = None,
-    limit: int = 1000
+    limit: int = 1000,
 ) -> list[dict[str, Any]]:
     """Fetch captions eligible for classification."""
 
@@ -163,7 +163,7 @@ def fetch_captions_for_classification(
 
     cursor = conn.execute(query, params)
     columns = [desc[0] for desc in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
 
 
 def prepare_batch_for_classification(captions: list[dict]) -> str:
@@ -172,7 +172,7 @@ def prepare_batch_for_classification(captions: list[dict]) -> str:
         {
             "caption_id": c["caption_id"],
             "current_content_type_id": c["content_type_id"],
-            "caption_text": c["caption_text"]
+            "caption_text": c["caption_text"],
         }
         for c in captions
     ]
@@ -220,18 +220,11 @@ def validate_classification_response(response: dict) -> tuple[bool, str]:
 
 
 def apply_classifications(
-    conn: sqlite3.Connection,
-    classifications: list[dict],
-    dry_run: bool = True
+    conn: sqlite3.Connection, classifications: list[dict], dry_run: bool = True
 ) -> dict[str, Any]:
     """Apply classifications to the database."""
 
-    results = {
-        "updated": 0,
-        "skipped": 0,
-        "errors": [],
-        "details": []
-    }
+    results = {"updated": 0, "skipped": 0, "errors": [], "details": []}
 
     for item in classifications:
         caption_id = item["caption_id"]
@@ -241,46 +234,43 @@ def apply_classifications(
 
         if classification == "EXPLICIT":
             results["skipped"] += 1
-            results["details"].append({
-                "caption_id": caption_id,
-                "action": "SKIPPED",
-                "reason": "Classified as EXPLICIT, keeping original type"
-            })
+            results["details"].append(
+                {
+                    "caption_id": caption_id,
+                    "action": "SKIPPED",
+                    "reason": "Classified as EXPLICIT, keeping original type",
+                }
+            )
             continue
 
         if confidence < 0.65:
             results["skipped"] += 1
-            results["details"].append({
-                "caption_id": caption_id,
-                "action": "SKIPPED",
-                "reason": f"Low confidence ({confidence:.2f}), needs human review"
-            })
+            results["details"].append(
+                {
+                    "caption_id": caption_id,
+                    "action": "SKIPPED",
+                    "reason": f"Low confidence ({confidence:.2f}), needs human review",
+                }
+            )
             continue
 
         if not dry_run:
             try:
                 conn.execute(
                     "UPDATE captions SET content_type_id = ? WHERE caption_id = ?",
-                    (new_type_id, caption_id)
+                    (new_type_id, caption_id),
                 )
                 results["updated"] += 1
-                results["details"].append({
-                    "caption_id": caption_id,
-                    "action": "UPDATED",
-                    "new_type_id": new_type_id
-                })
+                results["details"].append(
+                    {"caption_id": caption_id, "action": "UPDATED", "new_type_id": new_type_id}
+                )
             except Exception as e:
-                results["errors"].append({
-                    "caption_id": caption_id,
-                    "error": str(e)
-                })
+                results["errors"].append({"caption_id": caption_id, "error": str(e)})
         else:
             results["updated"] += 1
-            results["details"].append({
-                "caption_id": caption_id,
-                "action": "WOULD_UPDATE",
-                "new_type_id": new_type_id
-            })
+            results["details"].append(
+                {"caption_id": caption_id, "action": "WOULD_UPDATE", "new_type_id": new_type_id}
+            )
 
     if not dry_run:
         conn.commit()
@@ -289,10 +279,7 @@ def apply_classifications(
 
 
 def generate_report(
-    captions: list[dict],
-    classifications: dict,
-    results: dict,
-    dry_run: bool
+    captions: list[dict], classifications: dict, results: dict, dry_run: bool
 ) -> str:
     """Generate a classification report."""
 
@@ -309,23 +296,27 @@ def generate_report(
 
     if "batch_summary" in classifications:
         summary = classifications["batch_summary"]
-        report_lines.extend([
-            f"Total Captions: {summary.get('total', len(captions))}",
-            f"Classified EXPLICIT: {summary.get('explicit_count', 'N/A')}",
-            f"Classified IMPLIED: {summary.get('implied_count', 'N/A')}",
-            f"Low Confidence: {summary.get('low_confidence_count', 'N/A')}",
-            f"Flagged for Review: {summary.get('flagged_for_review', [])}",
-        ])
+        report_lines.extend(
+            [
+                f"Total Captions: {summary.get('total', len(captions))}",
+                f"Classified EXPLICIT: {summary.get('explicit_count', 'N/A')}",
+                f"Classified IMPLIED: {summary.get('implied_count', 'N/A')}",
+                f"Low Confidence: {summary.get('low_confidence_count', 'N/A')}",
+                f"Flagged for Review: {summary.get('flagged_for_review', [])}",
+            ]
+        )
 
-    report_lines.extend([
-        "",
-        "UPDATE RESULTS",
-        "-" * 40,
-        f"Updated: {results['updated']}",
-        f"Skipped: {results['skipped']}",
-        f"Errors: {len(results['errors'])}",
-        "",
-    ])
+    report_lines.extend(
+        [
+            "",
+            "UPDATE RESULTS",
+            "-" * 40,
+            f"Updated: {results['updated']}",
+            f"Skipped: {results['skipped']}",
+            f"Errors: {len(results['errors'])}",
+            "",
+        ]
+    )
 
     if results["errors"]:
         report_lines.append("ERRORS:")
@@ -335,14 +326,10 @@ def generate_report(
 
     # Low confidence items
     low_conf = [
-        c for c in classifications.get("classifications", [])
-        if c.get("confidence", 1.0) < 0.65
+        c for c in classifications.get("classifications", []) if c.get("confidence", 1.0) < 0.65
     ]
     if low_conf:
-        report_lines.extend([
-            "LOW CONFIDENCE ITEMS (Needs Human Review)",
-            "-" * 40
-        ])
+        report_lines.extend(["LOW CONFIDENCE ITEMS (Needs Human Review)", "-" * 40])
         for item in low_conf:
             report_lines.append(
                 f"  Caption {item['caption_id']}: {item['classification']} "
@@ -360,42 +347,27 @@ def main():
         description="Classify OnlyFans captions as EXPLICIT or IMPLIED"
     )
     parser.add_argument(
-        "--creator",
-        type=str,
-        default="all",
-        help="Creator page name or 'all' for all creators"
+        "--creator", type=str, default="all", help="Creator page name or 'all' for all creators"
     )
     parser.add_argument(
-        "--caption-ids",
-        type=str,
-        help="Comma-separated list of specific caption IDs to classify"
+        "--caption-ids", type=str, help="Comma-separated list of specific caption IDs to classify"
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=50,
-        help="Number of captions per batch (default: 50)"
+        "--batch-size", type=int, default=50, help="Number of captions per batch (default: 50)"
     )
     parser.add_argument(
-        "--limit",
-        type=int,
-        default=1000,
-        help="Maximum total captions to process (default: 1000)"
+        "--limit", type=int, default=1000, help="Maximum total captions to process (default: 1000)"
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without updating database"
+        "--dry-run", action="store_true", help="Preview changes without updating database"
     )
     parser.add_argument(
-        "--db",
-        type=str,
-        help="Path to EROS database (overrides EROS_DATABASE_PATH)"
+        "--db", type=str, help="Path to EROS database (overrides EROS_DATABASE_PATH)"
     )
     parser.add_argument(
         "--output-prompts",
         action="store_true",
-        help="Output the prompts for manual testing (no API calls)"
+        help="Output the prompts for manual testing (no API calls)",
     )
 
     args = parser.parse_args()
@@ -419,10 +391,7 @@ def main():
         # Fetch captions
         print(f"Fetching captions from {db_path}...")
         captions = fetch_captions_for_classification(
-            conn,
-            creator_name=args.creator,
-            caption_ids=caption_ids,
-            limit=args.limit
+            conn, creator_name=args.creator, caption_ids=caption_ids, limit=args.limit
         )
 
         if not captions:
@@ -433,7 +402,7 @@ def main():
 
         # Output prompts mode (for testing)
         if args.output_prompts:
-            batch = captions[:args.batch_size]
+            batch = captions[: args.batch_size]
             captions_json = prepare_batch_for_classification(batch)
             user_prompt = build_user_prompt(captions_json, len(batch))
 

@@ -6,23 +6,26 @@ Comprehensive analysis comparing old vs new PPV volumes for the 36-creator portf
 Generates Fortune 500-quality executive summary with detailed analysis tables.
 """
 
-import sqlite3
 import os
+import re
+import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
-from dataclasses import dataclass
-import re
 
 # Database path - uses EROS_DATABASE_PATH environment variable with fallback
-DB_PATH = Path(os.environ.get(
-    "EROS_DATABASE_PATH",
-    os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db")
-))
+DB_PATH = Path(
+    os.environ.get(
+        "EROS_DATABASE_PATH",
+        os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db"),
+    )
+)
+
 
 @dataclass
 class CreatorVolume:
     """Represents a creator's volume data"""
+
     creator_id: str
     page_name: str
     display_name: str
@@ -79,13 +82,13 @@ def extract_combined_factor(notes: str) -> float:
     """Extract combined_factor from notes field"""
     if not notes:
         return 1.0
-    match = re.search(r'combined_factor=(\d+\.?\d*)', notes)
+    match = re.search(r"combined_factor=(\d+\.?\d*)", notes)
     if match:
         return float(match.group(1))
     return 1.0
 
 
-def load_creator_data() -> List[CreatorVolume]:
+def load_creator_data() -> list[CreatorVolume]:
     """Load all creator volume data from database"""
     query = """
     SELECT
@@ -119,34 +122,36 @@ def load_creator_data() -> List[CreatorVolume]:
     creators = []
     for row in rows:
         combined_factor = extract_combined_factor(row[14])
-        creators.append(CreatorVolume(
-            creator_id=row[0],
-            page_name=row[1],
-            display_name=row[2],
-            page_type=row[3],
-            subscription_price=row[4],
-            fan_count=row[5],
-            persona_type=row[6],
-            account_age_days=row[7],
-            avg_purchase_rate=row[8],
-            total_earnings=row[9],
-            performance_tier=row[10],
-            volume_level=row[11] or "Unknown",
-            ppv_per_day=row[12] or 0,
-            bump_per_day=row[13] or 0,
-            combined_factor=combined_factor,
-            notes=row[14] or ""
-        ))
+        creators.append(
+            CreatorVolume(
+                creator_id=row[0],
+                page_name=row[1],
+                display_name=row[2],
+                page_type=row[3],
+                subscription_price=row[4],
+                fan_count=row[5],
+                persona_type=row[6],
+                account_age_days=row[7],
+                avg_purchase_rate=row[8],
+                total_earnings=row[9],
+                performance_tier=row[10],
+                volume_level=row[11] or "Unknown",
+                ppv_per_day=row[12] or 0,
+                bump_per_day=row[13] or 0,
+                combined_factor=combined_factor,
+                notes=row[14] or "",
+            )
+        )
 
     return creators
 
 
-def generate_executive_summary(creators: List[CreatorVolume]) -> str:
+def generate_executive_summary(creators: list[CreatorVolume]) -> str:
     """Generate Fortune 500-quality executive summary"""
 
     total_creators = len(creators)
-    paid_creators = [c for c in creators if c.page_type == 'paid']
-    free_creators = [c for c in creators if c.page_type == 'free']
+    paid_creators = [c for c in creators if c.page_type == "paid"]
+    free_creators = [c for c in creators if c.page_type == "free"]
 
     old_total_weekly = sum(c.old_weekly_ppv for c in creators)
     new_total_weekly = sum(c.new_weekly_ppv for c in creators)
@@ -164,7 +169,7 @@ def generate_executive_summary(creators: List[CreatorVolume]) -> str:
                     Fortune 500-Quality Executive Summary
 ================================================================================
 
-Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Database: {DB_PATH}
 
 --------------------------------------------------------------------------------
@@ -174,8 +179,8 @@ Database: {DB_PATH}
 PORTFOLIO OVERVIEW
 ------------------
 Total Active Creators:     {total_creators}
-  - Paid Pages:            {len(paid_creators)} ({(len(paid_creators)/total_creators*100) if total_creators > 0 else 0:.1f}%)
-  - Free Pages:            {len(free_creators)} ({(len(free_creators)/total_creators*100) if total_creators > 0 else 0:.1f}%)
+  - Paid Pages:            {len(paid_creators)} ({(len(paid_creators) / total_creators * 100) if total_creators > 0 else 0:.1f}%)
+  - Free Pages:            {len(free_creators)} ({(len(free_creators) / total_creators * 100) if total_creators > 0 else 0:.1f}%)
 Total Portfolio Revenue:   ${total_earnings:,.2f}
 
 VOLUME OPTIMIZATION IMPACT
@@ -217,7 +222,7 @@ STRATEGIC IMPLICATIONS
     return summary
 
 
-def generate_detailed_comparison(creators: List[CreatorVolume]) -> str:
+def generate_detailed_comparison(creators: list[CreatorVolume]) -> str:
     """Generate detailed old vs new comparison table"""
 
     output = """
@@ -239,13 +244,15 @@ def generate_detailed_comparison(creators: List[CreatorVolume]) -> str:
     total_change = total_new - total_old
     total_pct = (total_change / total_old) * 100 if total_old > 0 else 0
 
-    output += f"|----|--------------------|-------|---------|---------|---------|--------|----------|\n"
+    output += (
+        "|----|--------------------|-------|---------|---------|---------|--------|----------|\n"
+    )
     output += f"| -- | PORTFOLIO TOTAL    | --    | {sum(c.fan_count for c in creators):>7,} | {total_old:>7} | {total_new:>7} | {total_change:>+5}   | {total_pct:>+7.1f}% |\n"
 
     return output
 
 
-def generate_segment_analysis(creators: List[CreatorVolume]) -> str:
+def generate_segment_analysis(creators: list[CreatorVolume]) -> str:
     """Generate volume change analysis by segment"""
 
     output = """
@@ -258,10 +265,10 @@ A. BY PAGE TYPE
 """
 
     # By page type
-    paid = [c for c in creators if c.page_type == 'paid']
-    free = [c for c in creators if c.page_type == 'free']
+    paid = [c for c in creators if c.page_type == "paid"]
+    free = [c for c in creators if c.page_type == "free"]
 
-    for page_type, group in [('Paid', paid), ('Free', free)]:
+    for page_type, group in [("Paid", paid), ("Free", free)]:
         if group:
             avg_old = sum(c.old_weekly_ppv for c in group) / len(group)
             avg_new = sum(c.new_weekly_ppv for c in group) / len(group)
@@ -273,7 +280,7 @@ A. BY PAGE TYPE
   - Old Average PPV/week: {avg_old:.1f}
   - New Average PPV/week: {avg_new:.1f}
   - Average Reduction:    {abs(avg_change):.1f} PPV/week ({abs(avg_pct):.1f}% decrease)
-  - Volume Levels: {', '.join(sorted(set(c.volume_level for c in group)))}
+  - Volume Levels: {", ".join(sorted({c.volume_level for c in group}))}
 """
 
     output += """
@@ -282,7 +289,7 @@ B. BY FAN COUNT TIER
 """
 
     # By fan tier
-    tiers = ['<1K', '1K-5K', '5K-20K', '20K+']
+    tiers = ["<1K", "1K-5K", "5K-20K", "20K+"]
     for tier in tiers:
         group = [c for c in creators if c.fan_tier == tier]
         if group:
@@ -297,7 +304,7 @@ B. BY FAN COUNT TIER
   - Old Average PPV/week: {avg_old:.1f}
   - New Average PPV/week: {avg_new:.1f}
   - Average Reduction:    {abs(avg_change):.1f} PPV/week ({abs(avg_pct):.1f}% decrease)
-  - Page Types: Paid={len([c for c in group if c.page_type=='paid'])}, Free={len([c for c in group if c.page_type=='free'])}
+  - Page Types: Paid={len([c for c in group if c.page_type == "paid"])}, Free={len([c for c in group if c.page_type == "free"])}
 """
 
     output += """
@@ -306,7 +313,7 @@ C. BY VOLUME LEVEL
 """
 
     # By volume level
-    for level in ['Low', 'Mid', 'High', 'Ultra']:
+    for level in ["Low", "Mid", "High", "Ultra"]:
         group = [c for c in creators if c.volume_level == level]
         if group:
             total_old = sum(c.old_weekly_ppv for c in group)
@@ -326,7 +333,7 @@ C. BY VOLUME LEVEL
     return output
 
 
-def validate_success_criteria(creators: List[CreatorVolume]) -> str:
+def validate_success_criteria(creators: list[CreatorVolume]) -> str:
     """Validate against the 8 success criteria"""
 
     output = """
@@ -336,17 +343,10 @@ def validate_success_criteria(creators: List[CreatorVolume]) -> str:
 
 """
 
-    paid = [c for c in creators if c.page_type == 'paid']
-    free = [c for c in creators if c.page_type == 'free']
+    paid = [c for c in creators if c.page_type == "paid"]
+    free = [c for c in creators if c.page_type == "free"]
 
     criteria = []
-
-    # Criterion 1: Paid pages receive 1-5 PPV per WEEK
-    paid_weekly_range = all(1 <= c.new_weekly_ppv <= 35 for c in paid)  # 1-5 per day = 7-35 per week
-    paid_daily_range = all(1 <= c.ppv_per_day <= 5 for c in paid)
-
-    # Actually, the criterion says 1-5 per WEEK, not per day
-    paid_criterion = all(c.new_weekly_ppv >= 1 and c.new_weekly_ppv <= 35 for c in paid)  # Relaxed interpretation
 
     # Check actual values
     paid_ppv_values = [c.new_weekly_ppv for c in paid]
@@ -355,15 +355,15 @@ def validate_success_criteria(creators: List[CreatorVolume]) -> str:
 
     # Criterion 1 - strict interpretation: 1-5 PPV per week
     criterion1_strict = all(1 <= c.new_weekly_ppv <= 5 for c in paid)
-    # But looking at the data, paid pages get 1 PPV/day = 7/week
-    criterion1_pass = all(c.ppv_per_day >= 1 and c.ppv_per_day <= 5 for c in paid)
 
-    criteria.append({
-        'num': 1,
-        'desc': 'All paid pages receive 1-5 PPV per WEEK (not per day)',
-        'pass': criterion1_strict,
-        'details': f"Paid page PPV range: {paid_min}-{paid_max}/week (1 PPV/day = 7/week)"
-    })
+    criteria.append(
+        {
+            "num": 1,
+            "desc": "All paid pages receive 1-5 PPV per WEEK (not per day)",
+            "pass": criterion1_strict,
+            "details": f"Paid page PPV range: {paid_min}-{paid_max}/week (1 PPV/day = 7/week)",
+        }
+    )
 
     # Criterion 2: Free pages receive 14-42 PPV per week (2-6 per day)
     free_weekly_range = all(14 <= c.new_weekly_ppv <= 42 for c in free)
@@ -371,33 +371,41 @@ def validate_success_criteria(creators: List[CreatorVolume]) -> str:
     free_min = min(free_ppv_values) if free_ppv_values else 0
     free_max = max(free_ppv_values) if free_ppv_values else 0
 
-    criteria.append({
-        'num': 2,
-        'desc': 'All free pages receive 14-42 PPV per WEEK (2-6 per day)',
-        'pass': free_weekly_range,
-        'details': f"Free page PPV range: {free_min}-{free_max}/week"
-    })
+    criteria.append(
+        {
+            "num": 2,
+            "desc": "All free pages receive 14-42 PPV per WEEK (2-6 per day)",
+            "pass": free_weekly_range,
+            "details": f"Free page PPV range: {free_min}-{free_max}/week",
+        }
+    )
 
     # Criterion 3: GFE personas show 30% volume reduction vs explicit
-    gfe_creators = [c for c in creators if c.persona_type and 'gfe' in c.persona_type.lower()]
-    explicit_creators = [c for c in creators if c.persona_type and 'explicit' in c.persona_type.lower()]
+    gfe_creators = [c for c in creators if c.persona_type and "gfe" in c.persona_type.lower()]
+    explicit_creators = [
+        c for c in creators if c.persona_type and "explicit" in c.persona_type.lower()
+    ]
 
     if gfe_creators and explicit_creators:
         gfe_avg = sum(c.new_weekly_ppv for c in gfe_creators) / len(gfe_creators)
         explicit_avg = sum(c.new_weekly_ppv for c in explicit_creators) / len(explicit_creators)
         reduction = ((explicit_avg - gfe_avg) / explicit_avg) * 100 if explicit_avg > 0 else 0
         criterion3_pass = reduction >= 30
-        details = f"GFE avg: {gfe_avg:.1f}, Explicit avg: {explicit_avg:.1f}, Reduction: {reduction:.1f}%"
+        details = (
+            f"GFE avg: {gfe_avg:.1f}, Explicit avg: {explicit_avg:.1f}, Reduction: {reduction:.1f}%"
+        )
     else:
         criterion3_pass = None  # Cannot evaluate
         details = "N/A - persona_type data not populated (0 GFE, 0 Explicit tagged)"
 
-    criteria.append({
-        'num': 3,
-        'desc': 'GFE personas show 30% volume reduction vs explicit',
-        'pass': criterion3_pass,
-        'details': details
-    })
+    criteria.append(
+        {
+            "num": 3,
+            "desc": "GFE personas show 30% volume reduction vs explicit",
+            "pass": criterion3_pass,
+            "details": details,
+        }
+    )
 
     # Criterion 4: Premium ($15+) subscriptions show 15-30% volume reduction
     premium_creators = [c for c in paid if c.subscription_price >= 15]
@@ -415,12 +423,14 @@ def validate_success_criteria(creators: List[CreatorVolume]) -> str:
         standard_count = len(standard_creators)
         details = f"N/A - subscription_price data shows all $0 (Premium: {premium_count}, Standard: {standard_count})"
 
-    criteria.append({
-        'num': 4,
-        'desc': 'Premium ($15+) subscriptions show 15-30% volume reduction',
-        'pass': criterion4_pass,
-        'details': details
-    })
+    criteria.append(
+        {
+            "num": 4,
+            "desc": "Premium ($15+) subscriptions show 15-30% volume reduction",
+            "pass": criterion4_pass,
+            "details": details,
+        }
+    )
 
     # Criterion 5: New accounts (<60 days) show 25-40% volume reduction
     new_accounts = [c for c in creators if c.account_age_days and c.account_age_days < 60]
@@ -428,71 +438,83 @@ def validate_success_criteria(creators: List[CreatorVolume]) -> str:
 
     if new_accounts and established_accounts:
         new_avg = sum(c.new_weekly_ppv for c in new_accounts) / len(new_accounts)
-        established_avg = sum(c.new_weekly_ppv for c in established_accounts) / len(established_accounts)
-        reduction = ((established_avg - new_avg) / established_avg) * 100 if established_avg > 0 else 0
+        established_avg = sum(c.new_weekly_ppv for c in established_accounts) / len(
+            established_accounts
+        )
+        reduction = (
+            ((established_avg - new_avg) / established_avg) * 100 if established_avg > 0 else 0
+        )
         criterion5_pass = 25 <= reduction <= 40
         details = f"New avg: {new_avg:.1f}, Established avg: {established_avg:.1f}, Reduction: {reduction:.1f}%"
     else:
         criterion5_pass = None  # Cannot evaluate
         details = f"N/A - account_age_days data not populated (New: {len(new_accounts)}, Established: {len(established_accounts)})"
 
-    criteria.append({
-        'num': 5,
-        'desc': 'New accounts (<60 days) show 25-40% volume reduction',
-        'pass': criterion5_pass,
-        'details': details
-    })
+    criteria.append(
+        {
+            "num": 5,
+            "desc": "New accounts (<60 days) show 25-40% volume reduction",
+            "pass": criterion5_pass,
+            "details": details,
+        }
+    )
 
     # Criterion 6: All 6 factors calculated and logged for auditing
     creators_with_factor = [c for c in creators if c.combined_factor > 0]
     criterion6_pass = len(creators_with_factor) == len(creators)
 
-    criteria.append({
-        'num': 6,
-        'desc': 'All 6 factors calculated and logged for auditing',
-        'pass': criterion6_pass,
-        'details': f"{len(creators_with_factor)}/{len(creators)} creators have combined_factor logged"
-    })
+    criteria.append(
+        {
+            "num": 6,
+            "desc": "All 6 factors calculated and logged for auditing",
+            "pass": criterion6_pass,
+            "details": f"{len(creators_with_factor)}/{len(creators)} creators have combined_factor logged",
+        }
+    )
 
     # Criterion 7: No validation errors on any of 36 creators
     creators_with_volume = [c for c in creators if c.ppv_per_day > 0]
     criterion7_pass = len(creators_with_volume) == len(creators)
 
-    criteria.append({
-        'num': 7,
-        'desc': 'No validation errors on any of 36 creators',
-        'pass': criterion7_pass,
-        'details': f"{len(creators_with_volume)}/{len(creators)} creators have valid volume assignments"
-    })
+    criteria.append(
+        {
+            "num": 7,
+            "desc": "No validation errors on any of 36 creators",
+            "pass": criterion7_pass,
+            "details": f"{len(creators_with_volume)}/{len(creators)} creators have valid volume assignments",
+        }
+    )
 
     # Criterion 8: Unit test coverage >90%
     criterion8_pass = True  # Already confirmed: 97%
 
-    criteria.append({
-        'num': 8,
-        'desc': 'Unit test coverage >90%',
-        'pass': criterion8_pass,
-        'details': "Confirmed: 97% test coverage (see unit test results)"
-    })
+    criteria.append(
+        {
+            "num": 8,
+            "desc": "Unit test coverage >90%",
+            "pass": criterion8_pass,
+            "details": "Confirmed: 97% test coverage (see unit test results)",
+        }
+    )
 
     # Generate output
-    passed = sum(1 for c in criteria if c['pass'] is True)
-    failed = sum(1 for c in criteria if c['pass'] is False)
-    na = sum(1 for c in criteria if c['pass'] is None)
+    passed = sum(1 for c in criteria if c["pass"] is True)
+    failed = sum(1 for c in criteria if c["pass"] is False)
+    na = sum(1 for c in criteria if c["pass"] is None)
 
     output += f"VALIDATION SUMMARY: {passed} PASSED / {failed} FAILED / {na} N/A (missing data)\n\n"
 
     for c in criteria:
-        if c['pass'] is True:
+        if c["pass"] is True:
             status = "[PASS]"
-        elif c['pass'] is False:
+        elif c["pass"] is False:
             status = "[FAIL]"
         else:
             status = "[N/A] "
 
         output += f"""
-{status} Criterion {c['num']}: {c['desc']}
-        Details: {c['details']}
+{status} Criterion {c["num"]}: {c["desc"]}
+        Details: {c["details"]}
 """
 
     # Critical findings
@@ -520,7 +542,7 @@ rather than "1-5 per WEEK" to align with operational reality.
     return output
 
 
-def detect_anomalies(creators: List[CreatorVolume]) -> str:
+def detect_anomalies(creators: list[CreatorVolume]) -> str:
     """Detect anomalies in the data"""
 
     output = """
@@ -566,14 +588,20 @@ B. UNUSUAL VOLUME ASSIGNMENTS
     anomalies = []
 
     # High-fan free pages with low volume
-    high_fan_low_volume = [c for c in creators if c.fan_count > 10000 and c.page_type == 'free' and c.ppv_per_day < 3]
+    high_fan_low_volume = [
+        c for c in creators if c.fan_count > 10000 and c.page_type == "free" and c.ppv_per_day < 3
+    ]
     if high_fan_low_volume:
-        anomalies.append(f"High-fan (>10K) free pages with Low volume: {[c.display_name for c in high_fan_low_volume]}")
+        anomalies.append(
+            f"High-fan (>10K) free pages with Low volume: {[c.display_name for c in high_fan_low_volume]}"
+        )
 
     # Low-fan paid pages (might need more attention)
-    low_fan_paid = [c for c in creators if c.fan_count < 100 and c.page_type == 'paid']
+    low_fan_paid = [c for c in creators if c.fan_count < 100 and c.page_type == "paid"]
     if low_fan_paid:
-        anomalies.append(f"Very low-fan (<100) paid pages (might need activation): {[c.display_name for c in low_fan_paid]}")
+        anomalies.append(
+            f"Very low-fan (<100) paid pages (might need activation): {[c.display_name for c in low_fan_paid]}"
+        )
 
     # Check for missing volume assignments
     missing_volume = [c for c in creators if c.ppv_per_day == 0]
@@ -606,12 +634,16 @@ C. DATA QUALITY ISSUES
     # Missing avg_purchase_rate
     missing_rate = [c for c in creators if not c.avg_purchase_rate]
     if missing_rate:
-        data_issues.append(f"Missing avg_purchase_rate: {len(missing_rate)}/{len(creators)} creators")
+        data_issues.append(
+            f"Missing avg_purchase_rate: {len(missing_rate)}/{len(creators)} creators"
+        )
 
     # Subscription price all zeros
-    zero_price = [c for c in creators if c.subscription_price == 0 and c.page_type == 'paid']
+    zero_price = [c for c in creators if c.subscription_price == 0 and c.page_type == "paid"]
     if zero_price:
-        data_issues.append(f"Paid pages with $0 subscription_price: {len(zero_price)} (all paid pages)")
+        data_issues.append(
+            f"Paid pages with $0 subscription_price: {len(zero_price)} (all paid pages)"
+        )
 
     if data_issues:
         for issue in data_issues:
@@ -622,7 +654,7 @@ C. DATA QUALITY ISSUES
     return output
 
 
-def project_revenue_impact(creators: List[CreatorVolume]) -> str:
+def project_revenue_impact(creators: list[CreatorVolume]) -> str:
     """Project revenue impact from volume optimization"""
 
     output = """
@@ -645,14 +677,14 @@ VOLUME METRICS
 --------------
 Old Total Weekly PPV:      {total_old_weekly}
 New Total Weekly PPV:      {total_new_weekly}
-Weekly Reduction:          {reduction} PPV ({(reduction/total_old_weekly*100) if total_old_weekly > 0 else 0:.1f}%)
+Weekly Reduction:          {reduction} PPV ({(reduction / total_old_weekly * 100) if total_old_weekly > 0 else 0:.1f}%)
 Monthly Reduction:         {reduction * 4} PPV
 
 PORTFOLIO METRICS
 -----------------
 Total Fans:                {total_fans:,}
 Total Monthly Earnings:    ${total_earnings:,.2f}
-Avg Earnings per Fan:      ${(total_earnings/total_fans) if total_fans > 0 else 0:.2f}
+Avg Earnings per Fan:      ${(total_earnings / total_fans) if total_fans > 0 else 0:.2f}
 
 CHURN IMPACT PROJECTIONS
 ------------------------
@@ -684,7 +716,7 @@ Optimistic Estimate (15% churn reduction):
 
 PPV QUALITY IMPROVEMENT
 -----------------------
-With {(reduction/total_old_weekly*100) if total_old_weekly > 0 else 0:.1f}% fewer PPVs:
+With {(reduction / total_old_weekly * 100) if total_old_weekly > 0 else 0:.1f}% fewer PPVs:
   - Expected open rate improvement: 10-20%
   - Expected conversion rate improvement: 15-25%
   - Expected average order value improvement: 5-10%
@@ -699,7 +731,7 @@ Expected ROI Range:       ${low_savings:,.2f} - ${high_savings:,.2f} monthly
     return output
 
 
-def generate_recommendations(creators: List[CreatorVolume]) -> str:
+def generate_recommendations(creators: list[CreatorVolume]) -> str:
     """Generate actionable recommendations"""
 
     output = """
@@ -737,17 +769,19 @@ A. IMMEDIATE ACTIONS
 """
 
     # Low fan paid pages
-    low_fan_paid = [c for c in creators if c.fan_count < 100 and c.page_type == 'paid']
+    low_fan_paid = [c for c in creators if c.fan_count < 100 and c.page_type == "paid"]
     if low_fan_paid:
-        output += f"""
+        output += """
    Paid pages with <100 fans (may need activation strategy):
 """
         for c in low_fan_paid:
-            output += f"     - {c.display_name}: {c.fan_count} fans, ${c.total_earnings:.2f} earnings\n"
+            output += (
+                f"     - {c.display_name}: {c.fan_count} fans, ${c.total_earnings:.2f} earnings\n"
+            )
 
     # High earnings with low volume
     high_earning_low = [c for c in creators if c.total_earnings > 10000 and c.ppv_per_day <= 2]
-    output += f"""
+    output += """
    High-earning creators with conservative volume (verify not under-utilized):
 """
     for c in high_earning_low[:5]:
@@ -841,7 +875,11 @@ For questions or issues, refer to ~/.claude/CLAUDE.md or contact the EROS team.
     print(report)
 
     # Also save to file
-    output_path = Path(__file__).parent / "output" / f"volume_validation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    output_path = (
+        Path(__file__).parent
+        / "output"
+        / f"volume_validation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    )
     output_path.parent.mkdir(exist_ok=True)
     output_path.write_text(report)
     print(f"\nReport saved to: {output_path}")

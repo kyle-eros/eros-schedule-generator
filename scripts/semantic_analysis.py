@@ -23,38 +23,25 @@ Usage:
 
 import argparse
 import json
-import os
 import sqlite3
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 # Import persona matching functions from match_persona.py
 from match_persona import (
     PersonaProfile,
-    get_persona_profile,
-    detect_tone_from_text,
-    detect_slang_level_from_text,
     calculate_sentiment,
-    TONE_KEYWORDS,
+    detect_slang_level_from_text,
+    detect_tone_from_text,
+    get_persona_profile,
 )
 
 # Path resolution for database
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
 SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH  # noqa: E402
 
 # Analysis thresholds
 LOW_CONFIDENCE_THRESHOLD = 0.5
@@ -102,7 +89,7 @@ def calculate_pattern_confidence(
     tone_scores: dict[str, int],
     detected_tone: str | None,
     has_stored_tone: bool,
-    has_stored_slang: bool
+    has_stored_slang: bool,
 ) -> tuple[float, str]:
     """
     Calculate confidence level of pattern-based tone detection.
@@ -157,9 +144,7 @@ def calculate_pattern_confidence(
 
 
 def calculate_persona_boost_simple(
-    detected_tone: str | None,
-    detected_slang: str | None,
-    persona: PersonaProfile
+    detected_tone: str | None, detected_slang: str | None, persona: PersonaProfile
 ) -> float:
     """
     Calculate a simple persona boost for filtering purposes.
@@ -187,7 +172,7 @@ def should_flag_for_llm_analysis(
     performance_score: float,
     pattern_confidence: float,
     pattern_boost: float,
-    confidence_reason: str
+    confidence_reason: str,
 ) -> tuple[bool, str]:
     """
     Determine if a caption should be flagged for LLM analysis.
@@ -237,10 +222,7 @@ def should_flag_for_llm_analysis(
 
 
 def load_captions_for_analysis(
-    conn: sqlite3.Connection,
-    creator_id: str,
-    persona: PersonaProfile,
-    limit: int = 500
+    conn: sqlite3.Connection, creator_id: str, persona: PersonaProfile, limit: int = 500
 ) -> tuple[list[CaptionForAnalysis], dict[str, Any]]:
     """
     Load captions and evaluate them for LLM analysis need.
@@ -301,7 +283,7 @@ def load_captions_for_analysis(
             tone_scores,
             detected_tone,
             has_stored_tone=bool(stored_tone),
-            has_stored_slang=bool(stored_slang)
+            has_stored_slang=bool(stored_slang),
         )
 
         if pattern_confidence >= 0.7:
@@ -311,9 +293,7 @@ def load_captions_for_analysis(
 
         # Calculate simple persona boost
         pattern_boost = calculate_persona_boost_simple(
-            detected_tone or stored_tone,
-            detected_slang or stored_slang,
-            persona
+            detected_tone or stored_tone, detected_slang or stored_slang, persona
         )
 
         # Determine if LLM analysis needed
@@ -325,26 +305,30 @@ def load_captions_for_analysis(
             performance_score=performance_score,
             pattern_confidence=pattern_confidence,
             pattern_boost=pattern_boost,
-            confidence_reason=confidence_reason
+            confidence_reason=confidence_reason,
         )
 
         if needs_analysis:
             needs_analysis_count += 1
 
-        captions.append(CaptionForAnalysis(
-            caption_id=row["caption_id"],
-            caption_text=caption_text[:MAX_CAPTION_LENGTH] if len(caption_text) > MAX_CAPTION_LENGTH else caption_text,
-            pattern_detected_tone=detected_tone,
-            pattern_detected_slang=detected_slang,
-            pattern_sentiment=round(sentiment, 2),
-            pattern_confidence=round(pattern_confidence, 2),
-            pattern_boost=round(pattern_boost, 2),
-            needs_llm_analysis=needs_analysis,
-            analysis_reason=analysis_reason,
-            creator_primary_tone=persona.primary_tone,
-            creator_emoji_freq=persona.emoji_frequency,
-            creator_slang_level=persona.slang_level
-        ))
+        captions.append(
+            CaptionForAnalysis(
+                caption_id=row["caption_id"],
+                caption_text=caption_text[:MAX_CAPTION_LENGTH]
+                if len(caption_text) > MAX_CAPTION_LENGTH
+                else caption_text,
+                pattern_detected_tone=detected_tone,
+                pattern_detected_slang=detected_slang,
+                pattern_sentiment=round(sentiment, 2),
+                pattern_confidence=round(pattern_confidence, 2),
+                pattern_boost=round(pattern_boost, 2),
+                needs_llm_analysis=needs_analysis,
+                analysis_reason=analysis_reason,
+                creator_primary_tone=persona.primary_tone,
+                creator_emoji_freq=persona.emoji_frequency,
+                creator_slang_level=persona.slang_level,
+            )
+        )
 
     performance_summary = {
         "total_evaluated": total_evaluated,
@@ -352,20 +336,18 @@ def load_captions_for_analysis(
         "high_confidence": high_confidence_count,
         "low_confidence": low_confidence_count,
         "high_value_captions": high_value_count,
-        "analysis_rate_pct": round(needs_analysis_count / total_evaluated * 100, 1) if total_evaluated > 0 else 0
+        "analysis_rate_pct": round(needs_analysis_count / total_evaluated * 100, 1)
+        if total_evaluated > 0
+        else 0,
     }
 
     return captions, performance_summary
 
 
-def get_creator_display_name(
-    conn: sqlite3.Connection,
-    creator_id: str
-) -> str:
+def get_creator_display_name(conn: sqlite3.Connection, creator_id: str) -> str:
     """Get creator's display name from database."""
     cursor = conn.execute(
-        "SELECT display_name, page_name FROM creators WHERE creator_id = ?",
-        (creator_id,)
+        "SELECT display_name, page_name FROM creators WHERE creator_id = ?", (creator_id,)
     )
     row = cursor.fetchone()
     if row:
@@ -377,7 +359,7 @@ def build_analysis_batch(
     conn: sqlite3.Connection,
     creator_name: str | None = None,
     creator_id: str | None = None,
-    limit: int = 500
+    limit: int = 500,
 ) -> AnalysisBatch | None:
     """
     Build a batch of captions for LLM analysis.
@@ -417,12 +399,12 @@ def build_analysis_batch(
             "emoji_frequency": persona.emoji_frequency,
             "slang_level": persona.slang_level,
             "avg_sentiment": persona.avg_sentiment,
-            "favorite_emojis": persona.favorite_emojis[:5] if persona.favorite_emojis else []
+            "favorite_emojis": persona.favorite_emojis[:5] if persona.favorite_emojis else [],
         },
         performance_summary=performance_summary,
         total_captions_evaluated=performance_summary["total_evaluated"],
         captions_needing_analysis=performance_summary["needs_analysis"],
-        captions=captions_needing_analysis
+        captions=captions_needing_analysis,
     )
 
 
@@ -436,7 +418,7 @@ def format_as_json(batch: AnalysisBatch) -> str:
         "performance_summary": batch.performance_summary,
         "total_captions_evaluated": batch.total_captions_evaluated,
         "captions_needing_analysis": batch.captions_needing_analysis,
-        "captions": [asdict(c) for c in batch.captions]
+        "captions": [asdict(c) for c in batch.captions],
     }
     return json.dumps(data, indent=2)
 
@@ -473,28 +455,30 @@ def format_as_prompt(batch: AnalysisBatch) -> str:
         "",
     ]
 
-    if batch.persona_profile.get('favorite_emojis'):
-        emojis = ' '.join(batch.persona_profile['favorite_emojis'])
+    if batch.persona_profile.get("favorite_emojis"):
+        emojis = " ".join(batch.persona_profile["favorite_emojis"])
         lines.append(f"**Favorite Emojis**: {emojis}")
         lines.append("")
 
-    lines.extend([
-        "---",
-        "",
-        "## Analysis Summary",
-        "",
-        f"- **Total Captions Evaluated**: {batch.total_captions_evaluated}",
-        f"- **Captions Needing Analysis**: {batch.captions_needing_analysis}",
-        f"- **Analysis Rate**: {batch.performance_summary['analysis_rate_pct']:.1f}%",
-        f"- **High Confidence Detections**: {batch.performance_summary['high_confidence']}",
-        f"- **Low Confidence Detections**: {batch.performance_summary['low_confidence']}",
-        f"- **High-Value Captions (perf >= 75)**: {batch.performance_summary['high_value_captions']}",
-        "",
-        "---",
-        "",
-        "## Captions Requiring Semantic Analysis",
-        "",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            "## Analysis Summary",
+            "",
+            f"- **Total Captions Evaluated**: {batch.total_captions_evaluated}",
+            f"- **Captions Needing Analysis**: {batch.captions_needing_analysis}",
+            f"- **Analysis Rate**: {batch.performance_summary['analysis_rate_pct']:.1f}%",
+            f"- **High Confidence Detections**: {batch.performance_summary['high_confidence']}",
+            f"- **Low Confidence Detections**: {batch.performance_summary['low_confidence']}",
+            f"- **High-Value Captions (perf >= 75)**: {batch.performance_summary['high_value_captions']}",
+            "",
+            "---",
+            "",
+            "## Captions Requiring Semantic Analysis",
+            "",
+        ]
+    )
 
     # Limit captions for prompt
     captions_to_show = batch.captions[:MAX_CAPTIONS_FOR_PROMPT]
@@ -505,137 +489,143 @@ def format_as_prompt(batch: AnalysisBatch) -> str:
         if len(truncated) > 300:
             truncated = truncated[:300] + "..."
 
-        lines.extend([
-            f"### Caption #{i} (ID: {caption.caption_id})",
-            "",
-            f"**Text**: \"{truncated}\"",
-            "",
-            f"- Pattern Detected Tone: {caption.pattern_detected_tone or 'None'}",
-            f"- Pattern Detected Slang: {caption.pattern_detected_slang or 'None'}",
-            f"- Pattern Sentiment: {caption.pattern_sentiment}",
-            f"- Pattern Confidence: {caption.pattern_confidence}",
-            f"- Pattern Boost: {caption.pattern_boost}x",
-            f"- **Analysis Reason**: {caption.analysis_reason}",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### Caption #{i} (ID: {caption.caption_id})",
+                "",
+                f'**Text**: "{truncated}"',
+                "",
+                f"- Pattern Detected Tone: {caption.pattern_detected_tone or 'None'}",
+                f"- Pattern Detected Slang: {caption.pattern_detected_slang or 'None'}",
+                f"- Pattern Sentiment: {caption.pattern_sentiment}",
+                f"- Pattern Confidence: {caption.pattern_confidence}",
+                f"- Pattern Boost: {caption.pattern_boost}x",
+                f"- **Analysis Reason**: {caption.analysis_reason}",
+                "",
+            ]
+        )
 
     if remaining > 0:
-        lines.extend([
-            f"*... and {remaining} more captions requiring analysis (truncated for context window)*",
-            "",
-        ])
+        lines.extend(
+            [
+                f"*... and {remaining} more captions requiring analysis (truncated for context window)*",
+                "",
+            ]
+        )
 
-    lines.extend([
-        "---",
-        "",
-        "## Analysis Instructions",
-        "",
-        "For each caption above, please determine:",
-        "",
-        "1. **True Tone**: The actual tone of the caption based on semantic meaning, not just keywords.",
-        "   - Options: playful, aggressive, sweet, dominant, bratty, seductive, direct",
-        "",
-        "2. **Persona Match Score** (0.0-1.0): How well does this caption match the creator's persona?",
-        "   - 1.0 = Perfect match for this creator's voice",
-        "   - 0.7-0.9 = Good match, minor deviations",
-        "   - 0.4-0.6 = Moderate match, could work but not ideal",
-        "   - 0.0-0.3 = Poor match, doesn't fit this creator",
-        "",
-        "3. **Confidence** (0.0-1.0): How confident are you in this assessment?",
-        "   - 1.0 = Completely certain",
-        "   - 0.7-0.9 = High confidence",
-        "   - 0.4-0.6 = Moderate confidence",
-        "   - 0.0-0.3 = Low confidence, ambiguous",
-        "",
-        "4. **Notes**: Brief explanation of your reasoning (1-2 sentences)",
-        "",
-        "---",
-        "",
-        "## Response Format",
-        "",
-        "Please respond with a JSON array in this exact format:",
-        "",
-        "```json",
-        "[",
-        "  {",
-        '    "caption_id": 12345,',
-        '    "true_tone": "playful",',
-        '    "persona_match_score": 0.85,',
-        '    "confidence": 0.90,',
-        '    "notes": "Clear playful tone with teasing language that matches creator style."',
-        "  },",
-        "  ...",
-        "]",
-        "```",
-        "",
-        "---",
-        "",
-        "## Tone Detection Guidelines",
-        "",
-        "| Tone | Characteristics | Keywords/Signals |",
-        "|------|-----------------|------------------|",
-        "| playful | Teasing, fun, lighthearted | hehe, lol, tease, wink, surprise |",
-        "| aggressive | Commanding, urgent, demanding | now, obey, demand, must, immediately |",
-        "| sweet | Affectionate, warm, caring | baby, honey, love, xoxo, miss you |",
-        "| dominant | Controlling, authoritative | control, power, permission, own, rule |",
-        "| bratty | Entitled, pouty, demanding but cute | whatever, ugh, deserve, spoil, gimme |",
-        "| seductive | Sensual, alluring, intimate | tempt, desire, crave, fantasy, whisper |",
-        "| direct | Transactional, clear offers | exclusive, deal, unlock, sale, limited |",
-        "",
-        "---",
-        "",
-        "## Sarcasm and Subtext Detection Tips",
-        "",
-        "- **Sarcasm**: Look for mismatches between apparent keywords and context",
-        "  - \"Oh sure, I'll just give this away for free\" = NOT sweet, likely bratty/sarcastic",
-        "  - \"Whatever you say, boss\" = Could be bratty, not necessarily dominant",
-        "",
-        "- **Emojis can shift tone**: Same text with different emojis = different tone",
-        "  - \"Do it now\" = aggressive",
-        "  - \"Do it now hehe\" = playful/bratty",
-        "",
-        "- **Context clues**: Consider the overall message intent",
-        "  - Sales/offer language usually = direct, even if dressed up",
-        "  - Genuine compliments = sweet",
-        "  - Teasing about paying = bratty or playful",
-        "",
-        "---",
-        "",
-        "## Anti-AI Humanization Guidelines",
-        "",
-        "When evaluating captions, also consider whether they sound authentically human.",
-        "Captions that feel robotic or AI-generated should receive LOWER persona match scores.",
-        "",
-        "**Red Flags for AI-Sounding Content:**",
-        "",
-        "- Overly formal or stiff language (\"I would like to offer you...\")",
-        "- Perfect grammar with no personality quirks or casual mistakes",
-        "- Generic phrases that could apply to anyone (\"This exclusive content...\")",
-        "- Lack of specific personality markers (emoji, slang, tone)",
-        "- Repetitive sentence structures",
-        "- Missing contractions (\"do not\" instead of \"don't\")",
-        "",
-        "**Hallmarks of Authentic Human Captions:**",
-        "",
-        "- Personality-specific language and catchphrases",
-        "- Natural use of emojis that match the creator's style",
-        "- Casual contractions and informal grammar",
-        "- Specific references (timing, content, personal touches)",
-        "- Conversational tone that feels like a DM, not an ad",
-        "- Imperfect punctuation that matches real texting",
-        "",
-        "**Boost Score Adjustments:**",
-        "",
-        "- If a caption sounds robotic: **reduce persona_match_score by 0.1-0.2**",
-        "- If a caption sounds authentically like the creator: **increase by 0.05-0.1**",
-        "- Prioritize captions that would pass as genuine creator messages",
-        "",
-        "---",
-        "",
-        f"*Analysis batch generated for {batch.creator_display_name}*",
-        f"*{len(captions_to_show)} captions presented for analysis*",
-        "",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            "## Analysis Instructions",
+            "",
+            "For each caption above, please determine:",
+            "",
+            "1. **True Tone**: The actual tone of the caption based on semantic meaning, not just keywords.",
+            "   - Options: playful, aggressive, sweet, dominant, bratty, seductive, direct",
+            "",
+            "2. **Persona Match Score** (0.0-1.0): How well does this caption match the creator's persona?",
+            "   - 1.0 = Perfect match for this creator's voice",
+            "   - 0.7-0.9 = Good match, minor deviations",
+            "   - 0.4-0.6 = Moderate match, could work but not ideal",
+            "   - 0.0-0.3 = Poor match, doesn't fit this creator",
+            "",
+            "3. **Confidence** (0.0-1.0): How confident are you in this assessment?",
+            "   - 1.0 = Completely certain",
+            "   - 0.7-0.9 = High confidence",
+            "   - 0.4-0.6 = Moderate confidence",
+            "   - 0.0-0.3 = Low confidence, ambiguous",
+            "",
+            "4. **Notes**: Brief explanation of your reasoning (1-2 sentences)",
+            "",
+            "---",
+            "",
+            "## Response Format",
+            "",
+            "Please respond with a JSON array in this exact format:",
+            "",
+            "```json",
+            "[",
+            "  {",
+            '    "caption_id": 12345,',
+            '    "true_tone": "playful",',
+            '    "persona_match_score": 0.85,',
+            '    "confidence": 0.90,',
+            '    "notes": "Clear playful tone with teasing language that matches creator style."',
+            "  },",
+            "  ...",
+            "]",
+            "```",
+            "",
+            "---",
+            "",
+            "## Tone Detection Guidelines",
+            "",
+            "| Tone | Characteristics | Keywords/Signals |",
+            "|------|-----------------|------------------|",
+            "| playful | Teasing, fun, lighthearted | hehe, lol, tease, wink, surprise |",
+            "| aggressive | Commanding, urgent, demanding | now, obey, demand, must, immediately |",
+            "| sweet | Affectionate, warm, caring | baby, honey, love, xoxo, miss you |",
+            "| dominant | Controlling, authoritative | control, power, permission, own, rule |",
+            "| bratty | Entitled, pouty, demanding but cute | whatever, ugh, deserve, spoil, gimme |",
+            "| seductive | Sensual, alluring, intimate | tempt, desire, crave, fantasy, whisper |",
+            "| direct | Transactional, clear offers | exclusive, deal, unlock, sale, limited |",
+            "",
+            "---",
+            "",
+            "## Sarcasm and Subtext Detection Tips",
+            "",
+            "- **Sarcasm**: Look for mismatches between apparent keywords and context",
+            '  - "Oh sure, I\'ll just give this away for free" = NOT sweet, likely bratty/sarcastic',
+            '  - "Whatever you say, boss" = Could be bratty, not necessarily dominant',
+            "",
+            "- **Emojis can shift tone**: Same text with different emojis = different tone",
+            '  - "Do it now" = aggressive',
+            '  - "Do it now hehe" = playful/bratty',
+            "",
+            "- **Context clues**: Consider the overall message intent",
+            "  - Sales/offer language usually = direct, even if dressed up",
+            "  - Genuine compliments = sweet",
+            "  - Teasing about paying = bratty or playful",
+            "",
+            "---",
+            "",
+            "## Anti-AI Humanization Guidelines",
+            "",
+            "When evaluating captions, also consider whether they sound authentically human.",
+            "Captions that feel robotic or AI-generated should receive LOWER persona match scores.",
+            "",
+            "**Red Flags for AI-Sounding Content:**",
+            "",
+            '- Overly formal or stiff language ("I would like to offer you...")',
+            "- Perfect grammar with no personality quirks or casual mistakes",
+            '- Generic phrases that could apply to anyone ("This exclusive content...")',
+            "- Lack of specific personality markers (emoji, slang, tone)",
+            "- Repetitive sentence structures",
+            '- Missing contractions ("do not" instead of "don\'t")',
+            "",
+            "**Hallmarks of Authentic Human Captions:**",
+            "",
+            "- Personality-specific language and catchphrases",
+            "- Natural use of emojis that match the creator's style",
+            "- Casual contractions and informal grammar",
+            "- Specific references (timing, content, personal touches)",
+            "- Conversational tone that feels like a DM, not an ad",
+            "- Imperfect punctuation that matches real texting",
+            "",
+            "**Boost Score Adjustments:**",
+            "",
+            "- If a caption sounds robotic: **reduce persona_match_score by 0.1-0.2**",
+            "- If a caption sounds authentically like the creator: **increase by 0.05-0.1**",
+            "- Prioritize captions that would pass as genuine creator messages",
+            "",
+            "---",
+            "",
+            f"*Analysis batch generated for {batch.creator_display_name}*",
+            f"*{len(captions_to_show)} captions presented for analysis*",
+            "",
+        ]
+    )
 
     return "\n".join(lines)
 
@@ -660,38 +650,23 @@ Examples:
     python semantic_analysis.py --creator missalexa --format json
     python semantic_analysis.py --creator missalexa --format prompt
     python semantic_analysis.py --creator missalexa --output analysis.json
-        """
+        """,
     )
 
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
-    )
-    parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["json", "prompt"],
         default="json",
-        help="Output format (default: json)"
+        help="Output format (default: json)",
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
+        "--limit", type=int, default=500, help="Maximum captions to evaluate (default: 500)"
     )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=500,
-        help="Maximum captions to evaluate (default: 500)"
-    )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -710,10 +685,7 @@ Examples:
     try:
         # Build analysis batch
         batch = build_analysis_batch(
-            conn,
-            creator_name=args.creator,
-            creator_id=args.creator_id,
-            limit=args.limit
+            conn, creator_name=args.creator, creator_id=args.creator_id, limit=args.limit
         )
 
         if not batch:

@@ -12,9 +12,9 @@ Run with:
 
 import sqlite3
 import sys
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
@@ -23,46 +23,42 @@ TESTS_DIR = Path(__file__).parent
 SCRIPTS_DIR = TESTS_DIR.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from volume_optimizer import (
+from volume_optimizer import (  # noqa: E402
+    DAY_OF_WEEK_MODIFIERS,
+    FREE_PAGE_CONFIG,
+    FREE_PAGE_MAX_PPV_DAY,
+    FREE_PAGE_MIN_PPV_DAY,
+    FREE_PAGE_VOLUME_EFFICIENCY,
+    MAX_BUMP_PER_DAY,
+    MIN_BUMP_PER_DAY,
     # Constants
     PAID_PAGE_CONFIG,
-    FREE_PAGE_CONFIG,
-    TIER_FACTORS,
-    CONVERSION_FACTORS,
-    NICHE_FACTORS,
-    SUB_PRICE_FACTORS,
-    ACCOUNT_AGE_FACTORS,
-    PAID_PAGE_MIN_PPV_WEEK,
     PAID_PAGE_MAX_PPV_WEEK,
-    FREE_PAGE_MIN_PPV_DAY,
-    FREE_PAGE_MAX_PPV_DAY,
-    MIN_BUMP_PER_DAY,
-    MAX_BUMP_PER_DAY,
-    FREE_PAGE_VOLUME_EFFICIENCY,
+    PAID_PAGE_MIN_PPV_WEEK,
     PAID_PAGE_VOLUME_TOLERANCE,
-    DAY_OF_WEEK_MODIFIERS,
-    # Helper functions
-    get_niche_factor,
-    get_subscription_price_factor,
-    get_account_age_factor,
-    get_conversion_factor,
-    get_page_type_volume_factor,
-    get_volume_tier,
-    get_day_of_week_modifier,
-    get_weekly_day_distribution,
+    TIER_FACTORS,
     # Classes
     CreatorMetrics,
-    VolumeStrategy,
     MultiFactorVolumeOptimizer,
+    VolumeStrategy,
+    get_account_age_factor,
+    get_conversion_factor,
+    get_day_of_week_modifier,
+    # Helper functions
+    get_niche_factor,
+    get_page_type_volume_factor,
+    get_subscription_price_factor,
+    get_volume_tier,
+    get_volume_warnings,
+    get_weekly_day_distribution,
     # Validation functions
     validate_volume_strategy,
-    get_volume_warnings,
 )
-
 
 # ==============================================================================
 # TEST FIXTURES
 # ==============================================================================
+
 
 @pytest.fixture
 def mock_db() -> Generator[sqlite3.Connection, None, None]:
@@ -103,8 +99,11 @@ def mock_db() -> Generator[sqlite3.Connection, None, None]:
         CREATE TABLE mass_messages (
             message_id INTEGER PRIMARY KEY AUTOINCREMENT,
             creator_id TEXT NOT NULL,
+            message_type TEXT NOT NULL,
             sent_count INTEGER DEFAULT 0,
+            viewed_count INTEGER DEFAULT 0,
             purchased_count INTEGER DEFAULT 0,
+            earnings REAL DEFAULT 0.0,
             net_amount REAL DEFAULT 0.0,
             FOREIGN KEY (creator_id) REFERENCES creators(creator_id)
         )
@@ -153,31 +152,64 @@ def sample_creator(mock_db: sqlite3.Connection) -> str:
     creator_id = "test-creator-001"
     first_seen = (datetime.now() - timedelta(days=200)).isoformat()
 
-    mock_db.execute("""
+    mock_db.execute(
+        """
         INSERT INTO creators (
             creator_id, page_name, display_name, page_type,
             subscription_price, current_active_fans, performance_tier,
             current_total_earnings, current_message_net, first_seen_at, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        creator_id, "testcreator", "Test Creator", "paid",
-        12.99, 3500, 2, 15000.0, 8000.0, first_seen, 1
-    ))
+    """,
+        (
+            creator_id,
+            "testcreator",
+            "Test Creator",
+            "paid",
+            12.99,
+            3500,
+            2,
+            15000.0,
+            8000.0,
+            first_seen,
+            1,
+        ),
+    )
 
-    mock_db.execute("""
+    mock_db.execute(
+        """
         INSERT INTO creator_personas (creator_id, primary_tone, avg_sentiment)
         VALUES (?, ?, ?)
-    """, (creator_id, "explicit", 0.6))
+    """,
+        (creator_id, "explicit", 0.6),
+    )
 
     # Add some mass messages for purchase rate calculation
-    mock_db.execute("""
-        INSERT INTO mass_messages (creator_id, sent_count, purchased_count, net_amount)
-        VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)
-    """, (
-        creator_id, 1000, 120, 1500.00,  # 12% conversion
-        creator_id, 800, 100, 1200.00,   # 12.5% conversion
-        creator_id, 500, 55, 750.00,     # 11% conversion
-    ))
+    mock_db.execute(
+        """
+        INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+        VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)
+    """,
+        (
+            creator_id,
+            "ppv",
+            1000,
+            800,
+            120,
+            1500.00,  # 12% conversion
+            creator_id,
+            "ppv",
+            800,
+            640,
+            100,
+            1200.00,  # 12.5% conversion
+            creator_id,
+            "ppv",
+            500,
+            400,
+            55,
+            750.00,  # 11% conversion
+        ),
+    )
 
     mock_db.commit()
     return creator_id
@@ -186,6 +218,7 @@ def sample_creator(mock_db: sqlite3.Connection) -> str:
 # ==============================================================================
 # TEST NICHE FACTOR
 # ==============================================================================
+
 
 class TestNicheFactor:
     """Tests for get_niche_factor function."""
@@ -246,6 +279,7 @@ class TestNicheFactor:
 # TEST PRICE FACTOR
 # ==============================================================================
 
+
 class TestPriceFactor:
     """Tests for get_subscription_price_factor function."""
 
@@ -296,6 +330,7 @@ class TestPriceFactor:
 # TEST AGE FACTOR
 # ==============================================================================
 
+
 class TestAgeFactor:
     """Tests for get_account_age_factor function."""
 
@@ -339,6 +374,7 @@ class TestAgeFactor:
 # ==============================================================================
 # TEST CONVERSION FACTOR
 # ==============================================================================
+
 
 class TestConversionFactor:
     """Tests for get_conversion_factor function."""
@@ -389,6 +425,7 @@ class TestConversionFactor:
 # TEST BASE VOLUME CONFIGURATION
 # ==============================================================================
 
+
 class TestBaseVolume:
     """Tests for base volume configuration constants."""
 
@@ -427,10 +464,10 @@ class TestBaseVolume:
         - Paid pages: MIN 14, MAX 42 PPV/week (2-6 per day)
         - Free pages: MIN 2, MAX 6 PPV/day
         """
-        assert PAID_PAGE_MIN_PPV_WEEK == 14   # 2 PPV/day * 7
-        assert PAID_PAGE_MAX_PPV_WEEK == 42   # 6 PPV/day * 7
-        assert FREE_PAGE_MIN_PPV_DAY == 2     # New minimum floor
-        assert FREE_PAGE_MAX_PPV_DAY == 6     # Max for high performers
+        assert PAID_PAGE_MIN_PPV_WEEK == 14  # 2 PPV/day * 7
+        assert PAID_PAGE_MAX_PPV_WEEK == 42  # 6 PPV/day * 7
+        assert FREE_PAGE_MIN_PPV_DAY == 2  # New minimum floor
+        assert FREE_PAGE_MAX_PPV_DAY == 6  # Max for high performers
         assert MIN_BUMP_PER_DAY == 1
         assert MAX_BUMP_PER_DAY == 4
 
@@ -439,16 +476,14 @@ class TestBaseVolume:
 # TEST CREATOR METRICS DATA CLASS
 # ==============================================================================
 
+
 class TestCreatorMetrics:
     """Tests for CreatorMetrics dataclass."""
 
     def test_default_values(self) -> None:
         """Test default values for CreatorMetrics."""
         metrics = CreatorMetrics(
-            creator_id="test",
-            page_name="testpage",
-            display_name="Test Page",
-            page_type="paid"
+            creator_id="test", page_name="testpage", display_name="Test Page", page_type="paid"
         )
         assert metrics.active_fans == 0
         assert metrics.subscription_price == 0.0
@@ -470,7 +505,7 @@ class TestCreatorMetrics:
             avg_purchase_rate=0.12,
             primary_tone="explicit",
             account_age_days=200,
-            total_earnings=10000.0
+            total_earnings=10000.0,
         )
         assert metrics.data_completeness == 1.0
 
@@ -504,7 +539,7 @@ class TestCreatorMetrics:
             display_name="Test Page",
             page_type="paid",
             active_fans=500,
-            fan_count_override=5000
+            fan_count_override=5000,
         )
         assert metrics.active_fans == 500
         assert metrics.fan_count_override == 5000
@@ -513,6 +548,7 @@ class TestCreatorMetrics:
 # ==============================================================================
 # TEST VOLUME STRATEGY DATA CLASS
 # ==============================================================================
+
 
 class TestVolumeStrategy:
     """Tests for VolumeStrategy dataclass."""
@@ -533,7 +569,7 @@ class TestVolumeStrategy:
             tier_factor=1.0,
             combined_factor=1.0,
             fan_count=3000,
-            calculated_at="2025-01-01T00:00:00"
+            calculated_at="2025-01-01T00:00:00",
         )
 
         d = strategy.to_dict()
@@ -555,7 +591,7 @@ class TestVolumeStrategy:
             ppv_per_day=1,
             ppv_per_week=1,
             bump_per_day=1,
-            bump_per_week=7
+            bump_per_week=7,
         )
         assert strategy.base_volume == 0
         assert strategy.tier_factor == 1.0
@@ -568,14 +604,11 @@ class TestVolumeStrategy:
 # TEST INTEGRATION WITH MOCK DATABASE
 # ==============================================================================
 
+
 class TestIntegration:
     """Integration tests with mock database."""
 
-    def test_basic_calculation(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_basic_calculation(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test basic volume calculation with sample creator."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume(sample_creator)
@@ -592,21 +625,24 @@ class TestIntegration:
         creator_id = "test-gfe-001"
         first_seen = (datetime.now() - timedelta(days=25)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "gfecreator", "GFE Creator", "paid",
-            20.0, 2000, 3, first_seen, 1
-        ))
+        """,
+            (creator_id, "gfecreator", "GFE Creator", "paid", 20.0, 2000, 3, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "gfe"))
+        """,
+            (creator_id, "gfe"),
+        )
 
         mock_db.commit()
 
@@ -616,8 +652,8 @@ class TestIntegration:
         # Verify factors are correctly applied
         assert strategy.niche_factor == 0.70  # GFE
         assert strategy.price_factor == 0.85  # Premium price
-        assert strategy.age_factor == 0.60    # New account
-        assert strategy.tier_factor == 0.85   # Tier 3
+        assert strategy.age_factor == 0.60  # New account
+        assert strategy.tier_factor == 0.85  # Tier 3
 
         # Combined factor should be very low
         assert strategy.combined_factor < 0.35
@@ -634,27 +670,33 @@ class TestIntegration:
         creator_id = "test-fetish-001"
         first_seen = (datetime.now() - timedelta(days=365)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "fetishcreator", "Fetish Creator", "free",
-            0.0, 10000, 1, first_seen, 1
-        ))
+        """,
+            (creator_id, "fetishcreator", "Fetish Creator", "free", 0.0, 10000, 1, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "fetish"))
+        """,
+            (creator_id, "fetish"),
+        )
 
         # Add high conversion rate messages
-        mock_db.execute("""
-            INSERT INTO mass_messages (creator_id, sent_count, purchased_count, net_amount)
-            VALUES (?, ?, ?, ?)
-        """, (creator_id, 1000, 250, 3000.00))  # 25% conversion
+        mock_db.execute(
+            """
+            INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (creator_id, "ppv", 1000, 800, 250, 3000.00),
+        )  # 25% conversion
 
         mock_db.commit()
 
@@ -662,10 +704,10 @@ class TestIntegration:
         strategy = optimizer.calculate_optimal_volume(creator_id)
 
         # Verify factors are correctly applied
-        assert strategy.niche_factor == 1.20   # Fetish
-        assert strategy.price_factor == 1.10   # Free page
-        assert strategy.age_factor == 1.00     # Mature account
-        assert strategy.tier_factor == 1.15    # Tier 1
+        assert strategy.niche_factor == 1.20  # Fetish
+        assert strategy.price_factor == 1.10  # Free page
+        assert strategy.age_factor == 1.00  # Mature account
+        assert strategy.tier_factor == 1.15  # Tier 1
         assert strategy.conversion_factor == 1.15  # 25% conversion
 
         # Combined factor should be high
@@ -680,27 +722,33 @@ class TestIntegration:
         creator_id = "test-max-001"
         first_seen = (datetime.now() - timedelta(days=500)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "maxtest", "Max Test", "paid",
-            5.0, 50000, 1, first_seen, 1
-        ))
+        """,
+            (creator_id, "maxtest", "Max Test", "paid", 5.0, 50000, 1, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "fetish"))
+        """,
+            (creator_id, "fetish"),
+        )
 
         # Add extremely high conversion
-        mock_db.execute("""
-            INSERT INTO mass_messages (creator_id, sent_count, purchased_count, net_amount)
-            VALUES (?, ?, ?, ?)
-        """, (creator_id, 1000, 350, 4500.00))  # 35% conversion
+        mock_db.execute(
+            """
+            INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (creator_id, "ppv", 1000, 800, 350, 4500.00),
+        )  # 35% conversion
 
         mock_db.commit()
 
@@ -715,26 +763,32 @@ class TestIntegration:
         creator_id = "test-free-max-001"
         first_seen = (datetime.now() - timedelta(days=500)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "freemaxtest", "Free Max Test", "free",
-            0.0, 100000, 1, first_seen, 1
-        ))
+        """,
+            (creator_id, "freemaxtest", "Free Max Test", "free", 0.0, 100000, 1, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "fetish"))
+        """,
+            (creator_id, "fetish"),
+        )
 
-        mock_db.execute("""
-            INSERT INTO mass_messages (creator_id, sent_count, purchased_count, net_amount)
-            VALUES (?, ?, ?, ?)
-        """, (creator_id, 1000, 400, 5000.00))  # 40% conversion
+        mock_db.execute(
+            """
+            INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (creator_id, "ppv", 1000, 800, 400, 5000.00),
+        )  # 40% conversion
 
         mock_db.commit()
 
@@ -749,21 +803,24 @@ class TestIntegration:
         creator_id = "test-min-001"
         first_seen = (datetime.now() - timedelta(days=10)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "mintest", "Min Test", "paid",
-            30.0, 100, 3, first_seen, 1
-        ))
+        """,
+            (creator_id, "mintest", "Min Test", "paid", 30.0, 100, 3, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "gfe"))
+        """,
+            (creator_id, "gfe"),
+        )
 
         mock_db.commit()
 
@@ -773,11 +830,7 @@ class TestIntegration:
         # PPV per week should meet minimum
         assert strategy.ppv_per_week >= PAID_PAGE_MIN_PPV_WEEK
 
-    def test_fan_count_override(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_fan_count_override(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test fan count override functionality."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -786,10 +839,7 @@ class TestIntegration:
         assert strategy_normal.fan_count == 3500
 
         # With override
-        strategy_override = optimizer.calculate_optimal_volume(
-            sample_creator,
-            fan_count=50000
-        )
+        strategy_override = optimizer.calculate_optimal_volume(sample_creator, fan_count=50000)
         assert strategy_override.fan_count == 50000
         assert "Fan count override: 50000" in strategy_override.calculation_notes
 
@@ -804,12 +854,15 @@ class TestIntegration:
         """Test page type detection for free page."""
         creator_id = "test-free-001"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (creator_id, "freepage", "Free Page", "free", 0.0, 1000, 1))
+        """,
+            (creator_id, "freepage", "Free Page", "free", 0.0, 1000, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -822,12 +875,15 @@ class TestIntegration:
         """Test page type detection when type is null but price is zero."""
         creator_id = "test-null-type-001"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (creator_id, "nulltype", "Null Type", None, 0.0, 1000, 1))
+        """,
+            (creator_id, "nulltype", "Null Type", None, 0.0, 1000, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -840,6 +896,7 @@ class TestIntegration:
 # ==============================================================================
 # TEST VALIDATION FUNCTIONS
 # ==============================================================================
+
 
 class TestValidation:
     """Tests for validation functions."""
@@ -855,7 +912,7 @@ class TestValidation:
             ppv_per_day=3,
             ppv_per_week=21,  # Within 14-42 range
             bump_per_day=2,
-            bump_per_week=14
+            bump_per_week=14,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -872,7 +929,7 @@ class TestValidation:
             ppv_per_day=7,
             ppv_per_week=49,  # Exceeds max of 42
             bump_per_day=2,
-            bump_per_week=14
+            bump_per_week=14,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -890,7 +947,7 @@ class TestValidation:
             ppv_per_day=0,
             ppv_per_week=0,  # Below min of 1
             bump_per_day=1,
-            bump_per_week=7
+            bump_per_week=7,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -905,10 +962,10 @@ class TestValidation:
             display_name="Test Page",
             page_type="free",
             volume_level="Mid",
-            ppv_per_day=2,   # Within 1-3 range
+            ppv_per_day=2,  # Within 1-3 range
             ppv_per_week=14,
             bump_per_day=2,
-            bump_per_week=14
+            bump_per_week=14,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -925,7 +982,7 @@ class TestValidation:
             ppv_per_day=8,  # Exceeds new max of 6
             ppv_per_week=56,
             bump_per_day=2,
-            bump_per_week=14
+            bump_per_week=14,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -943,7 +1000,7 @@ class TestValidation:
             ppv_per_day=0,  # Below new min of 1
             ppv_per_week=0,
             bump_per_day=1,
-            bump_per_week=7
+            bump_per_week=7,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -961,7 +1018,7 @@ class TestValidation:
             ppv_per_day=3,
             ppv_per_week=21,
             bump_per_day=10,  # Exceeds max of 4
-            bump_per_week=70
+            bump_per_week=70,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -979,7 +1036,7 @@ class TestValidation:
             ppv_per_day=3,
             ppv_per_week=21,
             bump_per_day=0,  # Below min of 1
-            bump_per_week=0
+            bump_per_week=0,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -997,7 +1054,7 @@ class TestValidation:
             ppv_per_day=7,
             ppv_per_week=49,  # Exceeds max of 42
             bump_per_day=10,  # Exceeds max of 4
-            bump_per_week=70
+            bump_per_week=70,
         )
 
         errors = validate_volume_strategy(strategy)
@@ -1015,7 +1072,7 @@ class TestValidation:
             ppv_per_week=3,
             bump_per_day=2,
             bump_per_week=14,
-            data_completeness=0.3  # Below 50%
+            data_completeness=0.3,  # Below 50%
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1033,7 +1090,7 @@ class TestValidation:
             ppv_per_week=3,
             bump_per_day=2,
             bump_per_week=14,
-            data_completeness=0.6  # Between 50% and 80%
+            data_completeness=0.6,  # Between 50% and 80%
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1051,7 +1108,7 @@ class TestValidation:
             ppv_per_week=5,
             bump_per_day=2,
             bump_per_week=14,
-            combined_factor=1.5  # Above 1.3
+            combined_factor=1.5,  # Above 1.3
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1069,7 +1126,7 @@ class TestValidation:
             ppv_per_week=1,
             bump_per_day=1,
             bump_per_week=7,
-            combined_factor=0.5  # Below 0.7
+            combined_factor=0.5,  # Below 0.7
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1087,7 +1144,7 @@ class TestValidation:
             ppv_per_week=1,
             bump_per_day=1,
             bump_per_week=7,
-            fan_count=0
+            fan_count=0,
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1105,7 +1162,7 @@ class TestValidation:
             ppv_per_week=1,
             bump_per_day=1,
             bump_per_week=7,
-            age_factor=0.6  # New account
+            age_factor=0.6,  # New account
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1126,7 +1183,7 @@ class TestValidation:
             data_completeness=0.95,
             combined_factor=1.0,
             fan_count=3000,
-            age_factor=1.0
+            age_factor=1.0,
         )
 
         warnings = get_volume_warnings(strategy)
@@ -1137,14 +1194,11 @@ class TestValidation:
 # TEST POPULATE VOLUME ASSIGNMENTS
 # ==============================================================================
 
+
 class TestPopulateAssignments:
     """Tests for populate_volume_assignments method."""
 
-    def test_populate_dry_run(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_populate_dry_run(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test dry run doesn't modify database."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1161,9 +1215,7 @@ class TestPopulateAssignments:
         assert count == 0
 
     def test_populate_writes_to_database(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
+        self, mock_db: sqlite3.Connection, sample_creator: str
     ) -> None:
         """Test actual population writes to database."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -1175,10 +1227,13 @@ class TestPopulateAssignments:
         assert len(assignments) == 1
 
         # Database should have assignment
-        cursor = mock_db.execute("""
+        cursor = mock_db.execute(
+            """
             SELECT * FROM volume_assignments
             WHERE creator_id = ? AND is_active = 1
-        """, (sample_creator,))
+        """,
+            (sample_creator,),
+        )
         row = cursor.fetchone()
 
         assert row is not None
@@ -1186,40 +1241,47 @@ class TestPopulateAssignments:
         assert row["ppv_per_day"] == assignments[0]["ppv_per_day"]
 
     def test_populate_deactivates_old(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
+        self, mock_db: sqlite3.Connection, sample_creator: str
     ) -> None:
         """Test that old assignments are deactivated."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
         # Create old assignment
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO volume_assignments (
                 creator_id, volume_level, ppv_per_day, bump_per_day,
                 assigned_by, is_active
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (sample_creator, "Low", 1, 1, "manual", 1))
+        """,
+            (sample_creator, "Low", 1, 1, "manual", 1),
+        )
         mock_db.commit()
 
         # Run population
         optimizer.populate_volume_assignments(dry_run=False)
 
         # Old assignment should be deactivated
-        cursor = mock_db.execute("""
+        cursor = mock_db.execute(
+            """
             SELECT COUNT(*) FROM volume_assignments
             WHERE creator_id = ? AND is_active = 1
-        """, (sample_creator,))
+        """,
+            (sample_creator,),
+        )
         count = cursor.fetchone()[0]
 
         # Should only have one active assignment
         assert count == 1
 
         # Total should be 2 (one inactive, one active)
-        cursor = mock_db.execute("""
+        cursor = mock_db.execute(
+            """
             SELECT COUNT(*) FROM volume_assignments
             WHERE creator_id = ?
-        """, (sample_creator,))
+        """,
+            (sample_creator,),
+        )
         total = cursor.fetchone()[0]
         assert total == 2
 
@@ -1228,13 +1290,11 @@ class TestPopulateAssignments:
 # TEST OPTIMIZER INTERNAL METHODS
 # ==============================================================================
 
+
 class TestOptimizerInternals:
     """Tests for internal optimizer methods."""
 
-    def test_get_base_volume_paid_low(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_base_volume_paid_low(self, mock_db: sqlite3.Connection) -> None:
         """Test base volume for paid page with low fans (2025 strategy: min 2/day)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         level, ppv, bump = optimizer._get_base_volume(500, is_free_page=False)
@@ -1242,10 +1302,7 @@ class TestOptimizerInternals:
         assert ppv == 2  # New minimum floor
         assert bump == 2
 
-    def test_get_base_volume_paid_mid(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_base_volume_paid_mid(self, mock_db: sqlite3.Connection) -> None:
         """Test base volume for paid page with mid fans (2025 strategy)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         level, ppv, bump = optimizer._get_base_volume(2500, is_free_page=False)
@@ -1253,10 +1310,7 @@ class TestOptimizerInternals:
         assert ppv == 3  # Growth tier
         assert bump == 2
 
-    def test_get_base_volume_paid_high(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_base_volume_paid_high(self, mock_db: sqlite3.Connection) -> None:
         """Test base volume for paid page with high fans (2025 strategy)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         level, ppv, bump = optimizer._get_base_volume(10000, is_free_page=False)
@@ -1264,10 +1318,7 @@ class TestOptimizerInternals:
         assert ppv == 4  # Scale tier
         assert bump == 3
 
-    def test_get_base_volume_paid_ultra(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_base_volume_paid_ultra(self, mock_db: sqlite3.Connection) -> None:
         """Test base volume for paid page with ultra fans (2025 strategy)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         level, ppv, bump = optimizer._get_base_volume(50000, is_free_page=False)
@@ -1275,10 +1326,7 @@ class TestOptimizerInternals:
         assert ppv == 5  # High tier
         assert bump == 4
 
-    def test_get_base_volume_free_page(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_base_volume_free_page(self, mock_db: sqlite3.Connection) -> None:
         """Test base volume for free page (2025 strategy: min 2/day)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1302,10 +1350,7 @@ class TestOptimizerInternals:
         assert level == "High"
         assert ppv == 5  # High tier
 
-    def test_get_tier_factor(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_tier_factor(self, mock_db: sqlite3.Connection) -> None:
         """Test tier factor calculation."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1314,10 +1359,7 @@ class TestOptimizerInternals:
         assert optimizer._get_tier_factor(3) == 0.85
         assert optimizer._get_tier_factor(99) == 1.0  # Unknown tier
 
-    def test_get_bump_count_paid(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_bump_count_paid(self, mock_db: sqlite3.Connection) -> None:
         """Test bump count calculation for paid pages."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1326,10 +1368,7 @@ class TestOptimizerInternals:
         assert optimizer._get_bump_count(2, is_free_page=False) == 2
         assert optimizer._get_bump_count(3, is_free_page=False) == 2  # Capped at 2
 
-    def test_get_bump_count_free(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_bump_count_free(self, mock_db: sqlite3.Connection) -> None:
         """Test bump count calculation for free pages."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1339,10 +1378,7 @@ class TestOptimizerInternals:
         assert optimizer._get_bump_count(3, is_free_page=True) == 3
         assert optimizer._get_bump_count(5, is_free_page=True) == 4  # Capped at max
 
-    def test_get_optimal_days_paid(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_optimal_days_paid(self, mock_db: sqlite3.Connection) -> None:
         """Test optimal days for paid pages."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         days = optimizer._get_optimal_days(is_free_page=False)
@@ -1355,10 +1391,7 @@ class TestOptimizerInternals:
         assert "Monday" not in days
         assert "Sunday" not in days
 
-    def test_get_optimal_days_free(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_optimal_days_free(self, mock_db: sqlite3.Connection) -> None:
         """Test optimal days for free pages."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         days = optimizer._get_optimal_days(is_free_page=True)
@@ -1367,10 +1400,7 @@ class TestOptimizerInternals:
         assert "Monday" in days
         assert "Sunday" in days
 
-    def test_get_bump_delays(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_bump_delays(self, mock_db: sqlite3.Connection) -> None:
         """Test bump delay ranges."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1380,10 +1410,7 @@ class TestOptimizerInternals:
         assert optimizer._get_bump_delays("Low") == (25, 45)
         assert optimizer._get_bump_delays("Unknown") == (20, 40)  # Default
 
-    def test_get_volume_level_name_paid(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_volume_level_name_paid(self, mock_db: sqlite3.Connection) -> None:
         """Test volume level name determination for paid pages (2025 tier naming)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1393,10 +1420,7 @@ class TestOptimizerInternals:
         assert optimizer._get_volume_level_name(5, is_free_page=False) == "High"
         assert optimizer._get_volume_level_name(6, is_free_page=False) == "Ultra"
 
-    def test_get_volume_level_name_free(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_get_volume_level_name_free(self, mock_db: sqlite3.Connection) -> None:
         """Test volume level name determination for free pages (2025 tier naming)."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
 
@@ -1411,6 +1435,7 @@ class TestOptimizerInternals:
 # TEST EDGE CASES
 # ==============================================================================
 
+
 class TestEdgeCases:
     """Tests for edge cases and boundary conditions."""
 
@@ -1418,12 +1443,15 @@ class TestEdgeCases:
         """Test with zero fan count (2025 strategy: min 2/day for all)."""
         creator_id = "test-zero-fans"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (creator_id, "zerofans", "Zero Fans", "paid", 0, 1))
+        """,
+            (creator_id, "zerofans", "Zero Fans", "paid", 0, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -1437,12 +1465,15 @@ class TestEdgeCases:
         """Test with missing persona data."""
         creator_id = "test-no-persona"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (creator_id, "nopersona", "No Persona", "paid", 5000, 1))
+        """,
+            (creator_id, "nopersona", "No Persona", "paid", 5000, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -1455,12 +1486,15 @@ class TestEdgeCases:
         """Test with null subscription price."""
         creator_id = "test-null-price"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (creator_id, "nullprice", "Null Price", "paid", None, 5000, 1))
+        """,
+            (creator_id, "nullprice", "Null Price", "paid", None, 5000, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
@@ -1504,34 +1538,37 @@ class TestEdgeCases:
         level, _, _ = optimizer._get_base_volume(15000, is_free_page=False)
         assert level == "High"
 
-    def test_combined_factor_calculation(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_combined_factor_calculation(self, mock_db: sqlite3.Connection) -> None:
         """Test that combined factor is product of all factors."""
         creator_id = "test-combined"
         first_seen = (datetime.now() - timedelta(days=200)).isoformat()
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "combined", "Combined Test", "paid",
-            10.00, 5000, 2, first_seen, 1
-        ))
+        """,
+            (creator_id, "combined", "Combined Test", "paid", 10.00, 5000, 2, first_seen, 1),
+        )
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, (creator_id, "explicit"))
+        """,
+            (creator_id, "explicit"),
+        )
 
-        mock_db.execute("""
-            INSERT INTO mass_messages (creator_id, sent_count, purchased_count, net_amount)
-            VALUES (?, ?, ?, ?)
-        """, (creator_id, 1000, 120, 1500.00))  # 12% conversion
+        mock_db.execute(
+            """
+            INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (creator_id, "ppv", 1000, 800, 120, 1500.00),
+        )  # 12% conversion
 
         mock_db.commit()
 
@@ -1540,11 +1577,11 @@ class TestEdgeCases:
 
         # Verify combined factor is product
         expected = (
-            strategy.tier_factor *
-            strategy.conversion_factor *
-            strategy.niche_factor *
-            strategy.price_factor *
-            strategy.age_factor
+            strategy.tier_factor
+            * strategy.conversion_factor
+            * strategy.niche_factor
+            * strategy.price_factor
+            * strategy.age_factor
         )
 
         assert abs(strategy.combined_factor - expected) < 0.01
@@ -1554,25 +1591,18 @@ class TestEdgeCases:
 # TEST LOOKUP BY DIFFERENT IDENTIFIERS
 # ==============================================================================
 
+
 class TestCreatorLookup:
     """Tests for creator lookup by different identifiers."""
 
-    def test_lookup_by_creator_id(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_lookup_by_creator_id(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test lookup by creator_id."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume(sample_creator)
 
         assert strategy.creator_id == sample_creator
 
-    def test_lookup_by_page_name(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_lookup_by_page_name(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test lookup by page_name."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume("testcreator")
@@ -1580,11 +1610,7 @@ class TestCreatorLookup:
         assert strategy.creator_id == sample_creator
         assert strategy.page_name == "testcreator"
 
-    def test_lookup_by_display_name(
-        self,
-        mock_db: sqlite3.Connection,
-        sample_creator: str
-    ) -> None:
+    def test_lookup_by_display_name(self, mock_db: sqlite3.Connection, sample_creator: str) -> None:
         """Test lookup by display_name."""
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume("Test Creator")
@@ -1596,6 +1622,7 @@ class TestCreatorLookup:
 # ==============================================================================
 # TEST OUTPUT FORMATTING
 # ==============================================================================
+
 
 class TestOutputFormatting:
     """Tests for output formatting functions."""
@@ -1617,7 +1644,7 @@ class TestOutputFormatting:
                 bump_per_week=14,
                 combined_factor=1.05,
                 fan_count=3000,
-                data_completeness=0.95
+                data_completeness=0.95,
             ),
             VolumeStrategy(
                 creator_id="test2",
@@ -1631,7 +1658,7 @@ class TestOutputFormatting:
                 bump_per_week=21,
                 combined_factor=1.20,
                 fan_count=8000,
-                data_completeness=0.80
+                data_completeness=0.80,
             ),
         ]
 
@@ -1686,7 +1713,7 @@ class TestOutputFormatting:
             optimal_days=["Tuesday", "Wednesday"],
             bump_delay_min=20,
             bump_delay_max=40,
-            calculated_at="2025-01-01T12:00:00"
+            calculated_at="2025-01-01T12:00:00",
         )
 
         output = format_strategy_detail(strategy)
@@ -1725,7 +1752,7 @@ class TestOutputFormatting:
             ppv_per_week=25,  # Exceeds max of 20
             bump_per_day=10,  # Exceeds max of 4
             bump_per_week=70,
-            calculated_at="2025-01-01T12:00:00"
+            calculated_at="2025-01-01T12:00:00",
         )
 
         output = format_strategy_detail(strategy)
@@ -1752,7 +1779,7 @@ class TestOutputFormatting:
             combined_factor=0.5,  # Low factor
             fan_count=0,  # Zero fans
             age_factor=0.6,  # New account
-            calculated_at="2025-01-01T12:00:00"
+            calculated_at="2025-01-01T12:00:00",
         )
 
         output = format_strategy_detail(strategy)
@@ -1766,13 +1793,14 @@ class TestOutputFormatting:
 # TEST DATABASE CONNECTION FUNCTION
 # ==============================================================================
 
+
 class TestDatabaseConnection:
     """Tests for database connection function."""
 
     def test_get_db_connection_file_not_found(self, tmp_path) -> None:
         """Test error when database file not found."""
+
         from volume_optimizer import get_db_connection
-        from pathlib import Path
 
         fake_path = tmp_path / "nonexistent.db"
 
@@ -1781,8 +1809,8 @@ class TestDatabaseConnection:
 
     def test_get_db_connection_success(self, tmp_path) -> None:
         """Test successful database connection."""
+
         from volume_optimizer import get_db_connection
-        from pathlib import Path
 
         # Create a test database file
         db_path = tmp_path / "test.db"
@@ -1799,6 +1827,7 @@ class TestDatabaseConnection:
 # TEST ACCOUNT AGE WITH NONE
 # ==============================================================================
 
+
 class TestAccountAgeNone:
     """Additional tests for account age factor edge cases."""
 
@@ -1814,6 +1843,7 @@ class TestAccountAgeNone:
 # TEST SUBSCRIPTION PRICE FACTOR WITH NONE
 # ==============================================================================
 
+
 class TestSubscriptionPriceNone:
     """Test subscription price factor with None value."""
 
@@ -1828,6 +1858,7 @@ class TestSubscriptionPriceNone:
 # ==============================================================================
 # TEST CONVERSION FACTOR EXACT BOUNDARIES
 # ==============================================================================
+
 
 class TestConversionBoundaries:
     """Test exact boundary values for conversion factor."""
@@ -1857,6 +1888,7 @@ class TestConversionBoundaries:
 # ==============================================================================
 # TEST CLI MAIN FUNCTION
 # ==============================================================================
+
 
 class TestCLIMain:
     """Tests for CLI main function."""
@@ -1899,8 +1931,11 @@ class TestCLIMain:
             CREATE TABLE mass_messages (
                 message_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 creator_id TEXT NOT NULL,
+                message_type TEXT NOT NULL,
                 sent_count INTEGER DEFAULT 0,
+                viewed_count INTEGER DEFAULT 0,
                 purchased_count INTEGER DEFAULT 0,
+                earnings REAL DEFAULT 0.0,
                 net_amount REAL DEFAULT 0.0,
                 FOREIGN KEY (creator_id) REFERENCES creators(creator_id)
             )
@@ -1937,21 +1972,33 @@ class TestCLIMain:
         """)
 
         # Insert test data
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 current_total_earnings, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "cli-test-001", "clitestpage", "CLI Test Creator", "paid",
-            12.99, 5000, 2, 15000.0, 1
-        ))
+        """,
+            ("cli-test-001", "clitestpage", "CLI Test Creator", "paid", 12.99, 5000, 2, 15000.0, 1),
+        )
 
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO creator_personas (creator_id, primary_tone)
             VALUES (?, ?)
-        """, ("cli-test-001", "explicit"))
+        """,
+            ("cli-test-001", "explicit"),
+        )
+
+        # Add mass messages for purchase rate calculation
+        conn.execute(
+            """
+            INSERT INTO mass_messages (creator_id, message_type, sent_count, viewed_count, purchased_count, earnings)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            ("cli-test-001", "ppv", 1000, 800, 120, 1500.00),
+        )
 
         conn.commit()
         conn.close()
@@ -1961,11 +2008,11 @@ class TestCLIMain:
     def test_main_single_creator_detail(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with single creator in detail format."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "clitestpage", "--db", test_db]
+            sys, "argv", ["volume_optimizer.py", "--creator", "clitestpage", "--db", test_db]
         )
 
         result = main()
@@ -1977,13 +2024,23 @@ class TestCLIMain:
 
     def test_main_single_creator_json(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with single creator in JSON format."""
-        import sys
         import json
+        import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "clitestpage", "--db", test_db, "--format", "json"]
+            sys,
+            "argv",
+            [
+                "volume_optimizer.py",
+                "--creator",
+                "clitestpage",
+                "--db",
+                test_db,
+                "--format",
+                "json",
+            ],
         )
 
         result = main()
@@ -1997,11 +2054,21 @@ class TestCLIMain:
     def test_main_single_creator_table(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with single creator in table format."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "clitestpage", "--db", test_db, "--format", "table"]
+            sys,
+            "argv",
+            [
+                "volume_optimizer.py",
+                "--creator",
+                "clitestpage",
+                "--db",
+                test_db,
+                "--format",
+                "table",
+            ],
         )
 
         result = main()
@@ -2013,14 +2080,25 @@ class TestCLIMain:
 
     def test_main_with_fan_count_override(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with fan count override."""
-        import sys
         import json
+        import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "clitestpage", "--db", test_db,
-             "--fan-count", "50000", "--format", "json"]
+            sys,
+            "argv",
+            [
+                "volume_optimizer.py",
+                "--creator",
+                "clitestpage",
+                "--db",
+                test_db,
+                "--fan-count",
+                "50000",
+                "--format",
+                "json",
+            ],
         )
 
         result = main()
@@ -2033,11 +2111,11 @@ class TestCLIMain:
     def test_main_all_creators_table(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --all flag in table format."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--all", "--db", test_db, "--format", "table"]
+            sys, "argv", ["volume_optimizer.py", "--all", "--db", test_db, "--format", "table"]
         )
 
         result = main()
@@ -2049,13 +2127,13 @@ class TestCLIMain:
 
     def test_main_all_creators_json(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --all flag in JSON format."""
-        import sys
         import json
+        import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--all", "--db", test_db, "--format", "json"]
+            sys, "argv", ["volume_optimizer.py", "--all", "--db", test_db, "--format", "json"]
         )
 
         result = main()
@@ -2069,11 +2147,11 @@ class TestCLIMain:
     def test_main_all_creators_detail(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --all flag in detail format."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--all", "--db", test_db, "--format", "detail"]
+            sys, "argv", ["volume_optimizer.py", "--all", "--db", test_db, "--format", "detail"]
         )
 
         result = main()
@@ -2085,11 +2163,11 @@ class TestCLIMain:
     def test_main_populate_dry_run(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --populate --dry-run."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--populate", "--dry-run", "--db", test_db]
+            sys, "argv", ["volume_optimizer.py", "--populate", "--dry-run", "--db", test_db]
         )
 
         result = main()
@@ -2102,12 +2180,10 @@ class TestCLIMain:
     def test_main_populate_write(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --populate (actually writes)."""
         import sys
+
         from volume_optimizer import main
 
-        monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--populate", "--db", test_db]
-        )
+        monkeypatch.setattr(sys, "argv", ["volume_optimizer.py", "--populate", "--db", test_db])
 
         result = main()
 
@@ -2124,13 +2200,15 @@ class TestCLIMain:
 
     def test_main_populate_json_format(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with --populate in JSON format."""
-        import sys
         import json
+        import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--populate", "--dry-run", "--db", test_db, "--format", "json"]
+            sys,
+            "argv",
+            ["volume_optimizer.py", "--populate", "--dry-run", "--db", test_db, "--format", "json"],
         )
 
         result = main()
@@ -2138,25 +2216,25 @@ class TestCLIMain:
         assert result == 0
         captured = capsys.readouterr()
         # Output contains header line before JSON, so we need to find the JSON part
-        output_lines = captured.out.strip().split('\n')
+        output_lines = captured.out.strip().split("\n")
         # Find the start of JSON (first '[')
         json_start = 0
         for i, line in enumerate(output_lines):
-            if line.strip().startswith('['):
+            if line.strip().startswith("["):
                 json_start = i
                 break
-        json_str = '\n'.join(output_lines[json_start:])
+        json_str = "\n".join(output_lines[json_start:])
         data = json.loads(json_str)
         assert isinstance(data, list)
 
     def test_main_creator_not_found(self, test_db: str, monkeypatch, capsys) -> None:
         """Test CLI with nonexistent creator."""
         import sys
+
         from volume_optimizer import main
 
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "nonexistent", "--db", test_db]
+            sys, "argv", ["volume_optimizer.py", "--creator", "nonexistent", "--db", test_db]
         )
 
         result = main()
@@ -2168,12 +2246,12 @@ class TestCLIMain:
     def test_main_db_not_found(self, tmp_path, monkeypatch, capsys) -> None:
         """Test CLI with nonexistent database."""
         import sys
+
         from volume_optimizer import main
 
         fake_db = str(tmp_path / "nonexistent.db")
         monkeypatch.setattr(
-            sys, "argv",
-            ["volume_optimizer.py", "--creator", "test", "--db", fake_db]
+            sys, "argv", ["volume_optimizer.py", "--creator", "test", "--db", fake_db]
         )
 
         result = main()
@@ -2187,18 +2265,22 @@ class TestCLIMain:
 # TEST ERROR HANDLING IN POPULATE
 # ==============================================================================
 
+
 class TestPopulateErrorHandling:
     """Tests for error handling in populate_volume_assignments."""
 
     def test_populate_handles_individual_errors(self, mock_db: sqlite3.Connection) -> None:
         """Test that populate handles errors for individual creators gracefully."""
         # Create a creator with invalid data that will cause an error
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 current_active_fans, is_active
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, ("good-creator", "goodpage", "Good Creator", "paid", 5000, 1))
+        """,
+            ("good-creator", "goodpage", "Good Creator", "paid", 5000, 1),
+        )
 
         mock_db.commit()
 
@@ -2213,6 +2295,7 @@ class TestPopulateErrorHandling:
 # ==============================================================================
 # TEST ADDITIONAL EDGE CASES FOR CONVERSION FACTOR
 # ==============================================================================
+
 
 class TestConversionFactorEdgeCases:
     """Additional edge case tests for conversion factor."""
@@ -2232,6 +2315,7 @@ class TestConversionFactorEdgeCases:
 # ==============================================================================
 # TEST ADDITIONAL EDGE CASES FOR BASE VOLUME
 # ==============================================================================
+
 
 class TestBaseVolumeEdgeCases:
     """Additional edge case tests for base volume calculation."""
@@ -2254,6 +2338,7 @@ class TestBaseVolumeEdgeCases:
 # ==============================================================================
 # TEST PAGE TYPE VOLUME EFFICIENCY FACTORS
 # ==============================================================================
+
 
 class TestPageTypeVolumeEfficiency:
     """Tests for page type volume efficiency factors (2025 softened penalties).
@@ -2348,6 +2433,7 @@ class TestPageTypeVolumeEfficiency:
 # TEST HARD CAPS VERIFICATION
 # ==============================================================================
 
+
 class TestHardCapsVerification:
     """Verification tests for 2025 volume strategy hard cap values."""
 
@@ -2372,6 +2458,7 @@ class TestHardCapsVerification:
 # TEST VOLUME OVERRIDE SYSTEM
 # ==============================================================================
 
+
 class TestVolumeOverrideSystem:
     """Tests for the creator volume override system.
 
@@ -2385,24 +2472,37 @@ class TestVolumeOverrideSystem:
         first_seen = (datetime.now() - timedelta(days=200)).isoformat()
 
         # Create creator
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "overridecreator", "Override Creator", "paid",
-            12.99, 3000, 2, first_seen, 1
-        ))
+        """,
+            (
+                creator_id,
+                "overridecreator",
+                "Override Creator",
+                "paid",
+                12.99,
+                3000,
+                2,
+                first_seen,
+                1,
+            ),
+        )
 
         # Create active override with high volume (proven performer)
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO volume_overrides (
                 creator_id, target_weekly_ppv, target_weekly_bump,
                 override_reason, is_active
             ) VALUES (?, ?, ?, ?, ?)
-        """, (creator_id, 18, 10, "Proven high-efficiency performer", 1))
+        """,
+            (creator_id, 18, 10, "Proven high-efficiency performer", 1),
+        )
 
         mock_db.commit()
 
@@ -2421,24 +2521,37 @@ class TestVolumeOverrideSystem:
         expired_date = (datetime.now() - timedelta(days=1)).isoformat()
 
         # Create creator
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "expiredcreator", "Expired Creator", "paid",
-            12.99, 3000, 2, first_seen, 1
-        ))
+        """,
+            (
+                creator_id,
+                "expiredcreator",
+                "Expired Creator",
+                "paid",
+                12.99,
+                3000,
+                2,
+                first_seen,
+                1,
+            ),
+        )
 
         # Create expired override
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO volume_overrides (
                 creator_id, target_weekly_ppv, target_weekly_bump,
                 override_reason, is_active, expires_at
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (creator_id, 25, 15, "Expired override", 1, expired_date))
+        """,
+            (creator_id, 25, 15, "Expired override", 1, expired_date),
+        )
 
         mock_db.commit()
 
@@ -2455,24 +2568,37 @@ class TestVolumeOverrideSystem:
         first_seen = (datetime.now() - timedelta(days=200)).isoformat()
 
         # Create creator
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "inactivecreator", "Inactive Creator", "paid",
-            12.99, 3000, 2, first_seen, 1
-        ))
+        """,
+            (
+                creator_id,
+                "inactivecreator",
+                "Inactive Creator",
+                "paid",
+                12.99,
+                3000,
+                2,
+                first_seen,
+                1,
+            ),
+        )
 
         # Create inactive override
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO volume_overrides (
                 creator_id, target_weekly_ppv, target_weekly_bump,
                 override_reason, is_active
             ) VALUES (?, ?, ?, ?, ?)
-        """, (creator_id, 25, 15, "Inactive override", 0))
+        """,
+            (creator_id, 25, 15, "Inactive override", 0),
+        )
 
         mock_db.commit()
 
@@ -2483,57 +2609,59 @@ class TestVolumeOverrideSystem:
         assert strategy.ppv_per_week != 25
         assert "OVERRIDE" not in str(strategy.calculation_notes)
 
-    def test_override_volume_level_determination(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_override_volume_level_determination(self, mock_db: sqlite3.Connection) -> None:
         """Test that override correctly determines volume level from PPV/week."""
         creator_id = "test-level-001"
         first_seen = (datetime.now() - timedelta(days=200)).isoformat()
 
         # Create creator
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 first_seen_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "levelcreator", "Level Creator", "paid",
-            12.99, 3000, 2, first_seen, 1
-        ))
+        """,
+            (creator_id, "levelcreator", "Level Creator", "paid", 12.99, 3000, 2, first_seen, 1),
+        )
 
         # Test different weekly PPV levels
         test_cases = [
-            (5, "Low"),    # <= 7
-            (10, "Mid"),   # <= 14
+            (5, "Low"),  # <= 7
+            (10, "Mid"),  # <= 14
             (18, "High"),  # <= 21
-            (25, "Ultra"), # > 21
+            (25, "Ultra"),  # > 21
         ]
 
         for weekly_ppv, expected_level in test_cases:
             # Clear previous override
             mock_db.execute("DELETE FROM volume_overrides WHERE creator_id = ?", (creator_id,))
 
-            mock_db.execute("""
+            mock_db.execute(
+                """
                 INSERT INTO volume_overrides (
                     creator_id, target_weekly_ppv, target_weekly_bump,
                     override_reason, is_active
                 ) VALUES (?, ?, ?, ?, ?)
-            """, (creator_id, weekly_ppv, 7, f"Test {expected_level}", 1))
+            """,
+                (creator_id, weekly_ppv, 7, f"Test {expected_level}", 1),
+            )
 
             mock_db.commit()
 
             optimizer = MultiFactorVolumeOptimizer(mock_db)
             strategy = optimizer.calculate_optimal_volume(creator_id)
 
-            assert strategy.volume_level == expected_level, \
+            assert strategy.volume_level == expected_level, (
                 f"Expected {expected_level} for {weekly_ppv}/week, got {strategy.volume_level}"
+            )
 
 
 # ==============================================================================
 # TEST NEW VOLUME BRACKET EXPECTED VALUES
 # ==============================================================================
+
 
 class TestNewVolumeBracketValues:
     """Tests to verify the 2025 volume strategy produces expected values.
@@ -2545,98 +2673,110 @@ class TestNewVolumeBracketValues:
     """
 
     def test_paid_page_under_1k_fans_produces_expected_weekly(
-        self,
-        mock_db: sqlite3.Connection
+        self, mock_db: sqlite3.Connection
     ) -> None:
         """Test that <1K fans paid page produces minimum 14 PPV/week (2/day floor)."""
         creator_id = "test-low-fans"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "lowfans", "Low Fans", "paid",
-            12.99, 500, 2, 1  # Mid-tier, standard price
-        ))
+        """,
+            (
+                creator_id,
+                "lowfans",
+                "Low Fans",
+                "paid",
+                12.99,
+                500,
+                2,
+                1,  # Mid-tier, standard price
+            ),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume(creator_id)
 
         # Expected: 14+ PPV/week for all creators (2/day minimum floor)
-        assert strategy.ppv_per_week >= 14, \
+        assert strategy.ppv_per_week >= 14, (
             f"Expected 14+ PPV/week (2/day floor) for all creators, got {strategy.ppv_per_week}"
+        )
 
-    def test_paid_page_mid_fans_produces_expected_weekly(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_paid_page_mid_fans_produces_expected_weekly(self, mock_db: sqlite3.Connection) -> None:
         """Test that 1K-5K fans paid page produces ~7 PPV/week (was ~21)."""
         creator_id = "test-mid-fans"
 
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            creator_id, "midfans", "Mid Fans", "paid",
-            12.99, 3000, 2, 1
-        ))
+        """,
+            (creator_id, "midfans", "Mid Fans", "paid", 12.99, 3000, 2, 1),
+        )
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
         strategy = optimizer.calculate_optimal_volume(creator_id)
 
         # Expected: ~7-10 PPV/week for mid fans
-        assert 1 <= strategy.ppv_per_week <= 14, \
+        assert 1 <= strategy.ppv_per_week <= 14, (
             f"Expected 1-14 PPV/week for 1K-5K fans, got {strategy.ppv_per_week}"
+        )
 
-    def test_free_page_produces_lower_volume_than_paid(
-        self,
-        mock_db: sqlite3.Connection
-    ) -> None:
+    def test_free_page_produces_lower_volume_than_paid(self, mock_db: sqlite3.Connection) -> None:
         """Test that free pages produce lower volume than equivalent paid pages."""
         paid_id = "test-paid-compare"
         free_id = "test-free-compare"
 
         # Create paid page
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (paid_id, "paidcompare", "Paid Compare", "paid", 12.99, 5000, 2, 1))
+        """,
+            (paid_id, "paidcompare", "Paid Compare", "paid", 12.99, 5000, 2, 1),
+        )
 
         # Create free page with same fan count
-        mock_db.execute("""
+        mock_db.execute(
+            """
             INSERT INTO creators (
                 creator_id, page_name, display_name, page_type,
                 subscription_price, current_active_fans, performance_tier,
                 is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (free_id, "freecompare", "Free Compare", "free", 0.0, 5000, 2, 1))
+        """,
+            (free_id, "freecompare", "Free Compare", "free", 0.0, 5000, 2, 1),
+        )
 
         mock_db.commit()
 
         optimizer = MultiFactorVolumeOptimizer(mock_db)
-        paid_strategy = optimizer.calculate_optimal_volume(paid_id)
+        _paid_strategy = optimizer.calculate_optimal_volume(paid_id)
         free_strategy = optimizer.calculate_optimal_volume(free_id)
 
         # Free pages should have efficiency-adjusted lower volume
         # Due to the page type efficiency factors
-        assert free_strategy.ppv_per_day <= FREE_PAGE_MAX_PPV_DAY, \
+        assert free_strategy.ppv_per_day <= FREE_PAGE_MAX_PPV_DAY, (
             f"Free page should be capped at {FREE_PAGE_MAX_PPV_DAY}/day"
+        )
 
 
 # ==============================================================================
 # TEST NEW VOLUME TIER FUNCTION (2025 Strategy)
 # ==============================================================================
+
 
 class TestVolumeTierFunction:
     """Tests for the new get_volume_tier() function.
@@ -2654,7 +2794,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.0005,  # 0.05%
             dollars_per_ppv=25,
-            total_revenue=5000
+            total_revenue=5000,
         )
         assert tier == "Base"
         assert ppv == 2
@@ -2664,7 +2804,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.0015,  # 0.15%
             dollars_per_ppv=30,
-            total_revenue=10000
+            total_revenue=10000,
         )
         assert tier == "Growth"
         assert ppv == 3
@@ -2674,7 +2814,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.0005,  # 0.05% - below threshold
             dollars_per_ppv=45,  # Above $40 threshold
-            total_revenue=15000
+            total_revenue=15000,
         )
         assert tier == "Growth"
         assert ppv == 3
@@ -2684,7 +2824,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.003,  # 0.30%
             dollars_per_ppv=55,
-            total_revenue=30000
+            total_revenue=30000,
         )
         assert tier == "Scale"
         assert ppv == 4
@@ -2704,7 +2844,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.004,  # 0.40%
             dollars_per_ppv=70,
-            total_revenue=50000
+            total_revenue=50000,
         )
         assert tier == "High"
         assert ppv == 5
@@ -2714,7 +2854,7 @@ class TestVolumeTierFunction:
         tier, ppv = get_volume_tier(
             conv_rate=0.005,  # 0.50%
             dollars_per_ppv=80,
-            total_revenue=100000
+            total_revenue=100000,
         )
         assert tier == "Ultra"
         assert ppv == 6
@@ -2749,6 +2889,7 @@ class TestVolumeTierFunction:
 # ==============================================================================
 # TEST DAY-OF-WEEK MODIFIERS
 # ==============================================================================
+
 
 class TestDayOfWeekModifiers:
     """Tests for day-of-week optimization functions."""

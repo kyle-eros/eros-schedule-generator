@@ -1,21 +1,24 @@
 ---
 name: eros-schedule-generator
 description: |
-  Generate optimized OnlyFans content schedules for creators. Use PROACTIVELY when asked to:
-  - Create a weekly schedule, generate a schedule, build a content plan
-  - Optimize PPV timing, schedule mass messages, plan bumps/follow-ups
-  - Analyze creator performance, review earnings, check best hours
-  - Select captions based on freshness and performance scores
-  - Match captions to creator persona (tone, emoji, slang)
-  - Calculate volume levels (Low/Mid/High/Ultra) based on fan count
-  - Validate schedule against business rules (spacing, freshness, drip windows)
-  Triggers: schedule, PPV, content plan, creator analysis, captions, freshness, performance
+  Generates optimized OnlyFans content schedules for creators. Use PROACTIVELY when:
+  - Creating weekly schedules, generating schedules, building content plans
+  - Optimizing PPV timing, scheduling mass messages, planning bumps/follow-ups
+  - Analyzing creator performance, reviewing earnings, checking best hours
+  - Selecting captions based on freshness, performance, and persona match
+  - Calculating volume levels (Low/Mid/High/Ultra) based on fan metrics
+  - Validating schedules against business rules (spacing, freshness, rotation)
+  - Performing payday optimization, premium content scheduling, revenue timing
+  - Conducting hook diversity analysis, caption authenticity, anti-detection patterns
+  Triggers: schedule, PPV, content plan, creator analysis, captions, freshness,
+  performance, weekly schedule, mass message, bump, follow-up, EROS, payday,
+  hook diversity, timing variance, auto-correction, validation
 allowed-tools: Read, Glob, Grep, Bash, Task
 ---
 
 # EROS Schedule Generator
 
-Generate optimized weekly content schedules for OnlyFans creators using Claude's native intelligence.
+Generates optimized weekly content schedules for OnlyFans creators using Claude's native intelligence.
 
 ## Quick Start
 
@@ -41,6 +44,83 @@ After running, Claude will:
 1. Read the output context containing creator profile and captions
 2. Apply semantic reasoning to analyze captions needing tone/persona matching
 3. Generate an optimized schedule with enhanced persona boosts
+
+## Structured Output Schema
+
+The schedule generator outputs structured data in this format:
+
+```json
+{
+  "schedule": [{
+    "slot_id": "mon-ppv-1",
+    "day": "2025-01-06",
+    "time": "10:07",
+    "message_type": "ppv",
+    "caption_id": 4521,
+    "content_type": "solo",
+    "price": 18.00,
+    "persona_boost": 1.25,
+    "freshness_score": 87.3,
+    "hook_type": "question",
+    "payday_multiplier": 1.0
+  }, {
+    "slot_id": "mon-ppv-2",
+    "day": "2025-01-06",
+    "time": "14:12",
+    "message_type": "ppv",
+    "caption_id": 3892,
+    "content_type": "bundle",
+    "price": 22.00,
+    "persona_boost": 1.35,
+    "freshness_score": 92.1,
+    "hook_type": "tease",
+    "payday_multiplier": 1.0
+  }, {
+    "slot_id": "mon-bump-1",
+    "day": "2025-01-06",
+    "time": "14:38",
+    "message_type": "bump",
+    "caption_id": 3892,
+    "content_type": "bundle",
+    "price": 22.00,
+    "persona_boost": 1.35,
+    "freshness_score": 92.1,
+    "hook_type": "urgency",
+    "payday_multiplier": 1.0
+  }],
+  "validation": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 1,
+    "corrections_applied": 2
+  },
+  "metadata": {
+    "creator_id": "abc123-def456-ghi789",
+    "creator_name": "missalexa",
+    "week": "2025-W02",
+    "mode": "full",
+    "generated_at": "2025-01-06T09:32:17Z"
+  }
+}
+```
+
+## Input Requirements
+
+| Parameter | Format | Example | Validation | Required |
+|-----------|--------|---------|------------|----------|
+| creator | page_name from database | missalexa | Must exist in creators table | Yes (or creator_id) |
+| creator_id | UUID string | abc123-def456 | Must exist in creators table | Yes (or creator) |
+| week | ISO week format | 2025-W02 | Must match YYYY-Www pattern | Yes |
+| mode | string | quick, full | Optional, defaults to "quick" | No |
+| use_agents | boolean | true | Enables sub-agent delegation | No |
+| min_freshness | float | 30.0 | 0-100, default 30.0 | No |
+
+### Validation Rules
+
+- **creator/creator_id**: At least one must be provided
+- **week**: Must be valid ISO 8601 week format (YYYY-Www where ww is 01-53)
+- **mode**: "quick" for fast pattern-based, "full" for LLM semantic analysis
+- **Output**: Auto-saves to organized directory structure unless --stdout specified
 
 ## Native Claude LLM Integration
 
@@ -143,6 +223,39 @@ Before returning a schedule, verify:
 | `VaultEmptyError` | No content in vault | Update vault_matrix |
 | `ValidationError` | Business rule violation | Check validation issues |
 
+## Model Selection Matrix
+
+Different Claude models offer trade-offs for schedule generation tasks:
+
+| Model | Use Case | Speed | Quality | Cost |
+|-------|----------|-------|---------|------|
+| **Haiku** | Database queries, validation checks | Fastest | Basic | Lowest |
+| **Sonnet** | Standard schedule generation (recommended default) | Fast | High | Medium |
+| **Opus** | Deep semantic analysis, persona matching, strategic optimization | Slower | Highest | Higher |
+
+### Recommended Model by Task
+
+| Task | Recommended Model | Rationale |
+|------|-------------------|-----------|
+| Quick mode schedule (`--mode quick`) | Sonnet | Pattern-based, speed matters |
+| Full mode schedule (`--mode full`) | Sonnet or Opus | Semantic analysis benefits from reasoning |
+| Persona boost calculation | Opus | Best tone/context understanding |
+| Caption freshness queries | Haiku | Simple math, fast response |
+| Validation rule checking | Haiku | Boolean logic, no reasoning needed |
+| Creator performance analysis | Opus | Strategic insights require deep reasoning |
+| Batch schedule generation | Sonnet | Balance of speed and quality |
+| Debugging pipeline issues | Sonnet | Good code analysis capability |
+
+### Expected Behavior by Model
+
+| Aspect | Haiku | Sonnet | Opus |
+|--------|-------|--------|------|
+| Persona boost accuracy | 70-80% | 85-90% | 95%+ |
+| Sarcasm/subtext detection | Limited | Good | Excellent |
+| Hook diversity awareness | Basic | Good | Strategic |
+| Payday optimization | Follows rules | Smart timing | Revenue-maximized |
+| Error recovery | Rule-based | Contextual | Adaptive |
+
 ## Output Behavior
 
 By default, schedules auto-save to organized directories:
@@ -181,6 +294,38 @@ By default, schedules auto-save to organized directories:
 | creator_personas | 35 | Voice profiles |
 | vault_matrix | 1,188 | Content inventory |
 | content_types | 33 | Content categories |
+
+## Version History
+
+### v2.1.0 (2025-12-09)
+**Revenue Intelligence & Quality**
+- Payday scoring: Optimizes premium content for high-value days (1st/15th)
+- Hook diversity: Tracks and rotates opening hooks to prevent pattern detection
+- Self-healing validation: Auto-corrects spacing, freshness, timing issues
+- Timing variance: Adds +/-7-10 minute variance for authentic feel
+- Smart fallbacks: Context-aware fallback values based on performance tier
+
+### v2.0.0 (2025-12-08)
+**Pool-Based Selection & Semantic Analysis**
+- Pool-based caption selection with PROVEN/GLOBAL_EARNER/DISCOVERY tiers
+- Vose Alias O(1) weighted random selection
+- Native Claude LLM semantic analysis integration
+- Persona matching with max 1.40x boost
+
+### v1.0.0 (2025-09-01)
+**Initial Release**
+- 9-step schedule generation pipeline
+- Basic validation and business rules
+- Volume optimization by fan count
+
+### Breaking Changes in v2.1
+
+| Change | Impact | Migration |
+|--------|--------|-----------|
+| Weight formula | Now includes payday factor (55/15/15/10/5 split) | No action needed |
+| Times | Include +/-7 min variance (not exact hours) | Update integrations expecting :00 minutes |
+| Hook diversity | Tracked and reported in validation | Validation output includes hook_diversity_score |
+| ValidationIssue | New auto_correctable, correction_action, correction_value fields | Backwards compatible |
 
 ## Documentation
 

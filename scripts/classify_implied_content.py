@@ -43,38 +43,25 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sqlite3
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Add parent directory to path for imports
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from logging_config import configure_logging, get_logger
+from logging_config import configure_logging, get_logger  # noqa: E402
 
 # Configure logging
 logger = get_logger("classify_implied")
 
 # Database path resolution
-HOME_DIR = Path.home()
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DEFAULT_DB_PATH = next(
-    (p for p in DB_PATH_CANDIDATES if p.exists()),
-    DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0]
-)
+from database import DB_PATH as DEFAULT_DB_PATH  # noqa: E402
 
 # Content type mappings
 EXPLICIT_TO_IMPLIED_MAP: dict[int, int] = {
@@ -103,9 +90,15 @@ LOW_CONFIDENCE_THRESHOLD = 0.50
 # Pattern dictionaries for signal detection
 EXPLICIT_SIGNALS: list[tuple[str, re.Pattern[str]]] = [
     ("direct_action", re.compile(r"\b(watch me|see me|showing|spreading|playing with my)\b", re.I)),
-    ("body_parts_explicit", re.compile(r"\b(pussy|clit|nipples|ass|tits) (shot|pic|video|close.?up)\b", re.I)),
+    (
+        "body_parts_explicit",
+        re.compile(r"\b(pussy|clit|nipples|ass|tits) (shot|pic|video|close.?up)\b", re.I),
+    ),
     ("insertion", re.compile(r"\b(insert|inside|penetrat|stretch|fill|deep)\b", re.I)),
-    ("masturbation", re.compile(r"\b(masturbat|finger(ing)?|rub(bing)?|touch(ing)? (my|myself))\b", re.I)),
+    (
+        "masturbation",
+        re.compile(r"\b(masturbat|finger(ing)?|rub(bing)?|touch(ing)? (my|myself))\b", re.I),
+    ),
     ("toy_action", re.compile(r"\b(vibrat(or|ing)|dildo|toy|wand) (inside|deep|in my)\b", re.I)),
     ("orgasm", re.compile(r"\b(cum(ming)?|orgasm|squirt|climax|finish)\b", re.I)),
     ("explicit_offer", re.compile(r"\b(full (video|vid)|uncensored|xxx|explicit|nude)\b", re.I)),
@@ -134,8 +127,8 @@ class Caption:
     content_type_id: int
     content_type_name: str
     performance_score: float
-    creator_id: Optional[str] = None
-    page_name: Optional[str] = None
+    creator_id: str | None = None
+    page_name: str | None = None
 
 
 @dataclass
@@ -159,8 +152,8 @@ class ClassificationResult:
     signals_detected: list[str] = field(default_factory=list)
     reasoning: str = ""
     needs_review: bool = False
-    original_type_id: Optional[int] = None
-    new_type_id: Optional[int] = None
+    original_type_id: int | None = None
+    new_type_id: int | None = None
     classified_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -195,9 +188,7 @@ def get_db_connection(db_path: Path) -> sqlite3.Connection:
 
 
 def load_captions(
-    db_path: Path,
-    content_type_ids: list[int],
-    limit: Optional[int] = None
+    db_path: Path, content_type_ids: list[int], limit: int | None = None
 ) -> list[Caption]:
     """
     Load captions from the database for specified content types.
@@ -284,10 +275,7 @@ def detect_signals(text: str) -> SignalAnalysis:
             analysis.implied_count += 1
 
     # Calculate ambiguity score
-    analysis.ambiguity_score = calculate_ambiguity(
-        analysis.explicit_count,
-        analysis.implied_count
-    )
+    analysis.ambiguity_score = calculate_ambiguity(analysis.explicit_count, analysis.implied_count)
 
     return analysis
 
@@ -325,8 +313,7 @@ def calculate_ambiguity(explicit_count: int, implied_count: int) -> float:
 
 
 def sort_by_ambiguity(
-    captions: list[Caption],
-    analyses: dict[int, SignalAnalysis]
+    captions: list[Caption], analyses: dict[int, SignalAnalysis]
 ) -> list[Caption]:
     """
     Sort captions by ambiguity score (highest first).
@@ -344,14 +331,11 @@ def sort_by_ambiguity(
     return sorted(
         captions,
         key=lambda c: analyses.get(c.caption_id, SignalAnalysis()).ambiguity_score,
-        reverse=True
+        reverse=True,
     )
 
 
-def create_batches(
-    captions: list[Caption],
-    batch_size: int = 50
-) -> list[ClassificationBatch]:
+def create_batches(captions: list[Caption], batch_size: int = 50) -> list[ClassificationBatch]:
     """
     Create processing batches from captions.
 
@@ -365,11 +349,8 @@ def create_batches(
     batches = []
 
     for i in range(0, len(captions), batch_size):
-        batch_captions = captions[i:i + batch_size]
-        batch = ClassificationBatch(
-            batch_id=i // batch_size + 1,
-            captions=batch_captions
-        )
+        batch_captions = captions[i : i + batch_size]
+        batch = ClassificationBatch(batch_id=i // batch_size + 1, captions=batch_captions)
         batches.append(batch)
 
     logger.info(f"Created {len(batches)} batches of up to {batch_size} captions each")
@@ -424,8 +405,7 @@ Only classify as IMPLIED if the language is genuinely teasing without explicit p
 
 
 def classify_batch_with_llm(
-    batch: ClassificationBatch,
-    prompt_template: str
+    batch: ClassificationBatch, prompt_template: str
 ) -> list[ClassificationResult]:
     """
     STUB: Classify a batch of captions using LLM.
@@ -487,7 +467,7 @@ def apply_classifications(
     conn: sqlite3.Connection,
     results: list[ClassificationResult],
     dry_run: bool = True,
-    auto_apply_threshold: float = HIGH_CONFIDENCE_THRESHOLD
+    auto_apply_threshold: float = HIGH_CONFIDENCE_THRESHOLD,
 ) -> dict[str, Any]:
     """
     Apply classification results to the database.
@@ -546,7 +526,8 @@ def apply_classifications(
 
         try:
             # Insert classification record
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO caption_classifications (
                     caption_id,
                     original_type_id,
@@ -558,29 +539,35 @@ def apply_classifications(
                     needs_review,
                     classified_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                result.caption_id,
-                result.original_type_id,
-                result.new_type_id,
-                result.classification,
-                result.confidence,
-                json.dumps(result.signals_detected),
-                result.reasoning,
-                needs_review,
-                result.classified_at,
-            ))
+            """,
+                (
+                    result.caption_id,
+                    result.original_type_id,
+                    result.new_type_id,
+                    result.classification,
+                    result.confidence,
+                    json.dumps(result.signals_detected),
+                    result.reasoning,
+                    needs_review,
+                    result.classified_at,
+                ),
+            )
 
             # Only update caption_bank if confidence meets threshold
             if result.confidence >= auto_apply_threshold and not result.needs_review:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE caption_bank
                     SET content_type_id = ?,
                         updated_at = datetime('now')
                     WHERE caption_id = ?
-                """, (result.new_type_id, result.caption_id))
+                """,
+                    (result.new_type_id, result.caption_id),
+                )
 
                 # Log to audit table
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO caption_audit_log (
                         caption_id,
                         field_name,
@@ -591,22 +578,21 @@ def apply_classifications(
                         confidence_score,
                         agent_id
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    result.caption_id,
-                    "content_type_id",
-                    str(result.original_type_id),
-                    str(result.new_type_id),
-                    f"Reclassified as IMPLIED: {result.reasoning}",
-                    "llm_classification",
-                    result.confidence,
-                    "classify_implied_content",
-                ))
+                """,
+                    (
+                        result.caption_id,
+                        "content_type_id",
+                        str(result.original_type_id),
+                        str(result.new_type_id),
+                        f"Reclassified as IMPLIED: {result.reasoning}",
+                        "llm_classification",
+                        result.confidence,
+                        "classify_implied_content",
+                    ),
+                )
 
         except sqlite3.Error as e:
-            stats["errors"].append({
-                "caption_id": result.caption_id,
-                "error": str(e)
-            })
+            stats["errors"].append({"caption_id": result.caption_id, "error": str(e)})
             logger.error(f"Error applying classification for {result.caption_id}: {e}")
 
     if not dry_run:
@@ -616,11 +602,7 @@ def apply_classifications(
     return stats
 
 
-def create_backup(
-    conn: sqlite3.Connection,
-    output_path: Path,
-    content_type_ids: list[int]
-) -> Path:
+def create_backup(conn: sqlite3.Connection, output_path: Path, content_type_ids: list[int]) -> Path:
     """
     Create a backup of current caption classifications.
 
@@ -666,7 +648,7 @@ def create_backup(
                 "updated_at": row["updated_at"],
             }
             for row in rows
-        ]
+        ],
     }
 
     with open(backup_file, "w") as f:
@@ -677,9 +659,7 @@ def create_backup(
 
 
 def rollback_from_backup(
-    conn: sqlite3.Connection,
-    backup_path: Path,
-    dry_run: bool = True
+    conn: sqlite3.Connection, backup_path: Path, dry_run: bool = True
 ) -> dict[str, Any]:
     """
     Restore caption classifications from backup.
@@ -725,15 +705,19 @@ def rollback_from_backup(
 
         try:
             # Restore original content_type_id
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE caption_bank
                 SET content_type_id = ?,
                     updated_at = datetime('now')
                 WHERE caption_id = ?
-            """, (original_type_id, caption_id))
+            """,
+                (original_type_id, caption_id),
+            )
 
             # Log rollback to audit
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO caption_audit_log (
                     caption_id,
                     field_name,
@@ -743,23 +727,22 @@ def rollback_from_backup(
                     change_method,
                     agent_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                caption_id,
-                "content_type_id",
-                "unknown",  # We don't know current value without querying
-                str(original_type_id),
-                f"Rollback from backup: {backup_path.name}",
-                "rollback",
-                "classify_implied_content",
-            ))
+            """,
+                (
+                    caption_id,
+                    "content_type_id",
+                    "unknown",  # We don't know current value without querying
+                    str(original_type_id),
+                    f"Rollback from backup: {backup_path.name}",
+                    "rollback",
+                    "classify_implied_content",
+                ),
+            )
 
             stats["restored"] += 1
 
         except sqlite3.Error as e:
-            stats["errors"].append({
-                "caption_id": caption_id,
-                "error": str(e)
-            })
+            stats["errors"].append({"caption_id": caption_id, "error": str(e)})
             stats["skipped"] += 1
 
     if not dry_run:
@@ -811,7 +794,9 @@ def show_review_queue(db_path: Path) -> list[dict[str, Any]]:
             item = {
                 "classification_id": row["classification_id"],
                 "caption_id": row["caption_id"],
-                "caption_text": row["caption_text"][:100] + "..." if len(row["caption_text"]) > 100 else row["caption_text"],
+                "caption_text": row["caption_text"][:100] + "..."
+                if len(row["caption_text"]) > 100
+                else row["caption_text"],
                 "original_type": row["original_type"],
                 "new_type": row["new_type"],
                 "classification": row["classification"],
@@ -876,7 +861,9 @@ def get_classification_stats(db_path: Path) -> dict[str, Any]:
             by_content_type[row["type_name"]] = {
                 "total": row["total"],
                 "implied": row["implied"],
-                "implied_pct": round(row["implied"] / row["total"] * 100, 1) if row["total"] > 0 else 0,
+                "implied_pct": round(row["implied"] / row["total"] * 100, 1)
+                if row["total"] > 0
+                else 0,
             }
 
         return {
@@ -894,7 +881,7 @@ def run_classification_pipeline(
     batch_size: int = 50,
     dry_run: bool = True,
     backup_only: bool = False,
-    limit: Optional[int] = None
+    limit: int | None = None,
 ) -> dict[str, Any]:
     """
     Run the full classification pipeline.
@@ -990,14 +977,14 @@ Examples:
 
     # Rollback to previous state
     python classify_implied_content.py --rollback backups/caption_backup_20251207_120000.json
-        """
+        """,
     )
 
     parser.add_argument(
         "--db",
         type=Path,
         default=DEFAULT_DB_PATH,
-        help=f"Path to EROS database (default: {DEFAULT_DB_PATH})"
+        help=f"Path to EROS database (default: {DEFAULT_DB_PATH})",
     )
 
     parser.add_argument(
@@ -1005,63 +992,36 @@ Examples:
         type=str,
         choices=["pussy_play", "solo", "tits_play", "toy_play", "all"],
         default="all",
-        help="Content type to process (default: all)"
+        help="Content type to process (default: all)",
     )
 
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=50,
-        help="Number of captions per batch (default: 50)"
+        "--batch-size", type=int, default=50, help="Number of captions per batch (default: 50)"
+    )
+
+    parser.add_argument("--limit", type=int, help="Limit number of captions to process")
+
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without applying to database"
     )
 
     parser.add_argument(
-        "--limit",
-        type=int,
-        help="Limit number of captions to process"
+        "--apply", action="store_true", help="Apply changes to database (requires confirmation)"
     )
 
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without applying to database"
+        "--backup-only", action="store_true", help="Only create backup, don't process"
     )
 
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="Apply changes to database (requires confirmation)"
-    )
+    parser.add_argument("--rollback", type=Path, help="Rollback from specified backup file")
 
     parser.add_argument(
-        "--backup-only",
-        action="store_true",
-        help="Only create backup, don't process"
+        "--show-review", action="store_true", help="Show captions that need manual review"
     )
 
-    parser.add_argument(
-        "--rollback",
-        type=Path,
-        help="Rollback from specified backup file"
-    )
+    parser.add_argument("--stats", action="store_true", help="Show classification statistics")
 
-    parser.add_argument(
-        "--show-review",
-        action="store_true",
-        help="Show captions that need manual review"
-    )
-
-    parser.add_argument(
-        "--stats",
-        action="store_true",
-        help="Show classification statistics"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     return parser.parse_args()
 

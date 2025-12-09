@@ -26,32 +26,22 @@ Usage:
 
 import argparse
 import json
-import os
 import random
 import re
 import sqlite3
 import sys
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Path resolution for database
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
-SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
+from shared_context import PersonaProfile
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+# Path resolution for database
+SCRIPT_DIR = Path(__file__).parent
+
+from database import DB_PATH  # noqa: E402
 
 # Timing constraints
 MIN_TIMING_MINUTES = 15
@@ -65,6 +55,7 @@ HIGH_VALUE_PPV_PRICE = 25.0
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
+
 
 @dataclass
 class FollowUpMessage:
@@ -102,21 +93,10 @@ class FollowUpContext:
     hour: int = 21  # 0-23, default evening
 
 
-@dataclass(frozen=True, slots=True)
-class PersonaProfile:
-    """Creator persona profile for follow-up generation."""
-
-    creator_id: str
-    page_name: str
-    primary_tone: str = "playful"
-    emoji_frequency: str = "moderate"
-    slang_level: str = "light"
-    favorite_emojis: tuple[str, ...] = ()
-
-
 # =============================================================================
 # FOLLOW-UP GENERATOR CLASS
 # =============================================================================
+
 
 class FollowupGenerator:
     """
@@ -265,10 +245,29 @@ class FollowupGenerator:
 
     # Emoji pools by context
     EMOJI_POOLS: dict[str, list[str]] = {
-        "teasing": ["\U0001F440", "\U0001F60F", "\U0001F92D", "\U0001F608"],  # eyes, smirk, shushing_face, imp
-        "emotional": ["\U0001F495", "\u2764\uFE0F", "\U0001F970", "\U0001F618"],  # two_hearts, heart, smiling_face_with_hearts, kiss
-        "urgency": ["\u23F0", "\U0001F6A8", "\U0001F625"],  # alarm_clock, rotating_light, disappointed_relieved
-        "excitement": ["\U0001F525", "\U0001F975", "\U0001F4A6", "\U0001F60D"],  # fire, hot_face, sweat_droplets, heart_eyes
+        "teasing": [
+            "\U0001f440",
+            "\U0001f60f",
+            "\U0001f92d",
+            "\U0001f608",
+        ],  # eyes, smirk, shushing_face, imp
+        "emotional": [
+            "\U0001f495",
+            "\u2764\ufe0f",
+            "\U0001f970",
+            "\U0001f618",
+        ],  # two_hearts, heart, smiling_face_with_hearts, kiss
+        "urgency": [
+            "\u23f0",
+            "\U0001f6a8",
+            "\U0001f625",
+        ],  # alarm_clock, rotating_light, disappointed_relieved
+        "excitement": [
+            "\U0001f525",
+            "\U0001f975",
+            "\U0001f4a6",
+            "\U0001f60d",
+        ],  # fire, hot_face, sweat_droplets, heart_eyes
     }
 
     def __init__(self, persona: PersonaProfile | dict[str, Any] | None = None):
@@ -440,8 +439,7 @@ class FollowupGenerator:
         else:  # content_based or default
             # Get content-specific templates, fall back to default
             pool = self.CONTENT_BASED_TEMPLATES.get(
-                content_type.lower(),
-                self.CONTENT_BASED_TEMPLATES["default"]
+                content_type.lower(), self.CONTENT_BASED_TEMPLATES["default"]
             )
 
         # Filter out recently used templates
@@ -500,17 +498,17 @@ class FollowupGenerator:
         """
         # Count existing emojis
         emoji_pattern = re.compile(
-            "[\U0001F600-\U0001F64F"
-            "\U0001F300-\U0001F5FF"
-            "\U0001F680-\U0001F6FF"
-            "\U0001F1E0-\U0001F1FF"
-            "\U00002702-\U000027B0"
-            "\U0001F900-\U0001F9FF"
-            "\U0001FA00-\U0001FA6F"
-            "\U0001FA70-\U0001FAFF"
-            "\U00002600-\U000026FF"
+            "[\U0001f600-\U0001f64f"
+            "\U0001f300-\U0001f5ff"
+            "\U0001f680-\U0001f6ff"
+            "\U0001f1e0-\U0001f1ff"
+            "\U00002702-\U000027b0"
+            "\U0001f900-\U0001f9ff"
+            "\U0001fa00-\U0001fa6f"
+            "\U0001fa70-\U0001faff"
+            "\U00002600-\U000026ff"
             "]+",
-            flags=re.UNICODE
+            flags=re.UNICODE,
         )
         existing = emoji_pattern.findall(text)
         existing_count = sum(len(e) for e in existing)
@@ -580,9 +578,9 @@ class FollowupGenerator:
 
         # Sweet tone: softer endings
         if tone == "sweet":
-            if not any(emoji in text for emoji in ["\u2764", "\U0001F495", "\U0001F618"]):
+            if not any(emoji in text for emoji in ["\u2764", "\U0001f495", "\U0001f618"]):
                 if random.random() < 0.2:
-                    text = text.rstrip() + " \U0001F495"
+                    text = text.rstrip() + " \U0001f495"
             return text
 
         # Default: no adjustment
@@ -677,7 +675,7 @@ class FollowupGenerator:
 # LLM GENERATION (OPTIONAL FULL MODE)
 # =============================================================================
 
-CONTEXTUAL_FOLLOWUP_PROMPT = '''
+CONTEXTUAL_FOLLOWUP_PROMPT = """
 ## Context-Aware Follow-Up Message
 
 Generate a natural follow-up/bump message for this PPV:
@@ -696,7 +694,7 @@ Requirements:
 6. Use one pet name (babe, baby, hun, love)
 
 Return just the follow-up message, no quotes.
-'''
+"""
 
 
 def build_llm_prompt(context: FollowUpContext) -> str:
@@ -725,6 +723,7 @@ def build_llm_prompt(context: FollowUpContext) -> str:
 # =============================================================================
 # DATABASE OPERATIONS
 # =============================================================================
+
 
 def get_persona_from_db(
     conn: sqlite3.Connection,
@@ -804,6 +803,7 @@ def get_persona_from_db(
 # OUTPUT FORMATTING
 # =============================================================================
 
+
 def format_markdown(
     messages: list[FollowUpMessage],
     persona: PersonaProfile | None = None,
@@ -824,19 +824,23 @@ def format_markdown(
     ]
 
     if persona:
-        lines.extend([
-            f"**Creator:** {persona.page_name}",
-            f"**Tone:** {persona.primary_tone}",
-            f"**Emoji Style:** {persona.emoji_frequency}",
-            "",
-        ])
+        lines.extend(
+            [
+                f"**Creator:** {persona.page_name}",
+                f"**Tone:** {persona.primary_tone}",
+                f"**Emoji Style:** {persona.emoji_frequency}",
+                "",
+            ]
+        )
 
-    lines.extend([
-        "## Generated Messages",
-        "",
-        "| # | Message | Strategy | Timing | Confidence |",
-        "|---|---------|----------|--------|------------|",
-    ])
+    lines.extend(
+        [
+            "## Generated Messages",
+            "",
+            "| # | Message | Strategy | Timing | Confidence |",
+            "|---|---------|----------|--------|------------|",
+        ]
+    )
 
     for i, msg in enumerate(messages, 1):
         # Escape pipe characters in message
@@ -846,15 +850,21 @@ def format_markdown(
             f"{msg.timing_minutes} min | {msg.confidence:.2f} |"
         )
 
-    lines.extend([
-        "",
-        "## Summary",
-        "",
-        f"- **Total Generated:** {len(messages)}",
-        f"- **Avg Timing:** {sum(m.timing_minutes for m in messages) / len(messages):.0f} min" if messages else "- **Avg Timing:** N/A",
-        f"- **Avg Confidence:** {sum(m.confidence for m in messages) / len(messages):.2f}" if messages else "- **Avg Confidence:** N/A",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Summary",
+            "",
+            f"- **Total Generated:** {len(messages)}",
+            f"- **Avg Timing:** {sum(m.timing_minutes for m in messages) / len(messages):.0f} min"
+            if messages
+            else "- **Avg Timing:** N/A",
+            f"- **Avg Confidence:** {sum(m.confidence for m in messages) / len(messages):.2f}"
+            if messages
+            else "- **Avg Confidence:** N/A",
+            "",
+        ]
+    )
 
     # Strategy breakdown
     strategies: dict[str, int] = {}
@@ -862,10 +872,12 @@ def format_markdown(
         strategies[msg.context_type] = strategies.get(msg.context_type, 0) + 1
 
     if strategies:
-        lines.extend([
-            "### Strategy Distribution",
-            "",
-        ])
+        lines.extend(
+            [
+                "### Strategy Distribution",
+                "",
+            ]
+        )
         for strategy, count in sorted(strategies.items(), key=lambda x: -x[1]):
             pct = count / len(messages) * 100
             lines.append(f"- **{strategy}:** {count} ({pct:.0f}%)")
@@ -920,6 +932,7 @@ def format_json(
 # CLI ENTRY POINT
 # =============================================================================
 
+
 def main():
     """Main entry point for CLI."""
     parser = argparse.ArgumentParser(
@@ -944,70 +957,40 @@ Examples:
     python followup_generator.py --caption "enjoy 11 mins..." --content-type squirt
     python followup_generator.py --creator missalexa --count 7 --format json
     python followup_generator.py --strategy urgency --price 35 --hour 21
-        """
+        """,
     )
 
+    parser.add_argument("--caption", "-t", help="Original PPV caption text")
     parser.add_argument(
-        "--caption", "-t",
-        help="Original PPV caption text"
-    )
-    parser.add_argument(
-        "--content-type", "-ct",
+        "--content-type",
+        "-ct",
         default="default",
-        help="Content type (solo, bg, squirt, anal, etc.)"
+        help="Content type (solo, bg, squirt, anal, etc.)",
     )
+    parser.add_argument("--creator", "-c", help="Creator page name for persona")
+    parser.add_argument("--creator-id", help="Creator UUID for persona")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name for persona"
-    )
-    parser.add_argument(
-        "--creator-id",
-        help="Creator UUID for persona"
-    )
-    parser.add_argument(
-        "--strategy", "-s",
+        "--strategy",
+        "-s",
         choices=["auto", "content_based", "urgency", "emotional", "teasing"],
         default="auto",
-        help="Follow-up strategy (default: auto)"
+        help="Follow-up strategy (default: auto)",
     )
     parser.add_argument(
-        "--count", "-n",
-        type=int,
-        default=1,
-        help="Number of follow-ups to generate (default: 1)"
+        "--count", "-n", type=int, default=1, help="Number of follow-ups to generate (default: 1)"
     )
+    parser.add_argument("--price", type=float, help="PPV price for value-based timing")
+    parser.add_argument("--hour", type=int, default=21, help="Hour of PPV send (0-23, default: 21)")
+    parser.add_argument("--day", type=int, default=0, help="Day of week (0=Mon, 6=Sun, default: 0)")
     parser.add_argument(
-        "--price",
-        type=float,
-        help="PPV price for value-based timing"
-    )
-    parser.add_argument(
-        "--hour",
-        type=int,
-        default=21,
-        help="Hour of PPV send (0-23, default: 21)"
-    )
-    parser.add_argument(
-        "--day",
-        type=int,
-        default=0,
-        help="Day of week (0=Mon, 6=Sun, default: 0)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -1020,12 +1003,10 @@ Examples:
             conn.row_factory = sqlite3.Row
             try:
                 persona = get_persona_from_db(
-                    conn,
-                    creator_name=args.creator,
-                    creator_id=args.creator_id
+                    conn, creator_name=args.creator, creator_id=args.creator_id
                 )
                 if not persona:
-                    print(f"Warning: Creator not found, using defaults", file=sys.stderr)
+                    print("Warning: Creator not found, using defaults", file=sys.stderr)
             finally:
                 conn.close()
         else:

@@ -1026,26 +1026,23 @@ ORDER BY avg_earnings DESC;
 
 ---
 
-## Pipeline-Table Mapping (v2.0 - 12-Step)
+## Pipeline-Table Mapping (v2.1 - 9-Step)
 
 | Pipeline Step | Tables Read | Tables Write | Purpose |
 |---------------|-------------|--------------|---------|
 | **1. ANALYZE** | `creators`, `creator_personas`, `mass_messages` | None | Load profile, persona, best hours |
 | **2. MATCH CONTENT** | `caption_bank`, `vault_matrix`, `content_types` | None | Filter captions by vault |
-| **3. PREPARE POOL** | None | None | Select top 60 for LLM evaluation |
-| **4. QUALITY SCORING** (Full) | `llm_quality_scores` | `llm_quality_scores` | LLM evaluates caption quality |
-| **5. MATCH PERSONA** | `creator_personas` (cached) | None | Calculate persona boost + quality weights |
-| **6. BUILD STRUCTURE** | `volume_assignments`, `creators` | None | Get volume level, fan count |
-| **7. ASSIGN CAPTIONS** | `caption_bank` (cached) | None | Quality-weighted Vose Alias selection |
-| **8. ENHANCE CAPTIONS** (Full) | `creator_personas` | None | Minor LLM tweaks for authenticity |
-| **9. GENERATE FOLLOW-UPS** | `creator_personas` (cached) | None | Context-aware bump messages |
-| **10. APPLY DRIP WINDOWS** | None | None | Pure logic |
-| **11. APPLY PAGE TYPE RULES** | `creators` (cached) | None | page_type pricing rules |
-| **12. VALIDATE** | None | None | In-memory validation |
+| **3. MATCH PERSONA** | `creator_personas` (from step 1) | None | Pattern/LLM tone matching, persona boost |
+| **4. BUILD STRUCTURE** | `volume_assignments`, `creators` | None | Get volume level, create time slots with payday optimization |
+| **5. ASSIGN CAPTIONS** | `caption_bank` (cached) | None | Pool-based Vose Alias weighted selection |
+| **6. GENERATE FOLLOW-UPS** | `creator_personas` (cached) | None | Context-aware bump messages (15-45 min) |
+| **7. APPLY DRIP WINDOWS** | None | None | Enforce 4-8hr no-PPV zones (if enabled) |
+| **8. APPLY PAGE TYPE RULES** | `creators` (cached) | None | page_type pricing rules (if enabled) |
+| **9. VALIDATE** | None | None | Auto-correct issues, check rules, hook diversity |
 
 **Mode Differences:**
-- **Quick Mode**: Skips steps 4, 8 (no LLM calls)
-- **Full Mode**: Executes all 12 steps with LLM-assisted quality scoring and enhancement
+- **Quick Mode**: Pattern-based persona matching in Step 3
+- **Full Mode**: LLM-enhanced semantic tone detection in Step 3
 
 ---
 
@@ -1092,8 +1089,8 @@ ORDER BY avg_earnings DESC;
 
 | Metric | Value |
 |--------|-------|
-| Schema Version | 2.6 (with new engagement tables) |
-| Last Audited | 2025-12-05 |
+| Schema Version | 2.6 (with engagement/tracking tables) |
+| Last Audited | 2025-12-09 |
 | Total Tables | 28 |
 | Total Views | 20 |
 | Total Triggers | 8 |
@@ -1112,10 +1109,13 @@ ORDER BY avg_earnings DESC;
 - Added 3 new views: `v_caption_quality_summary`, `v_schedule_execution_status`, `v_revenue_vs_target`
 - Fixed missing persona for lola_reese_new (35 -> 36 personas)
 
-**v2.5 Changes (Pipeline v2.0):**
-- Added `llm_quality_scores` table for LLM caption quality caching
-- New 12-step pipeline with quality scoring (step 4), enhancement (step 8)
-- New weight formula: `(perf * 0.4 + fresh * 0.2 + quality * 0.4) * persona_boost`
+**v2.5 Changes (Pipeline v2.0 → v2.1):**
+- Pool-based caption selection (PROVEN/GLOBAL_EARNER/DISCOVERY)
+- New weight formula: `Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery(10%)`
+- Payday optimization with multipliers (1st/15th = 1.15-1.20x)
+- Hook diversity tracking and rotation
+- Auto-correction for spacing/timing violations
+- Timing variance (+/-7-10 min) for authentic scheduling
 
 ---
 

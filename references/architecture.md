@@ -2,7 +2,11 @@
 
 ## Overview
 
-The EROS Schedule Generator is a 9-step pipeline that generates optimized weekly content schedules for OnlyFans creators. This document describes the architecture, data flow, and key components for extraction into a skills package.
+The EROS Schedule Generator is a 9-step pipeline that generates optimized weekly content schedules for OnlyFans creators. This document describes the architecture, data flow, and key components.
+
+**Current Version:** v2.1 (2025-12-09)
+**Pipeline:** 9 steps from analysis to validation
+**Key Features:** Pool-based selection, payday optimization, hook diversity, auto-correction
 
 ---
 
@@ -719,7 +723,7 @@ class ScheduleService(BaseService):
 
 ## Version Information
 
-- **Current Version:** EROS CLI v1.0
-- **Pipeline Version:** 9-step (as documented in CLAUDE.md)
-- **Database Schema:** v2.4 (22 tables, 17 views, 8 triggers)
-- **Last Updated:** 2025-12-02
+- **Current Version:** EROS Schedule Generator v2.1
+- **Pipeline Version:** 9-step (production implementation)
+- **Database Schema:** v2.6 (28 tables, 20 views, 8 triggers, 84 indexes)
+- **Last Updated:** 2025-12-09

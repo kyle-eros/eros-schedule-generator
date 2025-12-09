@@ -29,29 +29,17 @@ Usage:
 
 import argparse
 import json
-import os
 import sqlite3
 import sys
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 # Path resolution for database
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
 SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH  # noqa: E402
 
 # Quality scoring weights
 AUTHENTICITY_WEIGHT = 0.35
@@ -177,6 +165,7 @@ IMPORTANT:
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class QualityScore:
     """Quality score result for a single caption."""
@@ -192,7 +181,9 @@ class QualityScore:
     reasoning: str
     true_tone: str | None  # LLM-detected tone
     scored_at: datetime = field(default_factory=datetime.now)
-    expires_at: datetime = field(default_factory=lambda: datetime.now() + timedelta(days=DEFAULT_CACHE_DAYS))
+    expires_at: datetime = field(
+        default_factory=lambda: datetime.now() + timedelta(days=DEFAULT_CACHE_DAYS)
+    )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -207,8 +198,12 @@ class QualityScore:
             "classification": self.classification,
             "reasoning": self.reasoning,
             "true_tone": self.true_tone,
-            "scored_at": self.scored_at.isoformat() if isinstance(self.scored_at, datetime) else self.scored_at,
-            "expires_at": self.expires_at.isoformat() if isinstance(self.expires_at, datetime) else self.expires_at,
+            "scored_at": self.scored_at.isoformat()
+            if isinstance(self.scored_at, datetime)
+            else self.scored_at,
+            "expires_at": self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime)
+            else self.expires_at,
         }
 
 
@@ -226,6 +221,7 @@ class CreatorProfile:
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
 
 def score_to_multiplier(overall_score: float) -> float:
     """
@@ -282,10 +278,7 @@ def get_quality_modifier(classification: str) -> float:
 
 
 def calculate_weighted_score(
-    authenticity: float,
-    hook: float,
-    cta: float,
-    conversion: float
+    authenticity: float, hook: float, cta: float, conversion: float
 ) -> float:
     """
     Calculate weighted overall quality score.
@@ -300,10 +293,10 @@ def calculate_weighted_score(
         Weighted overall score (0.0-1.0).
     """
     return (
-        authenticity * AUTHENTICITY_WEIGHT +
-        hook * HOOK_WEIGHT +
-        cta * CTA_WEIGHT +
-        conversion * CONVERSION_WEIGHT
+        authenticity * AUTHENTICITY_WEIGHT
+        + hook * HOOK_WEIGHT
+        + cta * CTA_WEIGHT
+        + conversion * CONVERSION_WEIGHT
     )
 
 
@@ -312,7 +305,7 @@ def calculate_enhanced_weight(
     freshness_score: float,
     quality_score: float,
     persona_boost: float,
-    quality_modifier: float
+    quality_modifier: float,
 ) -> float:
     """
     Calculate enhanced caption weight with quality scoring.
@@ -332,11 +325,7 @@ def calculate_enhanced_weight(
     # Normalize quality score to 0-100 scale for consistency
     quality_normalized = quality_score * 100
 
-    base_weight = (
-        performance_score * 0.4 +
-        freshness_score * 0.2 +
-        quality_normalized * 0.4
-    )
+    base_weight = performance_score * 0.4 + freshness_score * 0.2 + quality_normalized * 0.4
 
     return base_weight * persona_boost * quality_modifier
 
@@ -344,6 +333,7 @@ def calculate_enhanced_weight(
 # =============================================================================
 # DATABASE OPERATIONS
 # =============================================================================
+
 
 def ensure_quality_table_exists(conn: sqlite3.Connection) -> None:
     """
@@ -357,9 +347,7 @@ def ensure_quality_table_exists(conn: sqlite3.Connection) -> None:
 
 
 def get_cached_scores(
-    conn: sqlite3.Connection,
-    caption_ids: list[int],
-    creator_id: str
+    conn: sqlite3.Connection, caption_ids: list[int], creator_id: str
 ) -> dict[int, QualityScore]:
     """
     Retrieve cached quality scores from database.
@@ -404,16 +392,26 @@ def get_cached_scores(
     cached = {}
     for row in cursor.fetchall():
         try:
-            scored_at = datetime.fromisoformat(row["scored_at"]) if row["scored_at"] else datetime.now()
-            expires_at = datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else datetime.now() + timedelta(days=DEFAULT_CACHE_DAYS)
+            scored_at = (
+                datetime.fromisoformat(row["scored_at"]) if row["scored_at"] else datetime.now()
+            )
+            expires_at = (
+                datetime.fromisoformat(row["expires_at"])
+                if row["expires_at"]
+                else datetime.now() + timedelta(days=DEFAULT_CACHE_DAYS)
+            )
 
             cached[row["caption_id"]] = QualityScore(
                 caption_id=row["caption_id"],
                 # Use explicit None check to preserve valid 0.0 scores
-                authenticity_score=row["authenticity_score"] if row["authenticity_score"] is not None else 0.5,
+                authenticity_score=row["authenticity_score"]
+                if row["authenticity_score"] is not None
+                else 0.5,
                 hook_score=row["hook_score"] if row["hook_score"] is not None else 0.5,
                 cta_score=row["cta_score"] if row["cta_score"] is not None else 0.5,
-                conversion_score=row["conversion_score"] if row["conversion_score"] is not None else 0.5,
+                conversion_score=row["conversion_score"]
+                if row["conversion_score"] is not None
+                else 0.5,
                 overall_score=row["quality_score"],
                 quality_multiplier=score_to_multiplier(row["quality_score"]),
                 classification=row["classification"] or classify_score(row["quality_score"]),
@@ -423,16 +421,17 @@ def get_cached_scores(
                 expires_at=expires_at,
             )
         except (ValueError, TypeError) as e:
-            print(f"Warning: Failed to parse cached score for caption {row['caption_id']}: {e}", file=sys.stderr)
+            print(
+                f"Warning: Failed to parse cached score for caption {row['caption_id']}: {e}",
+                file=sys.stderr,
+            )
             continue
 
     return cached
 
 
 def save_quality_scores(
-    conn: sqlite3.Connection,
-    scores: list[QualityScore],
-    creator_id: str
+    conn: sqlite3.Connection, scores: list[QualityScore], creator_id: str
 ) -> int:
     """
     Save quality scores to database cache.
@@ -463,26 +462,40 @@ def save_quality_scores(
     saved_count = 0
     for score in scores:
         try:
-            scored_at_str = score.scored_at.isoformat() if isinstance(score.scored_at, datetime) else score.scored_at
-            expires_at_str = score.expires_at.isoformat() if isinstance(score.expires_at, datetime) else score.expires_at
+            scored_at_str = (
+                score.scored_at.isoformat()
+                if isinstance(score.scored_at, datetime)
+                else score.scored_at
+            )
+            expires_at_str = (
+                score.expires_at.isoformat()
+                if isinstance(score.expires_at, datetime)
+                else score.expires_at
+            )
 
-            conn.execute(insert_sql, (
-                score.caption_id,
-                creator_id,
-                score.overall_score,
-                score.authenticity_score,
-                score.hook_score,
-                score.cta_score,
-                score.conversion_score,
-                score.true_tone,
-                score.classification,
-                score.reasoning,
-                scored_at_str,
-                expires_at_str,
-            ))
+            conn.execute(
+                insert_sql,
+                (
+                    score.caption_id,
+                    creator_id,
+                    score.overall_score,
+                    score.authenticity_score,
+                    score.hook_score,
+                    score.cta_score,
+                    score.conversion_score,
+                    score.true_tone,
+                    score.classification,
+                    score.reasoning,
+                    scored_at_str,
+                    expires_at_str,
+                ),
+            )
             saved_count += 1
         except sqlite3.Error as e:
-            print(f"Warning: Failed to save score for caption {score.caption_id}: {e}", file=sys.stderr)
+            print(
+                f"Warning: Failed to save score for caption {score.caption_id}: {e}",
+                file=sys.stderr,
+            )
 
     conn.commit()
     return saved_count
@@ -498,9 +511,7 @@ def cleanup_expired_scores(conn: sqlite3.Connection) -> int:
     Returns:
         Number of scores deleted.
     """
-    cursor = conn.execute(
-        "DELETE FROM llm_quality_scores WHERE expires_at < datetime('now')"
-    )
+    cursor = conn.execute("DELETE FROM llm_quality_scores WHERE expires_at < datetime('now')")
     conn.commit()
     return cursor.rowcount
 
@@ -509,10 +520,9 @@ def cleanup_expired_scores(conn: sqlite3.Connection) -> int:
 # CREATOR AND CAPTION LOADING
 # =============================================================================
 
+
 def get_creator_profile(
-    conn: sqlite3.Connection,
-    creator_name: str | None = None,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, creator_name: str | None = None, creator_id: str | None = None
 ) -> CreatorProfile | None:
     """
     Load creator profile from database.
@@ -574,7 +584,7 @@ def load_captions_for_scoring(
     conn: sqlite3.Connection,
     creator_id: str,
     limit: int = 100,
-    caption_ids: list[int] | None = None
+    caption_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Load captions from database for quality scoring.
@@ -622,14 +632,16 @@ def load_captions_for_scoring(
 
     captions = []
     for row in cursor.fetchall():
-        captions.append({
-            "caption_id": row["caption_id"],
-            "caption_text": row["caption_text"],
-            "caption_type": row["caption_type"],
-            "tone": row["tone"],
-            "performance_score": row["performance_score"] or 50.0,
-            "freshness_score": row["freshness_score"] or 100.0,
-        })
+        captions.append(
+            {
+                "caption_id": row["caption_id"],
+                "caption_text": row["caption_text"],
+                "caption_type": row["caption_type"],
+                "tone": row["tone"],
+                "performance_score": row["performance_score"] or 50.0,
+                "freshness_score": row["freshness_score"] or 100.0,
+            }
+        )
 
     return captions
 
@@ -638,10 +650,8 @@ def load_captions_for_scoring(
 # LLM SCORING (MOCK FOR NON-LLM ENVIRONMENTS)
 # =============================================================================
 
-def build_llm_prompt(
-    captions: list[dict[str, Any]],
-    profile: CreatorProfile
-) -> str:
+
+def build_llm_prompt(captions: list[dict[str, Any]], profile: CreatorProfile) -> str:
     """
     Build the LLM prompt for quality assessment.
 
@@ -655,7 +665,9 @@ def build_llm_prompt(
     # Format captions list
     captions_text = []
     for cap in captions:
-        text_preview = cap["caption_text"][:300] if len(cap["caption_text"]) > 300 else cap["caption_text"]
+        text_preview = (
+            cap["caption_text"][:300] if len(cap["caption_text"]) > 300 else cap["caption_text"]
+        )
         captions_text.append(f"- **ID {cap['caption_id']}**: {text_preview}")
 
     captions_list = "\n".join(captions_text)
@@ -704,10 +716,12 @@ def parse_llm_response(response_text: str) -> list[dict[str, Any]]:
         else:
             raise ValueError("Expected JSON array or object with 'results' key")
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse LLM response as JSON: {e}")
+        raise ValueError(f"Failed to parse LLM response as JSON: {e}") from e
 
 
-def create_quality_score_from_llm(result: dict[str, Any], cache_days: int = DEFAULT_CACHE_DAYS) -> QualityScore:
+def create_quality_score_from_llm(
+    result: dict[str, Any], cache_days: int = DEFAULT_CACHE_DAYS
+) -> QualityScore:
     """
     Create QualityScore from parsed LLM result.
 
@@ -756,9 +770,7 @@ def create_quality_score_from_llm(result: dict[str, Any], cache_days: int = DEFA
 
 
 def score_captions_heuristic(
-    captions: list[dict[str, Any]],
-    profile: CreatorProfile,
-    cache_days: int = DEFAULT_CACHE_DAYS
+    captions: list[dict[str, Any]], profile: CreatorProfile, cache_days: int = DEFAULT_CACHE_DAYS
 ) -> list[QualityScore]:
     """
     Score captions using heuristic rules (fallback when LLM unavailable).
@@ -778,27 +790,68 @@ def score_captions_heuristic(
 
     # Hook patterns that indicate strong openings
     strong_hooks = [
-        "never show", "just recorded", "only for you", "secret", "private",
-        "can't believe", "finally", "waited so long", "been thinking",
-        "just made", "wanted to share", "special", "exclusive"
+        "never show",
+        "just recorded",
+        "only for you",
+        "secret",
+        "private",
+        "can't believe",
+        "finally",
+        "waited so long",
+        "been thinking",
+        "just made",
+        "wanted to share",
+        "special",
+        "exclusive",
     ]
 
     # CTA patterns
     strong_cta = [
-        "unlock", "tip", "send", "get it", "claim", "grab", "open",
-        "see it", "watch", "available now", "dm me"
+        "unlock",
+        "tip",
+        "send",
+        "get it",
+        "claim",
+        "grab",
+        "open",
+        "see it",
+        "watch",
+        "available now",
+        "dm me",
     ]
 
     # Urgency/scarcity patterns
     urgency_words = [
-        "only", "limited", "today", "now", "hurry", "last chance",
-        "running out", "few left", "before", "ends", "expires"
+        "only",
+        "limited",
+        "today",
+        "now",
+        "hurry",
+        "last chance",
+        "running out",
+        "few left",
+        "before",
+        "ends",
+        "expires",
     ]
 
     # Authenticity indicators (informal language)
     authenticity_markers = [
-        "hehe", "lol", "omg", "'m", "'re", "'ve", "'ll", "'t",
-        "gonna", "wanna", "kinda", "ya", "babe", "baby", "hun"
+        "hehe",
+        "lol",
+        "omg",
+        "'m",
+        "'re",
+        "'ve",
+        "'ll",
+        "'t",
+        "gonna",
+        "wanna",
+        "kinda",
+        "ya",
+        "babe",
+        "baby",
+        "hun",
     ]
 
     for cap in captions:
@@ -851,20 +904,22 @@ def score_captions_heuristic(
 
         overall = calculate_weighted_score(authenticity, hook, cta, conversion)
 
-        scores.append(QualityScore(
-            caption_id=cap["caption_id"],
-            authenticity_score=round(authenticity, 3),
-            hook_score=round(hook, 3),
-            cta_score=round(cta, 3),
-            conversion_score=round(conversion, 3),
-            overall_score=round(overall, 3),
-            quality_multiplier=score_to_multiplier(overall),
-            classification=classify_score(overall),
-            reasoning="Heuristic scoring (LLM unavailable)",
-            true_tone=cap.get("tone"),
-            scored_at=now,
-            expires_at=now + timedelta(days=cache_days),
-        ))
+        scores.append(
+            QualityScore(
+                caption_id=cap["caption_id"],
+                authenticity_score=round(authenticity, 3),
+                hook_score=round(hook, 3),
+                cta_score=round(cta, 3),
+                conversion_score=round(conversion, 3),
+                overall_score=round(overall, 3),
+                quality_multiplier=score_to_multiplier(overall),
+                classification=classify_score(overall),
+                reasoning="Heuristic scoring (LLM unavailable)",
+                true_tone=cap.get("tone"),
+                scored_at=now,
+                expires_at=now + timedelta(days=cache_days),
+            )
+        )
 
     return scores
 
@@ -872,6 +927,7 @@ def score_captions_heuristic(
 # =============================================================================
 # QUALITY SCORER CLASS
 # =============================================================================
+
 
 class QualityScorer:
     """
@@ -882,10 +938,7 @@ class QualityScorer:
     """
 
     def __init__(
-        self,
-        conn: sqlite3.Connection,
-        cache_days: int = DEFAULT_CACHE_DAYS,
-        use_llm: bool = False
+        self, conn: sqlite3.Connection, cache_days: int = DEFAULT_CACHE_DAYS, use_llm: bool = False
     ):
         """
         Initialize the QualityScorer.
@@ -906,7 +959,7 @@ class QualityScorer:
         self,
         captions: list[dict[str, Any]],
         creator_profile: CreatorProfile,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> dict[int, QualityScore]:
         """
         Score a batch of captions using LLM or heuristics, with caching.
@@ -940,8 +993,8 @@ class QualityScorer:
 
         # Score remaining captions
         if self.use_llm:
-            # Build prompt for LLM
-            prompt = build_llm_prompt(captions_to_score, creator_profile)
+            # Build prompt for LLM (saved for future LLM integration)
+            _prompt = build_llm_prompt(captions_to_score, creator_profile)
             # TODO: Integrate with actual LLM API
             # For now, fall back to heuristic scoring
             print("Note: LLM scoring not yet integrated, using heuristic fallback", file=sys.stderr)
@@ -968,7 +1021,7 @@ class QualityScorer:
         self,
         captions: list[dict[str, Any]],
         scores: dict[int, QualityScore],
-        min_score: float = ACCEPTABLE_THRESHOLD
+        min_score: float = ACCEPTABLE_THRESHOLD,
     ) -> list[dict[str, Any]]:
         """
         Filter captions below quality threshold.
@@ -993,10 +1046,7 @@ class QualityScorer:
 
         return filtered
 
-    def get_scores_summary(
-        self,
-        scores: dict[int, QualityScore]
-    ) -> dict[str, Any]:
+    def get_scores_summary(self, scores: dict[int, QualityScore]) -> dict[str, Any]:
         """
         Generate summary statistics for quality scores.
 
@@ -1027,7 +1077,9 @@ class QualityScorer:
             "acceptable": classifications.count("acceptable"),
             "poor": classifications.count("poor"),
             "avg_score": round(sum(s.overall_score for s in score_list) / len(score_list), 3),
-            "avg_multiplier": round(sum(s.quality_multiplier for s in score_list) / len(score_list), 3),
+            "avg_multiplier": round(
+                sum(s.quality_multiplier for s in score_list) / len(score_list), 3
+            ),
         }
 
 
@@ -1035,10 +1087,9 @@ class QualityScorer:
 # OUTPUT FORMATTING
 # =============================================================================
 
+
 def format_markdown(
-    profile: CreatorProfile,
-    scores: dict[int, QualityScore],
-    captions: list[dict[str, Any]]
+    profile: CreatorProfile, scores: dict[int, QualityScore], captions: list[dict[str, Any]]
 ) -> str:
     """
     Format quality scores as Markdown report.
@@ -1058,8 +1109,8 @@ def format_markdown(
         "",
         "## Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total Scored | {len(score_list)} |",
         f"| Excellent (>= 0.75) | {sum(1 for s in score_list if s.classification == 'excellent')} |",
         f"| Good (0.50-0.74) | {sum(1 for s in score_list if s.classification == 'good')} |",
@@ -1071,18 +1122,22 @@ def format_markdown(
     if score_list:
         avg_score = sum(s.overall_score for s in score_list) / len(score_list)
         avg_mult = sum(s.quality_multiplier for s in score_list) / len(score_list)
-        lines.extend([
-            f"**Average Score:** {avg_score:.3f}",
-            f"**Average Multiplier:** {avg_mult:.2f}x",
-            "",
-        ])
+        lines.extend(
+            [
+                f"**Average Score:** {avg_score:.3f}",
+                f"**Average Multiplier:** {avg_mult:.2f}x",
+                "",
+            ]
+        )
 
-    lines.extend([
-        "## Detailed Scores",
-        "",
-        "| ID | Class | Score | Mult | Auth | Hook | CTA | Conv | Tone |",
-        "|----|-------|-------|------|------|------|-----|------|------|",
-    ])
+    lines.extend(
+        [
+            "## Detailed Scores",
+            "",
+            "| ID | Class | Score | Mult | Auth | Hook | CTA | Conv | Tone |",
+            "|----|-------|-------|------|------|------|-----|------|------|",
+        ]
+    )
 
     for s in score_list[:50]:  # Limit display
         lines.append(
@@ -1093,16 +1148,16 @@ def format_markdown(
         )
 
     if len(score_list) > 50:
-        lines.append(f"| ... | ... | ... | ... | ... | ... | ... | ... | ({len(score_list) - 50} more) |")
+        lines.append(
+            f"| ... | ... | ... | ... | ... | ... | ... | ... | ({len(score_list) - 50} more) |"
+        )
 
     lines.append("")
     return "\n".join(lines)
 
 
 def format_json(
-    profile: CreatorProfile,
-    scores: dict[int, QualityScore],
-    captions: list[dict[str, Any]]
+    profile: CreatorProfile, scores: dict[int, QualityScore], captions: list[dict[str, Any]]
 ) -> str:
     """
     Format quality scores as JSON.
@@ -1129,8 +1184,14 @@ def format_json(
             "good": sum(1 for s in score_list if s.classification == "good"),
             "acceptable": sum(1 for s in score_list if s.classification == "acceptable"),
             "poor": sum(1 for s in score_list if s.classification == "poor"),
-            "avg_score": round(sum(s.overall_score for s in score_list) / len(score_list), 3) if score_list else 0,
-            "avg_multiplier": round(sum(s.quality_multiplier for s in score_list) / len(score_list), 3) if score_list else 1.0,
+            "avg_score": round(sum(s.overall_score for s in score_list) / len(score_list), 3)
+            if score_list
+            else 0,
+            "avg_multiplier": round(
+                sum(s.quality_multiplier for s in score_list) / len(score_list), 3
+            )
+            if score_list
+            else 1.0,
         },
         "scores": [s.to_dict() for s in score_list],
     }
@@ -1141,6 +1202,7 @@ def format_json(
 # =============================================================================
 # CLI ENTRY POINT
 # =============================================================================
+
 
 def main():
     """Main entry point for CLI."""
@@ -1164,54 +1226,36 @@ Examples:
     python quality_scoring.py --creator missalexa --limit 20
     python quality_scoring.py --creator missalexa --no-cache --format json
     python quality_scoring.py --creator missalexa --min-score 0.5
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
-    )
-    parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
         "--limit",
         type=int,
         default=DEFAULT_BATCH_SIZE,
-        help=f"Maximum captions to score (default: {DEFAULT_BATCH_SIZE})"
+        help=f"Maximum captions to score (default: {DEFAULT_BATCH_SIZE})",
     )
     parser.add_argument(
         "--min-score",
         type=float,
         default=ACCEPTABLE_THRESHOLD,
-        help=f"Minimum quality score to include (default: {ACCEPTABLE_THRESHOLD})"
+        help=f"Minimum quality score to include (default: {ACCEPTABLE_THRESHOLD})",
     )
+    parser.add_argument("--no-cache", action="store_true", help="Skip cache, force fresh scoring")
     parser.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Skip cache, force fresh scoring"
+        "--cleanup-cache", action="store_true", help="Remove expired scores from cache and exit"
     )
+    parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
-        "--cleanup-cache",
-        action="store_true",
-        help="Remove expired scores from cache and exit"
-    )
-    parser.add_argument(
-        "--output", "-o",
-        help="Output file path (default: stdout)"
-    )
-    parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -1237,11 +1281,7 @@ Examples:
             parser.error("Must specify --creator or --creator-id (or use --cleanup-cache)")
 
         # Load creator profile
-        profile = get_creator_profile(
-            conn,
-            creator_name=args.creator,
-            creator_id=args.creator_id
-        )
+        profile = get_creator_profile(conn, creator_name=args.creator, creator_id=args.creator_id)
 
         if not profile:
             print("Error: Creator not found", file=sys.stderr)
@@ -1258,11 +1298,7 @@ Examples:
         scorer = QualityScorer(conn, use_llm=False)
 
         # Score captions
-        scores = scorer.score_caption_batch(
-            captions,
-            profile,
-            use_cache=not args.no_cache
-        )
+        scores = scorer.score_caption_batch(captions, profile, use_cache=not args.no_cache)
 
         # Filter by minimum score
         filtered = scorer.filter_by_quality(captions, scores, args.min_score)
@@ -1272,7 +1308,7 @@ Examples:
             print(
                 f"Filtered out {len(captions) - len(filtered)} captions below "
                 f"quality threshold ({args.min_score})",
-                file=sys.stderr
+                file=sys.stderr,
             )
 
         # Format output

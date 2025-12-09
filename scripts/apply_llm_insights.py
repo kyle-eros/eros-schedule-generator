@@ -20,7 +20,7 @@ import argparse
 import json
 import sqlite3
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -86,7 +86,10 @@ def validate_llm_result(result: dict) -> tuple[bool, str]:
 
     boost = result.get("boost")
     if not isinstance(boost, (int, float)):
-        return False, f"boost must be numeric for caption_id {caption_id}, got {type(boost).__name__}"
+        return (
+            False,
+            f"boost must be numeric for caption_id {caption_id}, got {type(boost).__name__}",
+        )
 
     if not (BOOST_MIN_INPUT <= boost <= BOOST_MAX_INPUT):
         return False, (
@@ -287,9 +290,7 @@ def extract_results_list(data: Any) -> list[dict]:
                 return captions
             raise ValueError("'captions' key must contain a list")
 
-        raise ValueError(
-            "Dictionary input must have 'results' or 'captions' key containing a list"
-        )
+        raise ValueError("Dictionary input must have 'results' or 'captions' key containing a list")
 
     raise ValueError(f"Unexpected input type: {type(data).__name__}")
 
@@ -308,7 +309,7 @@ def load_json_file(filepath: str) -> Any:
         FileNotFoundError: If the file does not exist.
         json.JSONDecodeError: If the file contains invalid JSON.
     """
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -388,7 +389,7 @@ def persist_insights_to_database(
     enhanced_captions: list[dict[str, Any]],
     creator_id: str | None = None,
     schedule_week: str | None = None,
-    db_path: Path | None = None
+    db_path: Path | None = None,
 ) -> int:
     """
     Persist LLM insights to database for feedback loop and learning.
@@ -435,22 +436,28 @@ def persist_insights_to_database(
 
         for caption in enhanced_captions:
             try:
-                conn.execute(insert_sql, (
-                    caption["caption_id"],
-                    creator_id,
-                    caption["llm_boost"],
-                    caption["llm_confidence"],
-                    caption["final_boost"],
-                    caption["pattern_boost"],
-                    caption["boost_change"],
-                    caption.get("llm_tone"),
-                    caption.get("reasoning"),
-                    analysis_date,
-                    schedule_week
-                ))
+                conn.execute(
+                    insert_sql,
+                    (
+                        caption["caption_id"],
+                        creator_id,
+                        caption["llm_boost"],
+                        caption["llm_confidence"],
+                        caption["final_boost"],
+                        caption["pattern_boost"],
+                        caption["boost_change"],
+                        caption.get("llm_tone"),
+                        caption.get("reasoning"),
+                        analysis_date,
+                        schedule_week,
+                    ),
+                )
                 persisted_count += 1
             except sqlite3.Error as e:
-                print(f"Warning: Failed to persist caption {caption['caption_id']}: {e}", file=sys.stderr)
+                print(
+                    f"Warning: Failed to persist caption {caption['caption_id']}: {e}",
+                    file=sys.stderr,
+                )
 
         conn.commit()
 
@@ -465,7 +472,7 @@ def update_insight_with_actual_results(
     analysis_date: str,
     actual_revenue: float,
     actual_purchase_rate: float,
-    db_path: Path | None = None
+    db_path: Path | None = None,
 ) -> bool:
     """
     Update an insight record with actual performance results.
@@ -494,14 +501,15 @@ def update_insight_with_actual_results(
         # Determine if prediction was accurate (within 20% of boost expectation)
         cursor = conn.execute(
             "SELECT final_boost FROM llm_caption_insights WHERE caption_id = ? AND analysis_date = ?",
-            (caption_id, analysis_date)
+            (caption_id, analysis_date),
         )
         row = cursor.fetchone()
         if not row:
             return False
 
         # Update with actual results
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE llm_caption_insights
             SET actual_revenue = ?,
                 actual_purchase_rate = ?,
@@ -511,7 +519,16 @@ def update_insight_with_actual_results(
                     ELSE 0
                 END
             WHERE caption_id = ? AND analysis_date = ?
-        """, (actual_revenue, actual_purchase_rate, actual_revenue, actual_revenue, caption_id, analysis_date))
+        """,
+            (
+                actual_revenue,
+                actual_purchase_rate,
+                actual_revenue,
+                actual_revenue,
+                caption_id,
+                analysis_date,
+            ),
+        )
 
         conn.commit()
         return True
@@ -629,19 +646,19 @@ def main() -> int:
             # Handle both dict format and list format
             if isinstance(pattern_data, dict):
                 # Convert string keys to int if necessary
-                pattern_boosts = {
-                    int(k): float(v) for k, v in pattern_data.items()
-                }
+                pattern_boosts = {int(k): float(v) for k, v in pattern_data.items()}
             elif isinstance(pattern_data, list):
                 # Assume list of {caption_id, boost} objects
                 pattern_boosts = {
-                    int(item["caption_id"]): float(item.get("boost", item.get("pattern_boost", 1.0)))
+                    int(item["caption_id"]): float(
+                        item.get("boost", item.get("pattern_boost", 1.0))
+                    )
                     for item in pattern_data
                     if "caption_id" in item
                 }
             else:
                 print(
-                    f"Error: Pattern boosts file must contain dict or list",
+                    "Error: Pattern boosts file must contain dict or list",
                     file=sys.stderr,
                 )
                 return 1
@@ -681,7 +698,7 @@ def main() -> int:
             enhanced_captions=result["enhanced_captions"],
             creator_id=args.creator_id,
             schedule_week=args.week,
-            db_path=db_path
+            db_path=db_path,
         )
         if persisted > 0:
             print(f"Persisted {persisted} insights to database for feedback loop", file=sys.stderr)

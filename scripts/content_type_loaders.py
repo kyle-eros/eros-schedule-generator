@@ -17,40 +17,44 @@ Note: Uses lazy imports to avoid circular import issues with generate_schedule.
 from __future__ import annotations
 
 import sqlite3
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 # Type hints only - these won't cause circular imports
 if TYPE_CHECKING:
     from generate_schedule import (
         Caption,
-        FreePreview,
-        Poll,
-        GameWheelConfig,
         CreatorProfile,
+        FreePreview,
+        GameWheelConfig,
+        Poll,
     )
 
 
 def _get_caption_class():
     """Lazy import Caption class to avoid circular imports."""
     from generate_schedule import Caption
+
     return Caption
 
 
 def _get_free_preview_class():
     """Lazy import FreePreview class to avoid circular imports."""
     from generate_schedule import FreePreview
+
     return FreePreview
 
 
 def _get_poll_class():
     """Lazy import Poll class to avoid circular imports."""
     from generate_schedule import Poll
+
     return Poll
 
 
 def _get_game_wheel_config_class():
     """Lazy import GameWheelConfig class to avoid circular imports."""
     from generate_schedule import GameWheelConfig
+
     return GameWheelConfig
 
 
@@ -58,10 +62,9 @@ def _get_game_wheel_config_class():
 # WALL POST CAPTIONS
 # =============================================================================
 
+
 def load_wall_post_captions(
-    conn: sqlite3.Connection,
-    creator_id: str,
-    min_freshness: float = 30.0
+    conn: sqlite3.Connection, creator_id: str, min_freshness: float = 30.0
 ) -> list[Caption]:
     """
     Load captions eligible for wall posts.
@@ -107,19 +110,21 @@ def load_wall_post_captions(
 
     captions = []
     for row in cursor.fetchall():
-        captions.append(Caption(
-            caption_id=row["caption_id"],
-            caption_text=row["caption_text"],
-            caption_type=row["caption_type"] or "wall",
-            content_type_id=row["content_type_id"],
-            content_type_name=row["content_type_name"],
-            performance_score=row["performance_score"] or 50.0,
-            freshness_score=row["freshness_score"] or 100.0,
-            tone=row["tone"],
-            emoji_style=row["emoji_style"],
-            slang_level=row["slang_level"],
-            is_universal=bool(row["is_universal"])
-        ))
+        captions.append(
+            Caption(
+                caption_id=row["caption_id"],
+                caption_text=row["caption_text"],
+                caption_type=row["caption_type"] or "wall",
+                content_type_id=row["content_type_id"],
+                content_type_name=row["content_type_name"],
+                performance_score=row["performance_score"] or 50.0,
+                freshness_score=row["freshness_score"] or 100.0,
+                tone=row["tone"],
+                emoji_style=row["emoji_style"],
+                slang_level=row["slang_level"],
+                is_universal=bool(row["is_universal"]),
+            )
+        )
 
     return captions
 
@@ -128,10 +133,9 @@ def load_wall_post_captions(
 # FREE PREVIEWS
 # =============================================================================
 
+
 def load_free_previews(
-    conn: sqlite3.Connection,
-    creator_id: str,
-    min_freshness: float = 30.0
+    conn: sqlite3.Connection, creator_id: str, min_freshness: float = 30.0
 ) -> list[FreePreview]:
     """
     Load available free preview content.
@@ -170,16 +174,18 @@ def load_free_previews(
 
     previews = []
     for row in cursor.fetchall():
-        previews.append(FreePreview(
-            preview_id=row["preview_id"],
-            preview_text=row["preview_text"],
-            preview_type=row["preview_type"],
-            content_type_id=row["content_type_id"],
-            linked_ppv_type=row["linked_ppv_type"],
-            tone=row["tone"],
-            performance_score=row["performance_score"] or 50.0,
-            freshness_score=row["freshness_score"] or 100.0
-        ))
+        previews.append(
+            FreePreview(
+                preview_id=row["preview_id"],
+                preview_text=row["preview_text"],
+                preview_type=row["preview_type"],
+                content_type_id=row["content_type_id"],
+                linked_ppv_type=row["linked_ppv_type"],
+                tone=row["tone"],
+                performance_score=row["performance_score"] or 50.0,
+                freshness_score=row["freshness_score"] or 100.0,
+            )
+        )
 
     return previews
 
@@ -188,10 +194,8 @@ def load_free_previews(
 # POLLS
 # =============================================================================
 
-def load_polls(
-    conn: sqlite3.Connection,
-    creator_id: str
-) -> list[Poll]:
+
+def load_polls(conn: sqlite3.Connection, creator_id: str) -> list[Poll]:
     """
     Load available polls for creator.
 
@@ -236,14 +240,16 @@ def load_polls(
         if row["option_4"]:
             options.append(row["option_4"])
 
-        polls.append(Poll(
-            poll_id=row["poll_id"],
-            question_text=row["question_text"],
-            options=options,
-            duration_hours=row["duration_hours"] or 24,
-            poll_category=row["poll_category"] or "interactive",
-            tone=row["tone"]
-        ))
+        polls.append(
+            Poll(
+                poll_id=row["poll_id"],
+                question_text=row["question_text"],
+                options=options,
+                duration_hours=row["duration_hours"] or 24,
+                poll_category=row["poll_category"] or "interactive",
+                tone=row["tone"],
+            )
+        )
 
     return polls
 
@@ -252,10 +258,8 @@ def load_polls(
 # GAME WHEEL
 # =============================================================================
 
-def load_game_wheel_config(
-    conn: sqlite3.Connection,
-    creator_id: str
-) -> GameWheelConfig | None:
+
+def load_game_wheel_config(conn: sqlite3.Connection, creator_id: str) -> GameWheelConfig | None:
     """
     Load active game wheel configuration for creator.
 
@@ -305,7 +309,7 @@ def load_game_wheel_config(
         min_trigger_amount=row["min_trigger_amount"] or 5.00,
         segments=segments,
         display_text=row["display_text"],
-        cooldown_hours=row["cooldown_hours"] or 24
+        cooldown_hours=row["cooldown_hours"] or 24,
     )
 
 
@@ -313,9 +317,9 @@ def load_game_wheel_config(
 # PERSONA SCORING FOR NEW CONTENT TYPES
 # =============================================================================
 
+
 def apply_preview_persona_scores(
-    previews: list[FreePreview],
-    profile: CreatorProfile
+    previews: list[FreePreview], profile: CreatorProfile
 ) -> list[FreePreview]:
     """
     Apply persona boost scores to free previews.
@@ -342,10 +346,7 @@ def apply_preview_persona_scores(
     return previews
 
 
-def apply_poll_persona_scores(
-    polls: list[Poll],
-    profile: CreatorProfile
-) -> list[Poll]:
+def apply_poll_persona_scores(polls: list[Poll], profile: CreatorProfile) -> list[Poll]:
     """
     Apply persona boost scores to polls.
 

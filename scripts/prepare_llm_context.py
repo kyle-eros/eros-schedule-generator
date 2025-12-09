@@ -36,7 +36,7 @@ import os
 import re
 import sqlite3
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -45,17 +45,14 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Import from existing scripts
-from match_persona import (
+from match_persona import (  # noqa: E402
     PersonaProfile,
-    get_persona_profile,
-    detect_tone_from_text,
-    detect_slang_level_from_text,
-    calculate_sentiment,
-    get_emoji_frequency_category,
     calculate_persona_boost,
-    TONE_KEYWORDS,
+    calculate_sentiment,
+    detect_slang_level_from_text,
+    detect_tone_from_text,
 )
-from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy
+from volume_optimizer import MultiFactorVolumeOptimizer  # noqa: E402
 
 
 def load_creator_content_notes(conn: sqlite3.Connection, creator_id: str) -> dict | None:
@@ -90,38 +87,29 @@ def format_notes_for_llm(notes: dict) -> str:
     if notes.get("pricing_guidance"):
         lines.append("**Pricing Guidance**:")
         for p in notes["pricing_guidance"]:
-            ct = p.get('content_type') or 'all content'
-            mod = p.get('price_modifier', 1.0)
+            ct = p.get("content_type") or "all content"
+            mod = p.get("price_modifier", 1.0)
             lines.append(f"- {ct}: {p['description']} (modifier: {mod}x)")
         lines.append("")
 
     if notes.get("caption_filters", {}).get("exclude_keywords"):
-        lines.append(f"**Excluded Keywords**: {', '.join(notes['caption_filters']['exclude_keywords'])}")
+        lines.append(
+            f"**Excluded Keywords**: {', '.join(notes['caption_filters']['exclude_keywords'])}"
+        )
 
     return "\n".join(lines)
 
 
-# Path resolution - check multiple possible database locations
-# Standard order: 1) env var, 2) Developer, 3) Documents, 4) .eros fallback
+# Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
 
-# Build candidates list with env var first (if set)
-_env_db_path = os.environ.get("EROS_DATABASE_PATH", "")
-DB_PATH_CANDIDATES = [
-    Path(_env_db_path) if _env_db_path else None,
-    HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / "Documents" / "EROS-SD-MAIN-PROJECT" / "database" / "eros_sd_main.db",
-    HOME_DIR / ".eros" / "eros.db",
-]
-DB_PATH_CANDIDATES = [p for p in DB_PATH_CANDIDATES if p is not None]
-
-DB_PATH = next((p for p in DB_PATH_CANDIDATES if p.exists()), DB_PATH_CANDIDATES[1] if len(DB_PATH_CANDIDATES) > 1 else DB_PATH_CANDIDATES[0])
+from database import DB_PATH, HOME_DIR  # noqa: E402
 
 # Default output directory for schedules/context
 _env_schedules_path = os.environ.get("EROS_SCHEDULES_PATH", "")
 DEFAULT_SCHEDULES_DIR = (
-    Path(_env_schedules_path) if _env_schedules_path
+    Path(_env_schedules_path)
+    if _env_schedules_path
     else HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "schedules"
 )
 
@@ -143,6 +131,7 @@ MAX_CAPTION_TEXT_LENGTH = 400
 @dataclass(frozen=True, slots=True)
 class CaptionContext:
     """Caption with full context for Claude's semantic analysis."""
+
     caption_id: int
     caption_text: str
     content_type: str | None
@@ -160,6 +149,7 @@ class CaptionContext:
 @dataclass(frozen=True, slots=True)
 class CreatorContext:
     """Full creator context for schedule generation."""
+
     creator_id: str
     page_name: str
     display_name: str
@@ -181,6 +171,7 @@ class CreatorContext:
 @dataclass(frozen=True, slots=True)
 class ScheduleContext:
     """Complete context for Claude to generate an enhanced schedule."""
+
     creator: CreatorContext
     week_start: str
     week_end: str
@@ -227,10 +218,7 @@ def get_volume_level(active_fans: int) -> tuple[str, int]:
         return ("Ultra", 5)
 
 
-def prepare_volume_context(
-    creator_id: str,
-    conn: sqlite3.Connection
-) -> dict[str, Any]:
+def prepare_volume_context(creator_id: str, conn: sqlite3.Connection) -> dict[str, Any]:
     """
     Prepare volume context for LLM using multi-factor optimizer.
 
@@ -256,9 +244,7 @@ def prepare_volume_context(
 
 
 def calculate_pattern_confidence(
-    text: str,
-    tone_scores: dict[str, int],
-    detected_tone: str | None
+    text: str, tone_scores: dict[str, int], detected_tone: str | None
 ) -> tuple[float, str]:
     """
     Calculate confidence level of pattern-based tone detection.
@@ -292,9 +278,7 @@ def calculate_pattern_confidence(
 
 
 def load_creator_context(
-    conn: sqlite3.Connection,
-    creator_name: str | None = None,
-    creator_id: str | None = None
+    conn: sqlite3.Connection, creator_name: str | None = None, creator_id: str | None = None
 ) -> CreatorContext | None:
     """Load complete creator context."""
     if creator_name:
@@ -342,7 +326,7 @@ def load_creator_context(
             "Using legacy fan-count based calculation.",
             row["page_name"],
             row["creator_id"],
-            str(e)
+            str(e),
         )
         volume_level, ppv_per_day = get_volume_level(active_fans)
 
@@ -391,14 +375,12 @@ def load_creator_context(
         best_hours=best_hours,
         vault_types=vault_types,
         volume_fallback_used=volume_fallback_used,
-        content_notes=content_notes
+        content_notes=content_notes,
     )
 
 
 def load_captions_for_context(
-    conn: sqlite3.Connection,
-    creator: CreatorContext,
-    limit: int = 100
+    conn: sqlite3.Connection, creator: CreatorContext, limit: int = 100
 ) -> tuple[list[CaptionContext], dict[str, Any]]:
     """
     Load captions and prepare them for Claude's analysis.
@@ -438,7 +420,7 @@ def load_captions_for_context(
         secondary_tone=creator.secondary_tone,
         emoji_frequency=creator.emoji_frequency,
         slang_level=creator.slang_level,
-        avg_sentiment=creator.avg_sentiment
+        avg_sentiment=creator.avg_sentiment,
     )
 
     captions = []
@@ -449,7 +431,7 @@ def load_captions_for_context(
         "low_confidence": 0,
         "high_value": 0,
         "avg_performance": 0.0,
-        "avg_freshness": 0.0
+        "avg_freshness": 0.0,
     }
 
     total_perf = 0.0
@@ -488,7 +470,7 @@ def load_captions_for_context(
             caption_slang_level=row["slang_level"] or detected_slang,
             persona=persona,
             caption_text=text,
-            use_text_detection=True
+            use_text_detection=True,
         )
 
         # Determine if semantic analysis needed
@@ -516,20 +498,22 @@ def load_captions_for_context(
         if len(text) > MAX_CAPTION_TEXT_LENGTH:
             display_text += "..."
 
-        captions.append(CaptionContext(
-            caption_id=row["caption_id"],
-            caption_text=display_text,
-            content_type=row["content_type"],
-            performance_score=round(perf, 1),
-            freshness_score=round(fresh, 1),
-            pattern_tone=detected_tone,
-            pattern_slang=detected_slang,
-            pattern_sentiment=round(sentiment, 2),
-            pattern_confidence=round(confidence, 2),
-            pattern_boost=round(match_result.total_boost, 2),
-            needs_semantic_analysis=needs_analysis,
-            analysis_reason=analysis_reason
-        ))
+        captions.append(
+            CaptionContext(
+                caption_id=row["caption_id"],
+                caption_text=display_text,
+                content_type=row["content_type"],
+                performance_score=round(perf, 1),
+                freshness_score=round(fresh, 1),
+                pattern_tone=detected_tone,
+                pattern_slang=detected_slang,
+                pattern_sentiment=round(sentiment, 2),
+                pattern_confidence=round(confidence, 2),
+                pattern_boost=round(match_result.total_boost, 2),
+                needs_semantic_analysis=needs_analysis,
+                analysis_reason=analysis_reason,
+            )
+        )
 
     if stats["total_evaluated"] > 0:
         stats["avg_performance"] = round(total_perf / stats["total_evaluated"], 1)
@@ -560,8 +544,8 @@ def format_context_for_claude(context: ScheduleContext) -> str:
         "",
         "## Creator Profile",
         "",
-        f"| Attribute | Value |",
-        f"|-----------|-------|",
+        "| Attribute | Value |",
+        "|-----------|-------|",
         f"| Creator | **{c.display_name}** (@{c.page_name}) |",
         f"| Page Type | {c.page_type} |",
         f"| Active Fans | {c.active_fans:,} |",
@@ -569,8 +553,8 @@ def format_context_for_claude(context: ScheduleContext) -> str:
         "",
         "### Persona Profile",
         "",
-        f"| Attribute | Value |",
-        f"|-----------|-------|",
+        "| Attribute | Value |",
+        "|-----------|-------|",
         f"| Primary Tone | **{c.primary_tone}** |",
         f"| Secondary Tone | {c.secondary_tone or 'N/A'} |",
         f"| Emoji Usage | {c.emoji_frequency} |",
@@ -584,79 +568,95 @@ def format_context_for_claude(context: ScheduleContext) -> str:
 
     # Add content notes section if available
     if c.content_notes:
-        lines.extend([
-            "### Creator Content Notes",
-            "",
-            format_notes_for_llm(c.content_notes),
-            "",
-        ])
+        lines.extend(
+            [
+                "### Creator Content Notes",
+                "",
+                format_notes_for_llm(c.content_notes),
+                "",
+            ]
+        )
 
-    lines.extend([
-        "---",
-        "",
-        "## Schedule Period",
-        "",
-        f"- **Start**: {context.week_start}",
-        f"- **End**: {context.week_end}",
-        f"- **Total PPVs to Schedule**: {c.ppv_per_day * 7}",
-        "",
-        "---",
-        "",
-        "## Caption Pool Analysis",
-        "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
-        f"| Total Available | {context.total_captions_available} |",
-        f"| Needs Semantic Analysis | {context.performance_summary['needs_analysis']} |",
-        f"| High Confidence | {context.performance_summary['high_confidence']} |",
-        f"| High Value (perf >= 70) | {context.performance_summary['high_value']} |",
-        f"| Avg Performance | {context.performance_summary['avg_performance']} |",
-        f"| Avg Freshness | {context.performance_summary['avg_freshness']} |",
-        "",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            "## Schedule Period",
+            "",
+            f"- **Start**: {context.week_start}",
+            f"- **End**: {context.week_end}",
+            f"- **Total PPVs to Schedule**: {c.ppv_per_day * 7}",
+            "",
+            "---",
+            "",
+            "## Caption Pool Analysis",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| Total Available | {context.total_captions_available} |",
+            f"| Needs Semantic Analysis | {context.performance_summary['needs_analysis']} |",
+            f"| High Confidence | {context.performance_summary['high_confidence']} |",
+            f"| High Value (perf >= 70) | {context.performance_summary['high_value']} |",
+            f"| Avg Performance | {context.performance_summary['avg_performance']} |",
+            f"| Avg Freshness | {context.performance_summary['avg_freshness']} |",
+            "",
+        ]
+    )
 
     if context.mode == "full":
         # Include captions for semantic analysis
-        needs_analysis = [cap for cap in context.captions_for_analysis if cap.needs_semantic_analysis]
-        high_confidence = [cap for cap in context.captions_for_analysis if not cap.needs_semantic_analysis]
+        needs_analysis = [
+            cap for cap in context.captions_for_analysis if cap.needs_semantic_analysis
+        ]
+        high_confidence = [
+            cap for cap in context.captions_for_analysis if not cap.needs_semantic_analysis
+        ]
 
-        lines.extend([
-            "---",
-            "",
-            "## Captions Requiring Semantic Analysis",
-            "",
-            "These captions have low pattern-matching confidence and need your semantic reasoning.",
-            "",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## Captions Requiring Semantic Analysis",
+                "",
+                "These captions have low pattern-matching confidence and need your semantic reasoning.",
+                "",
+            ]
+        )
 
         for i, cap in enumerate(needs_analysis[:MAX_CAPTIONS_FOR_CONTEXT], 1):
-            lines.extend([
-                f"### Caption #{i} (ID: {cap.caption_id})",
-                "",
-                f"**Text**: \"{cap.caption_text}\"",
-                "",
-                f"- Content Type: {cap.content_type or 'N/A'}",
-                f"- Performance: {cap.performance_score} | Freshness: {cap.freshness_score}",
-                f"- Pattern Detection: tone=`{cap.pattern_tone}`, slang=`{cap.pattern_slang}`, confidence={cap.pattern_confidence:.0%}",
-                f"- Current Boost: {cap.pattern_boost}x",
-                f"- **Analysis Reason**: {cap.analysis_reason}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### Caption #{i} (ID: {cap.caption_id})",
+                    "",
+                    f'**Text**: "{cap.caption_text}"',
+                    "",
+                    f"- Content Type: {cap.content_type or 'N/A'}",
+                    f"- Performance: {cap.performance_score} | Freshness: {cap.freshness_score}",
+                    f"- Pattern Detection: tone=`{cap.pattern_tone}`, slang=`{cap.pattern_slang}`, confidence={cap.pattern_confidence:.0%}",
+                    f"- Current Boost: {cap.pattern_boost}x",
+                    f"- **Analysis Reason**: {cap.analysis_reason}",
+                    "",
+                ]
+            )
 
         if len(needs_analysis) > MAX_CAPTIONS_FOR_CONTEXT:
-            lines.append(f"*({len(needs_analysis) - MAX_CAPTIONS_FOR_CONTEXT} more captions need analysis)*")
+            lines.append(
+                f"*({len(needs_analysis) - MAX_CAPTIONS_FOR_CONTEXT} more captions need analysis)*"
+            )
             lines.append("")
 
-        lines.extend([
-            "---",
-            "",
-            "## High-Confidence Captions (Pre-Scored)",
-            "",
-            "These captions have high pattern-matching confidence. Review briefly for accuracy.",
-            "",
-            "| ID | Type | Perf | Fresh | Tone | Boost |",
-            "|----|------|------|-------|------|-------|",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## High-Confidence Captions (Pre-Scored)",
+                "",
+                "These captions have high pattern-matching confidence. Review briefly for accuracy.",
+                "",
+                "| ID | Type | Perf | Fresh | Tone | Boost |",
+                "|----|------|------|-------|------|-------|",
+            ]
+        )
 
         for cap in high_confidence[:20]:
             lines.append(
@@ -667,133 +667,137 @@ def format_context_for_claude(context: ScheduleContext) -> str:
         if len(high_confidence) > 20:
             lines.append(f"| ... | ... | ... | ... | ... | ({len(high_confidence) - 20} more) |")
 
-        lines.extend([
-            "",
-            "---",
-            "",
-            "## Claude Analysis Instructions",
-            "",
-            "For each caption in the 'Requiring Semantic Analysis' section, evaluate and score:",
-            "",
-            "### 1. Persona Match Score (0.0 - 1.0)",
-            "",
-            "Calculate persona match by checking these factors:",
-            "",
-            f"| Factor | Match Condition | Boost |",
-            f"|--------|----------------|-------|",
-            f"| Primary Tone | Matches **{c.primary_tone}** | +0.20 |",
-            f"| Secondary Tone | Matches **{c.secondary_tone or 'N/A'}** | +0.10 |",
-            f"| Emoji Usage | Matches **{c.emoji_frequency}** frequency | +0.05 |",
-            f"| Slang Level | Matches **{c.slang_level}** level | +0.05 |",
-            "",
-            "Base score is 1.0. Add matching boosts (max combined: 1.40x).",
-            "",
-            "### 2. Content Quality Score (0.0 - 1.0)",
-            "",
-            "Evaluate these elements:",
-            "",
-            "| Element | What to Look For | Weight |",
-            "|---------|-----------------|--------|",
-            "| Hook Strength | First line engagement, attention-grabbing | 0.30 |",
-            "| Urgency/Scarcity | Time-limited offers, exclusive language | 0.20 |",
-            "| Call-to-Action | Clear next step, compelling reason to act | 0.30 |",
-            "| Emotional Resonance | Connects with audience, authentic voice | 0.20 |",
-            "",
-            "### 3. Freshness Score",
-            "",
-            "Already provided in caption data. Use as-is.",
-            "",
-            "### Output Format for Each Caption",
-            "",
-            "Return analysis as JSON for each caption requiring semantic analysis:",
-            "",
-            "```json",
-            "{",
-            '  "caption_id": "12345",',
-            '  "persona_match": 0.85,',
-            '  "quality_score": 0.75,',
-            '  "recommended_boost": 1.15,',
-            '  "detected_tone": "bratty",',
-            '  "reasoning": "Strong primary tone match with bratty undertones, good CTA"',
-            "}",
-            "```",
-            "",
-            "---",
-            "",
-            "## Tone Detection Tips",
-            "",
-            "| Indicator | What It Really Means |",
-            "|-----------|---------------------|",
-            "| eye-roll + positive words | Bratty/playful, NOT sincere |",
-            "| \"I guess\" + generous offer | Bratty teasing |",
-            "| \"Fine...\" + gift | Playfully reluctant |",
-            "| Exaggerated compliance | Bratty |",
-            "| \"Right now\" | Could be aggressive OR playfully demanding |",
-            "| Direct pricing language | Direct tone (even if dressed up) |",
-            "| \"babe/baby\" + offer | Sweet/seductive, relationship-building |",
-            "| Commands without softeners | Dominant or aggressive |",
-            "| Questions + teasing | Playful engagement |",
-            "",
-            "---",
-            "",
-            "## Your Analysis Task",
-            "",
-            "1. **Analyze Each Low-Confidence Caption**:",
-            "   - Determine true tone beyond keyword matching",
-            "   - Score persona match using the factors above",
-            "   - Score content quality",
-            "   - Provide JSON output for each",
-            "",
-            "2. **Generate Enhanced Weekly Schedule**:",
-            f"   - Create a complete {c.ppv_per_day * 7}-PPV weekly schedule",
-            "   - Select best-matching captions for each time slot",
-            "   - Maintain 4+ hour spacing between PPVs",
-            "   - Ensure content type rotation (no consecutive same type)",
-            "   - Prioritize high-performance + high-boost captions",
-            "",
-            "## Schedule Output Format",
-            "",
-            "```markdown",
-            f"# Enhanced Schedule: {c.display_name}",
-            f"## Week: {context.week_start} - {context.week_end}",
-            "",
-            "### Caption Analysis Results",
-            "",
-            "| ID | Detected Tone | Persona Match | Quality | Final Boost | Reasoning |",
-            "|----|--------------|---------------|---------|-------------|-----------|",
-            "| 12345 | bratty | 0.85 | 0.80 | 1.25x | Strong tone match, good hook |",
-            "",
-            "### Monday [Date]",
-            "| Time | Type | Caption ID | Content | Price | Boost | Notes |",
-            "|------|------|------------|---------|-------|-------|-------|",
-            "| 10:00 | PPV | 12345 | solo | $14.99 | 1.35x | Perfect bratty tone |",
-            "| 14:00 | PPV | 23456 | bundle | $19.99 | 1.25x | Good match |",
-            "...",
-            "",
-            "### Weekly Summary",
-            f"- Total PPVs: {c.ppv_per_day * 7}",
-            "- Avg Boost: X.XX",
-            "- Captions Enhanced: X of Y",
-            "- Primary Tone Matches: X",
-            "- Secondary Tone Matches: X",
-            "```",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## Claude Analysis Instructions",
+                "",
+                "For each caption in the 'Requiring Semantic Analysis' section, evaluate and score:",
+                "",
+                "### 1. Persona Match Score (0.0 - 1.0)",
+                "",
+                "Calculate persona match by checking these factors:",
+                "",
+                "| Factor | Match Condition | Boost |",
+                "|--------|----------------|-------|",
+                f"| Primary Tone | Matches **{c.primary_tone}** | +0.20 |",
+                f"| Secondary Tone | Matches **{c.secondary_tone or 'N/A'}** | +0.10 |",
+                f"| Emoji Usage | Matches **{c.emoji_frequency}** frequency | +0.05 |",
+                f"| Slang Level | Matches **{c.slang_level}** level | +0.05 |",
+                "",
+                "Base score is 1.0. Add matching boosts (max combined: 1.40x).",
+                "",
+                "### 2. Content Quality Score (0.0 - 1.0)",
+                "",
+                "Evaluate these elements:",
+                "",
+                "| Element | What to Look For | Weight |",
+                "|---------|-----------------|--------|",
+                "| Hook Strength | First line engagement, attention-grabbing | 0.30 |",
+                "| Urgency/Scarcity | Time-limited offers, exclusive language | 0.20 |",
+                "| Call-to-Action | Clear next step, compelling reason to act | 0.30 |",
+                "| Emotional Resonance | Connects with audience, authentic voice | 0.20 |",
+                "",
+                "### 3. Freshness Score",
+                "",
+                "Already provided in caption data. Use as-is.",
+                "",
+                "### Output Format for Each Caption",
+                "",
+                "Return analysis as JSON for each caption requiring semantic analysis:",
+                "",
+                "```json",
+                "{",
+                '  "caption_id": "12345",',
+                '  "persona_match": 0.85,',
+                '  "quality_score": 0.75,',
+                '  "recommended_boost": 1.15,',
+                '  "detected_tone": "bratty",',
+                '  "reasoning": "Strong primary tone match with bratty undertones, good CTA"',
+                "}",
+                "```",
+                "",
+                "---",
+                "",
+                "## Tone Detection Tips",
+                "",
+                "| Indicator | What It Really Means |",
+                "|-----------|---------------------|",
+                "| eye-roll + positive words | Bratty/playful, NOT sincere |",
+                '| "I guess" + generous offer | Bratty teasing |',
+                '| "Fine..." + gift | Playfully reluctant |',
+                "| Exaggerated compliance | Bratty |",
+                '| "Right now" | Could be aggressive OR playfully demanding |',
+                "| Direct pricing language | Direct tone (even if dressed up) |",
+                '| "babe/baby" + offer | Sweet/seductive, relationship-building |',
+                "| Commands without softeners | Dominant or aggressive |",
+                "| Questions + teasing | Playful engagement |",
+                "",
+                "---",
+                "",
+                "## Your Analysis Task",
+                "",
+                "1. **Analyze Each Low-Confidence Caption**:",
+                "   - Determine true tone beyond keyword matching",
+                "   - Score persona match using the factors above",
+                "   - Score content quality",
+                "   - Provide JSON output for each",
+                "",
+                "2. **Generate Enhanced Weekly Schedule**:",
+                f"   - Create a complete {c.ppv_per_day * 7}-PPV weekly schedule",
+                "   - Select best-matching captions for each time slot",
+                "   - Maintain 4+ hour spacing between PPVs",
+                "   - Ensure content type rotation (no consecutive same type)",
+                "   - Prioritize high-performance + high-boost captions",
+                "",
+                "## Schedule Output Format",
+                "",
+                "```markdown",
+                f"# Enhanced Schedule: {c.display_name}",
+                f"## Week: {context.week_start} - {context.week_end}",
+                "",
+                "### Caption Analysis Results",
+                "",
+                "| ID | Detected Tone | Persona Match | Quality | Final Boost | Reasoning |",
+                "|----|--------------|---------------|---------|-------------|-----------|",
+                "| 12345 | bratty | 0.85 | 0.80 | 1.25x | Strong tone match, good hook |",
+                "",
+                "### Monday [Date]",
+                "| Time | Type | Caption ID | Content | Price | Boost | Notes |",
+                "|------|------|------------|---------|-------|-------|-------|",
+                "| 10:00 | PPV | 12345 | solo | $14.99 | 1.35x | Perfect bratty tone |",
+                "| 14:00 | PPV | 23456 | bundle | $19.99 | 1.25x | Good match |",
+                "...",
+                "",
+                "### Weekly Summary",
+                f"- Total PPVs: {c.ppv_per_day * 7}",
+                "- Avg Boost: X.XX",
+                "- Captions Enhanced: X of Y",
+                "- Primary Tone Matches: X",
+                "- Secondary Tone Matches: X",
+                "```",
+                "",
+            ]
+        )
 
     else:  # quick mode
-        lines.extend([
-            "---",
-            "",
-            "## Quick Mode - Pattern-Based Schedule",
-            "",
-            "Using pattern matching only (no semantic analysis).",
-            "Run with `--mode full` for enhanced quality.",
-            "",
-            "### Available Captions by Boost",
-            "",
-            "| ID | Type | Perf | Fresh | Tone | Boost |",
-            "|----|------|------|-------|------|-------|",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## Quick Mode - Pattern-Based Schedule",
+                "",
+                "Using pattern matching only (no semantic analysis).",
+                "Run with `--mode full` for enhanced quality.",
+                "",
+                "### Available Captions by Boost",
+                "",
+                "| ID | Type | Perf | Fresh | Tone | Boost |",
+                "|----|------|------|-------|------|-------|",
+            ]
+        )
 
         for cap in context.captions_for_analysis[:30]:
             lines.append(
@@ -801,11 +805,13 @@ def format_context_for_claude(context: ScheduleContext) -> str:
                 f"{cap.freshness_score} | {cap.pattern_tone or '-'} | {cap.pattern_boost}x |"
             )
 
-        lines.extend([
-            "",
-            f"Generate a {c.ppv_per_day * 7}-PPV schedule using these pre-scored captions.",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                f"Generate a {c.ppv_per_day * 7}-PPV schedule using these pre-scored captions.",
+                "",
+            ]
+        )
 
     return "\n".join(lines)
 
@@ -827,49 +833,37 @@ Examples:
     python prepare_llm_context.py --creator missalexa --week 2025-W01
     python prepare_llm_context.py --creator missalexa --week 2025-W01 --mode full
     python prepare_llm_context.py --creator missalexa --week 2025-W01 --mode quick
-        """
+        """,
     )
 
+    parser.add_argument("--creator", "-c", help="Creator page name (e.g., missalexa)")
+    parser.add_argument("--creator-id", help="Creator UUID")
     parser.add_argument(
-        "--creator", "-c",
-        help="Creator page name (e.g., missalexa)"
+        "--week", "-w", required=True, help="Week in ISO format (YYYY-Www, e.g., 2025-W01)"
     )
     parser.add_argument(
-        "--creator-id",
-        help="Creator UUID"
-    )
-    parser.add_argument(
-        "--week", "-w",
-        required=True,
-        help="Week in ISO format (YYYY-Www, e.g., 2025-W01)"
-    )
-    parser.add_argument(
-        "--mode", "-m",
+        "--mode",
+        "-m",
         choices=["quick", "full"],
         default="full",
-        help="Generation mode: quick (pattern only) or full (semantic analysis)"
+        help="Generation mode: quick (pattern only) or full (semantic analysis)",
     )
+    parser.add_argument("--output", "-o", help="Output file path (overrides auto-save location)")
     parser.add_argument(
-        "--output", "-o",
-        help="Output file path (overrides auto-save location)"
-    )
-    parser.add_argument(
-        "--stdout", "--print",
+        "--stdout",
+        "--print",
         action="store_true",
         dest="stdout",
-        help="Print to console instead of auto-saving to file"
+        help="Print to console instead of auto-saving to file",
     )
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json"],
         default="markdown",
-        help="Output format (default: markdown)"
+        help="Output format (default: markdown)",
     )
-    parser.add_argument(
-        "--db",
-        default=str(DB_PATH),
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 
@@ -892,11 +886,7 @@ Examples:
         conn.row_factory = sqlite3.Row
 
         # Load creator context
-        creator = load_creator_context(
-            conn,
-            creator_name=args.creator,
-            creator_id=args.creator_id
-        )
+        creator = load_creator_context(conn, creator_name=args.creator, creator_id=args.creator_id)
 
         if not creator:
             print("Error: Creator not found", file=sys.stderr)
@@ -917,21 +907,24 @@ Examples:
             total_captions_available=len(captions),
             captions_for_analysis=tuple(captions),
             performance_summary=stats,
-            mode=args.mode
+            mode=args.mode,
         )
 
         # Format output
         if args.format == "json":
             # JSON format for programmatic use
-            output = json.dumps({
-                "creator": asdict(context.creator),
-                "week_start": context.week_start,
-                "week_end": context.week_end,
-                "total_captions": context.total_captions_available,
-                "performance_summary": context.performance_summary,
-                "captions": [asdict(c) for c in context.captions_for_analysis],
-                "mode": context.mode
-            }, indent=2)
+            output = json.dumps(
+                {
+                    "creator": asdict(context.creator),
+                    "week_start": context.week_start,
+                    "week_end": context.week_end,
+                    "total_captions": context.total_captions_available,
+                    "performance_summary": context.performance_summary,
+                    "captions": [asdict(c) for c in context.captions_for_analysis],
+                    "mode": context.mode,
+                },
+                indent=2,
+            )
         else:
             # Markdown format for Claude's native processing
             output = format_context_for_claude(context)
@@ -945,7 +938,10 @@ Examples:
             print(f"  Creator: {creator.display_name}", file=sys.stderr)
             print(f"  Week: {week_start} - {week_end}", file=sys.stderr)
             print(f"  Mode: {args.mode}", file=sys.stderr)
-            print(f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)", file=sys.stderr)
+            print(
+                f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)",
+                file=sys.stderr,
+            )
         elif args.stdout:
             print(output)
         else:
@@ -953,13 +949,16 @@ Examples:
             ext = ".json" if args.format == "json" else ".md"
             week_str = format_week_string(week_start)
             # Sanitize creator name for safe filesystem usage
-            safe_page_name = re.sub(r'[^\w\-_]', '_', creator.page_name)
+            safe_page_name = re.sub(r"[^\w\-_]", "_", creator.page_name)
             context_dir = DEFAULT_SCHEDULES_DIR / "context" / safe_page_name
             try:
                 context_dir.mkdir(parents=True, exist_ok=True)
             except PermissionError as e:
                 print(f"Error: Cannot create output directory {context_dir}: {e}", file=sys.stderr)
-                print("Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.", file=sys.stderr)
+                print(
+                    "Use --stdout to print to console, or set EROS_SCHEDULES_PATH to a writable location.",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             output_path = context_dir / f"{week_str}_context{ext}"
             output_path.write_text(output)
@@ -967,7 +966,10 @@ Examples:
             print(f"  Creator: {creator.display_name}", file=sys.stderr)
             print(f"  Week: {week_start} - {week_end}", file=sys.stderr)
             print(f"  Mode: {args.mode}", file=sys.stderr)
-            print(f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)", file=sys.stderr)
+            print(
+                f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":

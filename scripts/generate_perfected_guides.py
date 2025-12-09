@@ -17,39 +17,37 @@ Usage:
     python generate_perfected_guides.py --all --dry-run
 """
 
-import sqlite3
-import os
 import argparse
+import os
 import random
-from datetime import datetime
+import sqlite3
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from pathlib import Path
-
 
 # =============================================================================
 # CONSTANTS
 # =============================================================================
 
 PORTFOLIO_DAY_FACTORS = {
-    'Sunday': 0.82,
-    'Monday': 0.99,
-    'Tuesday': 0.96,
-    'Wednesday': 1.10,
-    'Thursday': 1.16,
-    'Friday': 1.10,
-    'Saturday': 0.86
+    "Sunday": 0.82,
+    "Monday": 0.99,
+    "Tuesday": 0.96,
+    "Wednesday": 1.10,
+    "Thursday": 1.16,
+    "Friday": 1.10,
+    "Saturday": 0.86,
 }
 
 # Map SQLite day-of-week (0=Sunday) to day names
 DOW_TO_NAME = {
-    0: 'Sunday',
-    1: 'Monday',
-    2: 'Tuesday',
-    3: 'Wednesday',
-    4: 'Thursday',
-    5: 'Friday',
-    6: 'Saturday'
+    0: "Sunday",
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
 }
 
 FREE_PAGE_STRATEGY = {
@@ -58,7 +56,7 @@ FREE_PAGE_STRATEGY = {
     "weekend_min_modifier": 0.7,
     "bump_ratio": 1.0,
     "max_ppv_per_day": 6,
-    "fatigue_threshold_weekly": 42
+    "fatigue_threshold_weekly": 42,
 }
 
 PAID_PAGE_STRATEGY = {
@@ -67,7 +65,7 @@ PAID_PAGE_STRATEGY = {
     "weekend_min_modifier": 0.5,
     "bump_ratio": 0.5,
     "max_ppv_per_day": 5,
-    "fatigue_threshold_weekly": 35
+    "fatigue_threshold_weekly": 35,
 }
 
 PRICING_TIERS = {
@@ -75,19 +73,21 @@ PRICING_TIERS = {
     "bundle": {"base": (18, 22), "free_adj": 0, "paid_adj": 3},
     "bg_sextape": {"base": (22, 28), "free_adj": 0, "paid_adj": 5},
     "dick_rating": {"base": (15, 25), "free_adj": 0, "paid_adj": 3},
-    "custom": {"base": (35, 50), "free_adj": 0, "paid_adj": 8}
+    "custom": {"base": (35, 50), "free_adj": 0, "paid_adj": 8},
 }
 
-DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class CreatorData:
     """Holds creator profile and metrics."""
+
     creator_id: str
     page_name: str
     display_name: str
@@ -102,6 +102,7 @@ class CreatorData:
 @dataclass
 class DayPerformance:
     """Performance metrics for a specific day of week."""
+
     day_name: str
     sample_count: int
     avg_earnings: float
@@ -113,6 +114,7 @@ class DayPerformance:
 @dataclass
 class TopDay:
     """Represents a top-earning historical day."""
+
     date: str
     day_of_week: str
     ppvs_sent: int
@@ -123,6 +125,7 @@ class TopDay:
 # =============================================================================
 # DATABASE FUNCTIONS
 # =============================================================================
+
 
 def get_db_connection(db_path: str) -> sqlite3.Connection:
     """
@@ -147,7 +150,7 @@ def get_db_connection(db_path: str) -> sqlite3.Connection:
     return conn
 
 
-def load_all_creators(conn: sqlite3.Connection) -> List[CreatorData]:
+def load_all_creators(conn: sqlite3.Connection) -> list[CreatorData]:
     """
     Load all active creators with their metrics.
 
@@ -174,26 +177,28 @@ def load_all_creators(conn: sqlite3.Connection) -> List[CreatorData]:
 
     creators = []
     for row in conn.execute(query):
-        fans = row['fans'] or 0
-        page_type = row['page_type'] or 'free'
+        fans = row["fans"] or 0
+        page_type = row["page_type"] or "free"
         base_volume = calculate_base_volume(fans, page_type)
 
-        creators.append(CreatorData(
-            creator_id=row['creator_id'],
-            page_name=row['page_name'],
-            display_name=row['display_name'] or row['page_name'],
-            page_type=page_type,
-            fans=fans,
-            total_earnings=row['total_earnings'] or 0,
-            performance_tier=row['performance_tier'] or 3,
-            avg_conversion=row['avg_conversion'] or 0,
-            base_volume=base_volume
-        ))
+        creators.append(
+            CreatorData(
+                creator_id=row["creator_id"],
+                page_name=row["page_name"],
+                display_name=row["display_name"] or row["page_name"],
+                page_type=page_type,
+                fans=fans,
+                total_earnings=row["total_earnings"] or 0,
+                performance_tier=row["performance_tier"] or 3,
+                avg_conversion=row["avg_conversion"] or 0,
+                base_volume=base_volume,
+            )
+        )
 
     return creators
 
 
-def load_day_performance(conn: sqlite3.Connection, creator_id: str) -> Dict[str, DayPerformance]:
+def load_day_performance(conn: sqlite3.Connection, creator_id: str) -> dict[str, DayPerformance]:
     """
     Query mass_messages for day-of-week performance metrics.
 
@@ -221,18 +226,17 @@ def load_day_performance(conn: sqlite3.Connection, creator_id: str) -> Dict[str,
     rows = list(conn.execute(query, (creator_id,)))
 
     # Calculate total earnings for this creator to compute raw factors
-    total_creator_earnings = sum(row['total_earnings'] for row in rows) if rows else 0
-    total_samples = sum(row['sample_count'] for row in rows) if rows else 0
+    total_creator_earnings = sum(row["total_earnings"] for row in rows) if rows else 0
 
     # Expected earnings if all days were equal
     avg_daily_earnings = total_creator_earnings / 7 if total_creator_earnings > 0 else 0
 
     for row in rows:
-        dow = row['sending_day_of_week']
-        day_name = DOW_TO_NAME.get(dow, 'Unknown')
-        sample_count = row['sample_count']
-        avg_earnings = row['avg_earnings'] or 0
-        day_total = row['total_earnings'] or 0
+        dow = row["sending_day_of_week"]
+        day_name = DOW_TO_NAME.get(dow, "Unknown")
+        sample_count = row["sample_count"]
+        avg_earnings = row["avg_earnings"] or 0
+        day_total = row["total_earnings"] or 0
 
         # Raw factor: how this day compares to the average
         raw_factor = (day_total / avg_daily_earnings) if avg_daily_earnings > 0 else 1.0
@@ -254,7 +258,7 @@ def load_day_performance(conn: sqlite3.Connection, creator_id: str) -> Dict[str,
             avg_earnings=avg_earnings,
             raw_factor=raw_factor,
             blended_factor=raw_factor,  # Placeholder, updated in calculate_day_factors
-            data_quality=data_quality
+            data_quality=data_quality,
         )
 
     # Fill in missing days with portfolio defaults
@@ -266,13 +270,13 @@ def load_day_performance(conn: sqlite3.Connection, creator_id: str) -> Dict[str,
                 avg_earnings=0,
                 raw_factor=PORTFOLIO_DAY_FACTORS[day_name],
                 blended_factor=PORTFOLIO_DAY_FACTORS[day_name],
-                data_quality="None"
+                data_quality="None",
             )
 
     return results
 
 
-def load_top_days(conn: sqlite3.Connection, creator_id: str, limit: int = 5) -> List[TopDay]:
+def load_top_days(conn: sqlite3.Connection, creator_id: str, limit: int = 5) -> list[TopDay]:
     """
     Get top N earning days for a creator.
 
@@ -301,18 +305,20 @@ def load_top_days(conn: sqlite3.Connection, creator_id: str, limit: int = 5) -> 
 
     top_days = []
     for row in conn.execute(query, (creator_id, limit)):
-        dow = row['sending_day_of_week']
-        day_name = DOW_TO_NAME.get(dow, 'Unknown')
-        ppvs = row['ppvs_sent']
-        revenue = row['revenue'] or 0
+        dow = row["sending_day_of_week"]
+        day_name = DOW_TO_NAME.get(dow, "Unknown")
+        ppvs = row["ppvs_sent"]
+        revenue = row["revenue"] or 0
 
-        top_days.append(TopDay(
-            date=row['day_date'],
-            day_of_week=day_name,
-            ppvs_sent=ppvs,
-            revenue=revenue,
-            avg_per_ppv=revenue / ppvs if ppvs > 0 else 0
-        ))
+        top_days.append(
+            TopDay(
+                date=row["day_date"],
+                day_of_week=day_name,
+                ppvs_sent=ppvs,
+                revenue=revenue,
+                avg_per_ppv=revenue / ppvs if ppvs > 0 else 0,
+            )
+        )
 
     return top_days
 
@@ -320,6 +326,7 @@ def load_top_days(conn: sqlite3.Connection, creator_id: str, limit: int = 5) -> 
 # =============================================================================
 # CALCULATION FUNCTIONS
 # =============================================================================
+
 
 def calculate_base_volume(fans: int, page_type: str) -> int:
     """
@@ -336,7 +343,7 @@ def calculate_base_volume(fans: int, page_type: str) -> int:
         PAID: 0-999=2, 1K-5K=3, 5K-15K=4, 15K+=5
         FREE: 0-999=2, 1K-5K=3, 5K-20K=4, 20K+=5
     """
-    if page_type == 'paid':
+    if page_type == "paid":
         if fans >= 15000:
             return 5
         elif fans >= 5000:
@@ -356,8 +363,9 @@ def calculate_base_volume(fans: int, page_type: str) -> int:
             return 2
 
 
-def apply_bayesian_shrinkage(creator_factor: float, portfolio_factor: float,
-                              sample_count: int, k: int = 20) -> float:
+def apply_bayesian_shrinkage(
+    creator_factor: float, portfolio_factor: float, sample_count: int, k: int = 20
+) -> float:
     """
     Blend creator factor with portfolio based on sample size.
 
@@ -382,8 +390,9 @@ def apply_bayesian_shrinkage(creator_factor: float, portfolio_factor: float,
     return max(0.7, min(1.3, blended))
 
 
-def calculate_day_factors(day_performance: Dict[str, DayPerformance],
-                          total_samples: int) -> Dict[str, float]:
+def calculate_day_factors(
+    day_performance: dict[str, DayPerformance], total_samples: int
+) -> dict[str, float]:
     """
     Calculate final day factors with Bayesian shrinkage.
 
@@ -404,7 +413,7 @@ def calculate_day_factors(day_performance: Dict[str, DayPerformance],
             blended = apply_bayesian_shrinkage(
                 creator_factor=perf.raw_factor,
                 portfolio_factor=portfolio_factor,
-                sample_count=perf.sample_count
+                sample_count=perf.sample_count,
             )
             # Update the performance object with blended factor
             perf.blended_factor = blended
@@ -425,13 +434,14 @@ def get_page_strategy(page_type: str) -> dict:
     Returns:
         Strategy dictionary with volume and constraint parameters.
     """
-    if page_type == 'free':
+    if page_type == "free":
         return FREE_PAGE_STRATEGY.copy()
     return PAID_PAGE_STRATEGY.copy()
 
 
-def calculate_daily_volumes(base_volume: int, day_factors: Dict[str, float],
-                           strategy: dict) -> Dict[str, int]:
+def calculate_daily_volumes(
+    base_volume: int, day_factors: dict[str, float], strategy: dict
+) -> dict[str, int]:
     """
     Apply factors and constraints to get final daily PPV counts.
 
@@ -444,8 +454,8 @@ def calculate_daily_volumes(base_volume: int, day_factors: Dict[str, float],
         Dictionary mapping day names to final PPV counts.
     """
     volumes = {}
-    max_ppv = strategy['max_ppv_per_day']
-    volume_boost = strategy['volume_boost']
+    max_ppv = strategy["max_ppv_per_day"]
+    volume_boost = strategy["volume_boost"]
     min_ppv = 2  # Hard floor - never less than 2 PPV/day
 
     for day_name in DAY_ORDER:
@@ -460,7 +470,7 @@ def calculate_daily_volumes(base_volume: int, day_factors: Dict[str, float],
 
     # Weekly cap check - if over fatigue threshold, scale down proportionally
     weekly_total = sum(volumes.values())
-    fatigue_threshold = strategy['fatigue_threshold_weekly']
+    fatigue_threshold = strategy["fatigue_threshold_weekly"]
 
     if weekly_total > fatigue_threshold:
         scale_factor = fatigue_threshold / weekly_total
@@ -471,10 +481,9 @@ def calculate_daily_volumes(base_volume: int, day_factors: Dict[str, float],
     return volumes
 
 
-def inject_authentic_variation(volumes: Dict[str, int],
-                               day_factors: Dict[str, float],
-                               seed: int,
-                               max_ppv: int = 6) -> Dict[str, int]:
+def inject_authentic_variation(
+    volumes: dict[str, int], day_factors: dict[str, float], seed: int, max_ppv: int = 6
+) -> dict[str, int]:
     """
     Add controlled randomness for natural variation.
 
@@ -532,8 +541,7 @@ def inject_authentic_variation(volumes: Dict[str, int],
     return varied
 
 
-def generate_rationale(day: str, factor: float, avg_earnings: float,
-                       sample_count: int) -> str:
+def generate_rationale(day: str, factor: float, avg_earnings: float, sample_count: int) -> str:
     """
     Generate human-readable rationale for each day's volume.
 
@@ -570,7 +578,7 @@ def generate_rationale(day: str, factor: float, avg_earnings: float,
     return f"{strength} based on {sample_count} samples - {action}"
 
 
-def calculate_pricing(page_type: str) -> Dict[str, Tuple[int, int]]:
+def calculate_pricing(page_type: str) -> dict[str, tuple[int, int]]:
     """
     Calculate content type pricing with page-type adjustment.
 
@@ -581,18 +589,22 @@ def calculate_pricing(page_type: str) -> Dict[str, Tuple[int, int]]:
         Dictionary mapping content types to (min, max) price tuples.
     """
     pricing = {}
-    adj_key = 'paid_adj' if page_type == 'paid' else 'free_adj'
+    adj_key = "paid_adj" if page_type == "paid" else "free_adj"
 
     for content_type, tier in PRICING_TIERS.items():
-        base_min, base_max = tier['base']
+        base_min, base_max = tier["base"]
         adjustment = tier[adj_key]
         pricing[content_type] = (base_min + adjustment, base_max + adjustment)
 
     return pricing
 
 
-def generate_insights(creator: CreatorData, day_factors: Dict[str, float],
-                     top_days: List[TopDay], day_performance: Dict[str, DayPerformance]) -> List[str]:
+def generate_insights(
+    creator: CreatorData,
+    day_factors: dict[str, float],
+    top_days: list[TopDay],
+    day_performance: dict[str, DayPerformance],
+) -> list[str]:
     """
     Generate creator-specific key insights.
 
@@ -623,7 +635,7 @@ def generate_insights(creator: CreatorData, day_factors: Dict[str, float],
     )
 
     # Page type strategy
-    if creator.page_type == 'free':
+    if creator.page_type == "free":
         insights.append(
             "**Free Page Advantage:** Higher volume tolerance - push 15% more PPVs during peaks"
         )
@@ -641,7 +653,7 @@ def generate_insights(creator: CreatorData, day_factors: Dict[str, float],
 
     # Top day pattern (if available)
     if top_days:
-        dow_counts: Dict[str, int] = {}
+        dow_counts: dict[str, int] = {}
         for td in top_days:
             dow_counts[td.day_of_week] = dow_counts.get(td.day_of_week, 0) + 1
 
@@ -655,9 +667,7 @@ def generate_insights(creator: CreatorData, day_factors: Dict[str, float],
     # Sample quality insight
     total_samples = sum(p.sample_count for p in day_performance.values())
     if total_samples >= 100:
-        insights.append(
-            f"**Data Confidence:** High ({total_samples:,} historical PPVs analyzed)"
-        )
+        insights.append(f"**Data Confidence:** High ({total_samples:,} historical PPVs analyzed)")
     elif total_samples >= 30:
         insights.append(
             f"**Data Confidence:** Medium ({total_samples:,} historical PPVs) - factors balanced with portfolio trends"
@@ -674,12 +684,15 @@ def generate_insights(creator: CreatorData, day_factors: Dict[str, float],
 # GUIDE GENERATION
 # =============================================================================
 
-def generate_guide_markdown(creator: CreatorData,
-                           daily_volumes: Dict[str, int],
-                           day_factors: Dict[str, float],
-                           day_performance: Dict[str, DayPerformance],
-                           top_days: List[TopDay],
-                           strategy: dict) -> str:
+
+def generate_guide_markdown(
+    creator: CreatorData,
+    daily_volumes: dict[str, int],
+    day_factors: dict[str, float],
+    day_performance: dict[str, DayPerformance],
+    top_days: list[TopDay],
+    strategy: dict,
+) -> str:
     """
     Render complete markdown guide for a creator.
 
@@ -764,11 +777,11 @@ def generate_guide_markdown(creator: CreatorData,
         "bundle": "Bundle (3-5)",
         "bg_sextape": "B/G Sextape",
         "dick_rating": "Dick Rating",
-        "custom": "Custom/Interactive"
+        "custom": "Custom/Interactive",
     }
     for content_type, (min_p, max_p) in pricing.items():
         display_name = content_display_names.get(content_type, content_type.title())
-        base_min, base_max = PRICING_TIERS[content_type]['base']
+        base_min, base_max = PRICING_TIERS[content_type]["base"]
         adj = min_p - base_min
         adj_str = f"+${adj}" if adj > 0 else "None"
         pricing_rows.append(
@@ -778,11 +791,11 @@ def generate_guide_markdown(creator: CreatorData,
 
     # Calculate bumps per day
     avg_volume = weekly_total / 7
-    bumps_per_day = round(avg_volume * strategy['bump_ratio'])
+    bumps_per_day = round(avg_volume * strategy["bump_ratio"])
     bumps_per_day = max(1, bumps_per_day)
 
     # Page type display
-    page_display = "Free Page" if creator.page_type == 'free' else "Paid Page"
+    page_display = "Free Page" if creator.page_type == "free" else "Paid Page"
 
     guide = f"""# {creator.display_name} - 7-Day PPV Volume Guide
 ## {page_display} | Generated: {now}
@@ -866,6 +879,7 @@ def generate_guide_markdown(creator: CreatorData,
 # MAIN FUNCTION
 # =============================================================================
 
+
 def main():
     """Main entry point for generating perfected volume guides."""
     parser = argparse.ArgumentParser(
@@ -876,40 +890,33 @@ Examples:
   python generate_perfected_guides.py --all              # Generate for all creators
   python generate_perfected_guides.py --creator missalexa  # Single creator
   python generate_perfected_guides.py --all --dry-run    # Preview mode
-        """
+        """,
     )
     parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Generate guides for all active creators"
+        "--all", action="store_true", help="Generate guides for all active creators"
     )
     parser.add_argument(
-        "--creator",
-        type=str,
-        help="Generate guide for a specific creator (by page_name)"
+        "--creator", type=str, help="Generate guide for a specific creator (by page_name)"
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview output without writing files"
+        "--dry-run", action="store_true", help="Preview output without writing files"
     )
     parser.add_argument(
         "--db",
         type=str,
         default=os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db"),
-        help="Path to EROS database"
+        help="Path to EROS database",
     )
     parser.add_argument(
         "--output",
         type=str,
-        default=os.path.expanduser("~/Developer/EROS-SD-MAIN-PROJECT/output/creator-volume-guides/volume-guides"),
-        help="Output directory for guides"
+        default=os.path.expanduser(
+            "~/Developer/EROS-SD-MAIN-PROJECT/output/creator-volume-guides/volume-guides"
+        ),
+        help="Output directory for guides",
     )
     parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for variation (default: 42)"
+        "--seed", type=int, default=42, help="Random seed for variation (default: 42)"
     )
 
     args = parser.parse_args()
@@ -977,17 +984,12 @@ Examples:
                 daily_volumes,
                 day_factors,
                 seed=hash(creator.page_name) % (2**31),
-                max_ppv=strategy['max_ppv_per_day']
+                max_ppv=strategy["max_ppv_per_day"],
             )
 
             # Generate markdown
             guide = generate_guide_markdown(
-                creator,
-                daily_volumes,
-                day_factors,
-                day_perf,
-                top_days,
-                strategy
+                creator, daily_volumes, day_factors, day_perf, top_days, strategy
             )
 
             weekly_total = sum(daily_volumes.values())
@@ -1004,7 +1006,9 @@ Examples:
             else:
                 output_path = output_dir / f"{creator.page_name}_volume_guide.md"
                 output_path.write_text(guide)
-                print(f"Generated: {creator.page_name} ({weekly_total} weekly PPVs, {total_samples:,} samples)")
+                print(
+                    f"Generated: {creator.page_name} ({weekly_total} weekly PPVs, {total_samples:,} samples)"
+                )
 
             generated += 1
 

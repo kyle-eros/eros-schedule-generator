@@ -2,11 +2,11 @@
 
 **Enterprise-Grade OnlyFans Content Scheduling for Claude Code**
 
-A Claude Code slash command skill that generates optimized weekly content schedules for OnlyFans creators using a sophisticated 12-step extended pipeline with AI-enhanced semantic analysis.
+A Claude Code slash command skill that generates optimized weekly content schedules for OnlyFans creators using a sophisticated 9-step pipeline with pool-based earnings selection, persona matching, and business rule validation.
 
 ```
                     ╔═══════════════════════════════════════╗
-                    ║   EROS Schedule Generator v2.0        ║
+                    ║   EROS Schedule Generator v2.1        ║
                     ║   ─────────────────────────────────   ║
                     ║   36 Creators │ 19.6K Captions        ║
                     ║   66K+ Historical Messages            ║
@@ -24,7 +24,7 @@ EROS (Enhanced Revenue Optimization System) is a Claude Code skill package that 
 
 | Feature | Description |
 |---------|-------------|
-| **12-Step Extended Pipeline** | Complete scheduling workflow with optional LLM enhancement steps |
+| **9-Step Pipeline** | Complete scheduling workflow from analysis to validation |
 | **Dual Execution Modes** | Quick mode (<30 sec) or Full mode with semantic analysis (<60 sec) |
 | **Vose Alias Algorithm** | O(1) weighted random selection for caption diversity |
 | **Persona Matching** | 1.0-1.4x boost based on tone/emoji/slang alignment |
@@ -43,8 +43,8 @@ EROS supports two execution modes to balance speed and optimization depth:
 
 | Mode | Entry Point | Time | Features |
 |------|-------------|------|----------|
-| **Quick Mode** | `generate_schedule.py` | <30 sec | Steps 1-9, pattern matching only |
-| **Full Mode** | `prepare_llm_context.py` | <60 sec | Steps 1-9 + 4B/7B/8B, LLM semantic analysis |
+| **Quick Mode** | `generate_schedule.py` | <30 sec | Steps 1-9, pattern-based persona matching |
+| **Full Mode** | `prepare_llm_context.py` | <60 sec | Steps 1-9, LLM-enhanced semantic analysis |
 
 ### When to Use Each Mode
 
@@ -58,11 +58,11 @@ EROS supports two execution modes to balance speed and optimization depth:
 
 ---
 
-## 12-Step Extended Pipeline
+## 9-Step Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    EROS EXTENDED SCHEDULING PIPELINE                        │
+│                    EROS SCHEDULING PIPELINE (v2.1)                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   INPUT                                                                     │
@@ -87,62 +87,45 @@ EROS supports two execution modes to balance speed and optimization depth:
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 3: MATCH PERSONA                                              │    │
-│   │ Score captions by voice profile alignment (tone, emoji, slang)     │    │
+│   │ Score captions by voice profile (tone, emoji, slang)               │    │
+│   │ Full Mode: LLM-enhanced semantic tone detection                    │    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 4: BUILD STRUCTURE                                            │    │
-│   │ Create weekly time slots based on optimal hours and volume level   │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│            │                                                                │
-│            ▼                                                                │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │ STEP 4B: QUALITY SCORING (Full Mode Only)                          │    │
-│   │ LLM-based caption quality assessment: authenticity, hook strength, │    │
-│   │ CTA effectiveness, conversion potential                            │    │
+│   │ Create weekly time slots with payday optimization & timing variance│    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 5: ASSIGN CAPTIONS                                            │    │
-│   │ Vose Alias weighted selection using performance + freshness        │    │
+│   │ Pool-based Vose Alias selection (PROVEN/GLOBAL_EARNER/DISCOVERY)  │    │
+│   │ Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Bonus(10%)│    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 6: GENERATE FOLLOW-UPS                                        │    │
-│   │ Create context-aware 15-45min follow-up messages for PPVs          │    │
+│   │ Create 15-45min follow-up messages for high performers (≥60 score) │    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 7: APPLY DRIP WINDOWS                                         │    │
-│   │ Enforce 4-8hr no-PPV zones after drip content                      │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│            │                                                                │
-│            ▼                                                                │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │ STEP 7B: CAPTION ENHANCEMENT (Full Mode Only)                      │    │
-│   │ Authenticity tweaks: contractions, emoji calibration, slang        │    │
+│   │ Enforce 4-8hr no-PPV zones after drip content (if enabled)         │    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 8: APPLY PAGE TYPE RULES                                      │    │
-│   │ Adjust for Paid vs Free page requirements                          │    │
-│   └────────────────────────────────────────────────────────────────────┘    │
-│            │                                                                │
-│            ▼                                                                │
-│   ┌────────────────────────────────────────────────────────────────────┐    │
-│   │ STEP 8B: CONTEXTUAL FOLLOW-UPS (Full Mode Only)                    │    │
-│   │ Personalized bump messages based on content context                │    │
+│   │ Adjust pricing for Paid vs Free pages (if enabled)                 │    │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │ STEP 9: VALIDATE & RETURN                                          │    │
-│   │ Check all business rules, generate warnings, return schedule       │    │
+│   │ Auto-correct spacing/timing issues, check rules, track hook diversity│   │
 │   └────────────────────────────────────────────────────────────────────┘    │
 │            │                                                                │
 │            ▼                                                                │
@@ -150,6 +133,7 @@ EROS supports two execution modes to balance speed and optimization depth:
 │   ┌──────────────────┐                                                      │
 │   │ List[ScheduleItem]│                                                     │
 │   │ ValidationReport │                                                      │
+│   │ Hook Diversity   │                                                      │
 │   └──────────────────┘                                                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -278,7 +262,7 @@ python scripts/validate_schedule.py --input schedule.json
 
 | Script | Lines | Pipeline Step |
 |--------|-------|---------------|
-| `generate_schedule.py` | 3,082 | Main orchestrator (all steps) |
+| `generate_schedule.py` | 3,082 | Main 9-step orchestrator |
 | `select_captions.py` | 489 | Step 2: Match Content |
 | `match_persona.py` | 896 | Step 3: Match Persona |
 | `volume_optimizer.py` | 1,584 | Step 4: Build Structure |
@@ -322,7 +306,7 @@ python scripts/validate_schedule.py --input schedule.json
 
 ---
 
-## Sub-Agent Architecture (v2.0)
+## Sub-Agent Architecture
 
 EROS includes a sub-agent delegation system (`agent_invoker.py`) that routes specialized tasks to 7 focused agents organized by pipeline phase:
 
@@ -447,7 +431,7 @@ Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery Bonus(10%)
 
 ## Volume Levels
 
-**Performance-Based Tier System (v2.0)**
+**Performance-Based Tier System (v2.1)**
 
 Volume is now determined by performance metrics, not just fan count:
 
@@ -626,8 +610,8 @@ Proprietary - For authorized use only.
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
 ║                                                                           ║
-║   EROS Schedule Generator v2.0                                            ║
-║   Built for Claude Code │ 12-Step Extended Pipeline │ AI-Enhanced         ║
+║   EROS Schedule Generator v2.1                                            ║
+║   Built for Claude Code │ 9-Step Pipeline │ Pool-Based Selection          ║
 ║   19 Scripts │ 26,928 Lines │ 16 SQL Queries │ 171 Tests                  ║
 ║                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════╝

@@ -16,7 +16,9 @@ from pathlib import Path
 
 # Resolve paths
 SCRIPT_DIR = Path(__file__).parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # .claude/skills/eros-schedule-generator -> project root
+PROJECT_ROOT = (
+    SCRIPT_DIR.parent.parent.parent
+)  # .claude/skills/eros-schedule-generator -> project root
 SCRIPTS_DIR = SCRIPT_DIR / "scripts"
 REFERENCES_DIR = SCRIPT_DIR / "references"
 SQL_DIR = SCRIPT_DIR / "assets" / "sql"
@@ -25,6 +27,7 @@ DB_PATH = PROJECT_ROOT / "database" / "eros_sd_main.db"
 
 class Colors:
     """ANSI color codes for terminal output."""
+
     GREEN = "\033[92m"
     RED = "\033[91m"
     YELLOW = "\033[93m"
@@ -182,6 +185,7 @@ def check_database() -> bool:
         return False
 
     import sqlite3
+
     try:
         conn = sqlite3.connect(str(DB_PATH))
         cursor = conn.execute("SELECT COUNT(*) FROM creators WHERE is_active = 1")
@@ -303,13 +307,13 @@ def main():
     if results["generation"] is not None:
         print(f"  Generation:   {'PASS' if results['generation'] else 'FAIL'} ({gen_time:.2f}s)")
     else:
-        print(f"  Generation:   SKIPPED")
+        print("  Generation:   SKIPPED")
 
     print()
     if all_passed:
         print(f"{Colors.GREEN}{Colors.BOLD}DEPLOYMENT READY{Colors.RESET}")
         print(f"\nSkills package location: {SCRIPT_DIR}")
-        print(f"\nQuick start:")
+        print("\nQuick start:")
         print(f"  python3 {SCRIPTS_DIR}/generate_schedule.py --creator <name> --week 2025-W01")
         return 0
     else:

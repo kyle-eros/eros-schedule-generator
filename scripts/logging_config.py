@@ -20,14 +20,13 @@ Usage:
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 def configure_logging(
     level: str = "INFO",
-    log_file: Optional[Path] = None,
-    format_string: Optional[str] = None,
-    logger_name: str = "eros"
+    log_file: Path | None = None,
+    format_string: str | None = None,
+    logger_name: str = "eros",
 ) -> logging.Logger:
     """Configure logging for the application.
 
@@ -52,9 +51,7 @@ def configure_logging(
         format_string = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 
     # Create handlers list
-    handlers: list[logging.Handler] = [
-        logging.StreamHandler(sys.stderr)
-    ]
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]
 
     if log_file:
         # Ensure parent directory exists
@@ -66,7 +63,7 @@ def configure_logging(
         level=getattr(logging, level.upper()),
         format=format_string,
         handlers=handlers,
-        force=True  # Override any existing configuration
+        force=True,  # Override any existing configuration
     )
 
     # Get and return named logger
