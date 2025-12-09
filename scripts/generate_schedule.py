@@ -32,12 +32,16 @@ Critical Business Rules:
 
 import argparse
 import json
+import logging
 import os
 import random
 import re
 import sqlite3
 import sys
 import uuid
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field, asdict
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -45,6 +49,51 @@ from typing import Any, Optional
 
 from utils import VoseAliasSelector
 from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy
+from weights import (
+    calculate_weight,
+    determine_pool_type,
+    get_max_earnings,
+    POOL_PROVEN,
+    POOL_GLOBAL_EARNER,
+    POOL_DISCOVERY,
+)
+from content_type_strategy import (
+    ContentTypeStrategy,
+    get_content_type_earnings,
+    allocate_slots_weighted,
+    PREMIUM_HOURS,
+)
+
+# Stratified pools dataclass for pool-based selection
+from dataclasses import dataclass as _dataclass
+
+
+@_dataclass
+class StratifiedPools:
+    """
+    Stratified caption pools for a single content type.
+
+    Pools:
+        - proven: Captions with creator-specific earnings data
+        - global_earner: Captions with global earnings but no creator data
+        - discovery: Captions with no earnings data
+    """
+    content_type_id: int
+    content_type_name: str
+    proven: list  # List[Caption]
+    global_earner: list  # List[Caption]
+    discovery: list  # List[Caption]
+    content_type_avg_earnings: float = 50.0
+
+    @property
+    def total_count(self) -> int:
+        """Total captions across all pools."""
+        return len(self.proven) + len(self.global_earner) + len(self.discovery)
+
+    @property
+    def has_proven(self) -> bool:
+        """Whether this content type has proven performers."""
+        return len(self.proven) > 0
 
 # New pipeline modules for full mode
 try:
@@ -312,6 +361,12 @@ class ScheduleConfig:
     enable_game_wheel: bool = False
     wall_post_hours: tuple[int, ...] = (12, 16, 20)  # Use tuple instead of list for frozen dataclass
     preview_lead_time_hours: int = 2
+    # NEW: Earnings-based selection config
+    earnings_weight: float = 0.70          # Primary factor (~70%)
+    earnings_freshness_weight: float = 0.20  # Secondary factor (~20%)
+    persona_tiebreak_weight: float = 0.10  # Tiebreaker (~10%)
+    reserved_slot_ratio: float = 0.15      # 15% of slots for untested
+    min_uses_for_tested: int = 3           # Threshold for "tested" status
 
 
 @dataclass(slots=True)
@@ -353,6 +408,13 @@ class Caption:
     combined_score: float = 0.0
     persona_boost: float = 1.0
     final_weight: float = 0.0
+    # NEW: Earnings-based fields for priority selection
+    creator_avg_earnings: float | None = None  # Creator-specific avg earnings
+    global_avg_earnings: float | None = None   # Global avg earnings (fallback)
+    creator_times_used: int = 0                # Times used by THIS creator
+    global_times_used: int = 0                 # Global times used
+    earnings_source: str = "none"              # "creator", "global", or "none"
+    is_untested: bool = False                  # True if <3 uses for this creator
 
 
 @dataclass
@@ -674,17 +736,193 @@ def load_vault_types(conn: sqlite3.Connection, creator_id: str) -> list[int]:
 # STEP 2: MATCH CONTENT - Filter by vault availability
 # ============================================================================
 
+
+def get_allowed_content_types(conn: sqlite3.Connection, creator_id: str) -> list[int]:
+    """
+    Get content types from vault_matrix where has_content=1.
+
+    Step 2 content gate: Only content types with available content
+    in the creator's vault are eligible for schedule slots.
+
+    Args:
+        conn: Database connection
+        creator_id: Creator UUID
+
+    Returns:
+        List of content_type_id integers that have content available
+    """
+    strategy = ContentTypeStrategy(conn, creator_id)
+    pools = strategy.get_allowed_content_types()
+    return [p.content_type_id for p in pools]
+
+
+def calculate_content_type_slot_allocation(
+    conn: sqlite3.Connection,
+    creator_id: str,
+    total_ppv_slots: int,
+) -> dict[str, int]:
+    """
+    Calculate how many slots each content type should get.
+
+    Uses ContentTypeStrategy.allocate_slots_by_content_type() to distribute
+    slots proportionally to expected earnings, with:
+    - Minimum 1 slot per content type (variety floor)
+    - Maximum 40% of slots for any single type (variety ceiling)
+
+    Args:
+        conn: Database connection
+        creator_id: Creator UUID
+        total_ppv_slots: Total number of PPV slots to allocate
+
+    Returns:
+        Dict mapping content type name to slot count
+        Example: {'solo': 8, 'bg': 11, 'anal': 6, 'custom': 3}
+    """
+    strategy = ContentTypeStrategy(conn, creator_id)
+    return strategy.allocate_slots_by_content_type(total_ppv_slots)
+
+
+def load_stratified_pools(
+    conn: sqlite3.Connection,
+    creator_id: str,
+    allowed_content_types: list[int],
+    min_freshness: float = 30.0,
+    filter_keywords: set[str] | None = None,
+    min_uses_for_tested: int = 3,
+) -> dict[int, StratifiedPools]:
+    """
+    Load captions stratified into PROVEN/GLOBAL_EARNER/DISCOVERY pools per content type.
+
+    This function loads all eligible captions and partitions them into three tiers
+    based on earnings data availability:
+        - PROVEN: Has creator_avg_earnings > 0
+        - GLOBAL_EARNER: Has global_avg_earnings > 0 (but no creator earnings)
+        - DISCOVERY: No earnings data (uses performance proxy)
+
+    Args:
+        conn: Database connection
+        creator_id: Creator UUID
+        allowed_content_types: List of content_type_id to include
+        min_freshness: Minimum freshness score (default 30)
+        filter_keywords: Optional keywords to exclude from captions
+        min_uses_for_tested: Threshold for tested status
+
+    Returns:
+        Dict mapping content_type_id to StratifiedPools object
+    """
+    # Get content type earnings for discovery pool calculations
+    content_type_earnings = get_content_type_earnings(conn, creator_id)
+
+    # Load all captions (existing function)
+    all_captions = load_available_captions(
+        conn, creator_id, min_freshness,
+        vault_types=allowed_content_types,
+        filter_keywords=filter_keywords,
+        min_uses_for_tested=min_uses_for_tested
+    )
+
+    # Get content type names mapping
+    type_names: dict[int, str] = {}
+    for cap in all_captions:
+        if cap.content_type_id and cap.content_type_name:
+            type_names[cap.content_type_id] = cap.content_type_name
+
+    # Initialize pools per content type
+    pools: dict[int, StratifiedPools] = {}
+    for ct_id in allowed_content_types:
+        ct_name = type_names.get(ct_id, f"type_{ct_id}")
+        ct_avg = content_type_earnings.get(ct_name, 50.0)
+        pools[ct_id] = StratifiedPools(
+            content_type_id=ct_id,
+            content_type_name=ct_name,
+            proven=[],
+            global_earner=[],
+            discovery=[],
+            content_type_avg_earnings=ct_avg,
+        )
+
+    # Partition captions into pools
+    for caption in all_captions:
+        ct_id = caption.content_type_id
+        if ct_id is None or ct_id not in pools:
+            continue
+
+        pool_type = determine_pool_type(caption)
+        if pool_type == POOL_PROVEN:
+            pools[ct_id].proven.append(caption)
+        elif pool_type == POOL_GLOBAL_EARNER:
+            pools[ct_id].global_earner.append(caption)
+        else:
+            pools[ct_id].discovery.append(caption)
+
+    return pools
+
+
+def identify_premium_slots(slots: list[dict]) -> list[dict]:
+    """
+    Return slots at peak hours (18:00, 21:00 - 6pm and 9pm).
+
+    Premium slots receive only PROVEN pool captions for maximum
+    revenue impact during peak engagement times.
+
+    Args:
+        slots: List of slot dicts with 'hour' key
+
+    Returns:
+        Filtered list of slots at premium hours
+    """
+    return [s for s in slots if s.get("hour") in PREMIUM_HOURS and s.get("type") == "ppv"]
+
+
+def identify_discovery_slots(slots: list[dict], count: int) -> list[int]:
+    """
+    Distribute discovery slots evenly across the week.
+
+    Discovery slots test new captions from the DISCOVERY pool to gather
+    performance data. They are distributed evenly to avoid clustering.
+
+    Args:
+        slots: List of PPV slot dicts (already filtered to PPV type)
+        count: Number of discovery slots to select
+
+    Returns:
+        List of slot indices (0-based) designated for discovery
+    """
+    ppv_slots = [s for s in slots if s.get("type") == "ppv"]
+    if not ppv_slots or count <= 0:
+        return []
+
+    total = len(ppv_slots)
+    if count >= total:
+        return list(range(total))
+
+    # Distribute evenly across the week
+    indices = []
+    step = total / count
+    for i in range(count):
+        idx = int(i * step + step / 2)
+        idx = min(idx, total - 1)
+        if idx not in indices:
+            indices.append(idx)
+
+    return indices
+
+
 def load_available_captions(
     conn: sqlite3.Connection,
     creator_id: str,
     min_freshness: float = 30.0,
     vault_types: list[int] | None = None,
-    filter_keywords: set[str] | None = None
+    filter_keywords: set[str] | None = None,
+    min_uses_for_tested: int = 3
 ) -> list[Caption]:
     """
     Load available captions filtered by freshness and vault.
 
     Step 2 of pipeline: MATCH CONTENT
+
+    Now includes earnings data from caption_creator_performance table
+    for earnings-based caption selection (Phase 1-2 enhancement).
     """
     query = """
         SELECT
@@ -698,20 +936,41 @@ def load_available_captions(
             cb.tone,
             cb.emoji_style,
             cb.slang_level,
-            cb.is_universal
+            cb.is_universal,
+            -- Global earnings data
+            cb.avg_earnings AS global_avg_earnings,
+            cb.times_used AS global_times_used,
+            -- Creator-specific earnings data (LEFT JOIN)
+            ccp.avg_earnings AS creator_avg_earnings,
+            ccp.times_used AS creator_times_used,
+            -- Computed fields for sorting
+            COALESCE(ccp.avg_earnings, cb.avg_earnings, 0) AS effective_earnings,
+            CASE
+                WHEN ccp.avg_earnings IS NOT NULL AND ccp.avg_earnings > 0 THEN 'creator'
+                WHEN cb.avg_earnings IS NOT NULL AND cb.avg_earnings > 0 THEN 'global'
+                ELSE 'none'
+            END AS earnings_source,
+            CASE
+                WHEN ccp.times_used IS NULL OR ccp.times_used < ? THEN 1
+                ELSE 0
+            END AS is_untested
         FROM caption_bank cb
         LEFT JOIN content_types ct ON cb.content_type_id = ct.content_type_id
         LEFT JOIN vault_matrix vm ON cb.creator_id = vm.creator_id
             AND cb.content_type_id = vm.content_type_id
+        LEFT JOIN caption_creator_performance ccp
+            ON cb.caption_id = ccp.caption_id AND ccp.creator_id = ?
         WHERE cb.is_active = 1
           AND (cb.creator_id = ? OR cb.is_universal = 1)
           AND cb.freshness_score >= ?
           AND (vm.has_content = 1 OR vm.vault_id IS NULL OR cb.content_type_id IS NULL)
-        ORDER BY cb.performance_score DESC, cb.freshness_score DESC
+        ORDER BY effective_earnings DESC, cb.performance_score DESC, cb.freshness_score DESC
         LIMIT 500
     """
 
-    cursor = conn.execute(query, (creator_id, min_freshness))
+    # Note: creator_id appears twice - once for JOIN, once for WHERE clause
+    # Parameter order: min_uses_for_tested (CASE), creator_id (JOIN), creator_id (WHERE), min_freshness
+    cursor = conn.execute(query, (min_uses_for_tested, creator_id, creator_id, min_freshness))
 
     captions = []
     for row in cursor.fetchall():
@@ -731,7 +990,14 @@ def load_available_captions(
             tone=row["tone"],
             emoji_style=row["emoji_style"],
             slang_level=row["slang_level"],
-            is_universal=bool(row["is_universal"])
+            is_universal=bool(row["is_universal"]),
+            # NEW: Earnings fields
+            creator_avg_earnings=row["creator_avg_earnings"],
+            global_avg_earnings=row["global_avg_earnings"],
+            creator_times_used=row["creator_times_used"] or 0,
+            global_times_used=row["global_times_used"] or 0,
+            earnings_source=row["earnings_source"],
+            is_untested=bool(row["is_untested"])
         ))
 
     # Filter out captions containing restricted keywords
@@ -766,6 +1032,7 @@ from match_persona import (
 def apply_persona_scores(
     captions: list[Caption],
     profile: CreatorProfile,
+    config: ScheduleConfig,
     use_text_detection: bool = True
 ) -> list[Caption]:
     """
@@ -786,10 +1053,12 @@ def apply_persona_scores(
     Args:
         captions: List of Caption objects to score
         profile: CreatorProfile with persona attributes
+        config: ScheduleConfig with earnings weight settings
         use_text_detection: Enable text-based detection fallback (default: True)
 
     Returns:
-        List of captions with persona_boost, combined_score, and final_weight set
+        List of captions with persona_boost and combined_score set.
+        (final_weight is calculated later in pool-based selection)
     """
     # Convert CreatorProfile to match_persona's PersonaProfile format
     persona = MatchPersonaProfile(
@@ -816,12 +1085,52 @@ def apply_persona_scores(
         )
 
         caption.persona_boost = match_result.total_boost
+
+        # Note: final_weight is calculated later in pool-based selection
+        # using the new calculate_weight signature with pool_type and
+        # content_type_avg_earnings. See lines ~1657 in pool-based selection.
+
+        # Keep combined_score for backward compatibility (reporting/sorting)
         caption.combined_score = (
             caption.performance_score * 0.6 + caption.freshness_score * 0.4
         )
-        caption.final_weight = caption.combined_score * caption.persona_boost
 
     return captions
+
+
+# ============================================================================
+# STEP 3B: EARNINGS-BASED WEIGHT CALCULATION
+# ============================================================================
+
+def get_earnings_stats(captions: list[Caption]) -> dict[str, float]:
+    """
+    Calculate earnings statistics for normalization.
+
+    Returns dict with:
+        - max_earnings: Maximum earnings across all captions
+        - avg_earnings: Average earnings across captions with data
+        - median_earnings: Median earnings
+    """
+    import statistics
+
+    all_earnings = []
+    for c in captions:
+        earnings = c.creator_avg_earnings or c.global_avg_earnings
+        if earnings and earnings > 0:
+            all_earnings.append(earnings)
+
+    if not all_earnings:
+        return {'max_earnings': 100.0, 'avg_earnings': 50.0, 'median_earnings': 38.0}
+
+    return {
+        'max_earnings': max(all_earnings),
+        'avg_earnings': statistics.mean(all_earnings),
+        'median_earnings': statistics.median(all_earnings)
+    }
+
+
+# NOTE: calculate_earnings_based_weight has been refactored to weights.py
+# Now using: from weights import calculate_weight
 
 
 # ============================================================================
@@ -1181,99 +1490,325 @@ def get_next_content_type(previous_type: str | None, available_types: set[str]) 
     return random.choice(candidates)
 
 
-def assign_captions_to_slots(
-    slots: list[dict[str, Any]],
+def partition_captions_by_testing_status(
     captions: list[Caption],
-    config: ScheduleConfig
+    min_uses: int = 3
+) -> tuple[list[Caption], list[Caption]]:
+    """
+    Partition captions into tested and untested groups.
+
+    Args:
+        captions: All available captions
+        min_uses: Minimum uses to be considered "tested"
+
+    Returns:
+        Tuple of (tested_captions, untested_captions)
+    """
+    tested = []
+    untested = []
+
+    for caption in captions:
+        if caption.is_untested or (caption.creator_times_used or 0) < min_uses:
+            untested.append(caption)
+        else:
+            tested.append(caption)
+
+    return tested, untested
+
+
+def calculate_reserved_slots(
+    total_slots: int,
+    reserved_ratio: float,
+    untested_count: int
+) -> int:
+    """
+    Calculate number of slots to reserve for untested captions.
+
+    Args:
+        total_slots: Total PPV slots in the schedule
+        reserved_ratio: Target ratio for untested (e.g., 0.15 for 15%)
+        untested_count: Number of untested captions available
+
+    Returns:
+        Number of slots to reserve (capped by available untested captions)
+    """
+    target_reserved = int(total_slots * reserved_ratio)
+    # Cap at available untested captions
+    return min(target_reserved, untested_count)
+
+
+def _select_from_pool(
+    pool: list[Caption],
+    selector: VoseAliasSelector | None,
+    used_ids: set[int],
+    target_type: str | None,
+    previous_type: str | None,
+    max_attempts: int = 50
+) -> Caption | None:
+    """Helper to select from a caption pool with constraints."""
+    # First try: match target content type
+    if target_type:
+        type_candidates = [
+            c for c in pool
+            if c.content_type_name == target_type and c.caption_id not in used_ids
+        ]
+        if type_candidates:
+            weights = [c.final_weight for c in type_candidates]
+            total = sum(weights)
+            if total > 0:
+                probs = [w / total for w in weights]
+                return random.choices(type_candidates, weights=probs, k=1)[0]
+
+    # Second try: any caption avoiding same type consecutively
+    if selector:
+        for _ in range(max_attempts):
+            candidate = selector.select()
+            if candidate.caption_id not in used_ids:
+                if candidate.content_type_name != previous_type or previous_type is None:
+                    return candidate
+                elif len(used_ids) > len(pool) - 5:
+                    # Near exhaustion, relax rotation constraint
+                    return candidate
+
+    # Fallback: first unused caption from pool
+    for c in pool:
+        if c.caption_id not in used_ids:
+            return c
+
+    return None
+
+
+def _select_from_stratified_pool(
+    pools: dict[int, StratifiedPools],
+    target_content_type: str | None,
+    slot_tier: str,  # "premium", "standard", or "discovery"
+    used_ids: set[int],
+    previous_type: str | None,
+    persona: dict[str, str],
+    config: ScheduleConfig,
+    max_attempts: int = 50
+) -> tuple[Caption | None, str]:
+    """
+    Select a caption from stratified pools based on slot tier.
+
+    Args:
+        pools: Dict mapping content_type_id to StratifiedPools
+        target_content_type: Preferred content type name (may be None)
+        slot_tier: "premium" (PROVEN only), "standard" (PROVEN+GLOBAL), "discovery" (DISCOVERY)
+        used_ids: Set of already-used caption IDs
+        previous_type: Previous content type (for rotation)
+        persona: Creator persona dict for boost calculation
+        config: Schedule configuration
+        max_attempts: Maximum selection attempts
+
+    Returns:
+        Tuple of (selected Caption or None, pool_type string)
+    """
+    # Determine which pool tiers to search based on slot_tier
+    if slot_tier == "premium":
+        pool_priority = [POOL_PROVEN]
+    elif slot_tier == "discovery":
+        pool_priority = [POOL_DISCOVERY, POOL_GLOBAL_EARNER]
+    else:  # standard
+        pool_priority = [POOL_PROVEN, POOL_GLOBAL_EARNER]
+
+    # Find matching content type pools
+    target_pools: list[StratifiedPools] = []
+    if target_content_type:
+        for ct_id, pool in pools.items():
+            if pool.content_type_name == target_content_type:
+                target_pools.append(pool)
+                break
+
+    # If no target match, try any content type except previous
+    if not target_pools:
+        for ct_id, pool in pools.items():
+            if pool.content_type_name != previous_type:
+                target_pools.append(pool)
+
+    # Try each pool tier in priority order
+    for pool_type in pool_priority:
+        for sp in target_pools:
+            if pool_type == POOL_PROVEN:
+                candidates = sp.proven
+            elif pool_type == POOL_GLOBAL_EARNER:
+                candidates = sp.global_earner
+            else:
+                candidates = sp.discovery
+
+            # Filter to unused captions
+            available = [c for c in candidates if c.caption_id not in used_ids]
+            if not available:
+                continue
+
+            # Calculate max_earnings for this pool
+            max_earnings = get_max_earnings(available, pool_type)
+
+            # Calculate weights for all available captions
+            for caption in available:
+                caption.final_weight = calculate_weight(
+                    caption,
+                    pool_type=pool_type,
+                    content_type_avg_earnings=sp.content_type_avg_earnings,
+                    max_earnings=max_earnings,
+                    persona_boost=caption.persona_boost,
+                )
+
+            # Select using weighted random
+            weights = [c.final_weight for c in available]
+            total_weight = sum(weights)
+            if total_weight > 0:
+                selected = random.choices(available, weights=weights, k=1)[0]
+                return selected, pool_type
+
+            # Fallback to first available
+            if available:
+                return available[0], pool_type
+
+    return None, "none"
+
+
+def assign_captions_to_slots_pooled(
+    slots: list[dict[str, Any]],
+    pools: dict[int, StratifiedPools],
+    persona: dict[str, str],
+    content_type_allocation: dict[str, int],
+    config: ScheduleConfig,
+    discovery_ratio: float = 0.15,
+    premium_ratio: float = 0.25,
 ) -> list[ScheduleItem]:
     """
-    Assign captions to slots using Vose Alias weighted selection.
+    Assign captions to time slots using pool-based selection.
 
-    Step 5 of pipeline: ASSIGN CAPTIONS
+    Step 5 of pipeline: ASSIGN CAPTIONS (Pool-Based Version)
 
-    Enforces:
-    - No duplicate captions across the week
-    - Content type rotation (never same type consecutively)
+    Slot allocation:
+    - Premium (25%): Peak hours (18:00, 21:00), PROVEN pool only
+    - Standard (60%): All other hours, PROVEN + GLOBAL_EARNER
+    - Discovery (15%): Distributed evenly, DISCOVERY pool
+
+    Content type distribution follows content_type_allocation weights.
+
+    Args:
+        slots: List of slot dicts with date, time, hour, type keys
+        pools: Dict mapping content_type_id to StratifiedPools
+        persona: Creator persona dict for boost calculation
+        content_type_allocation: Dict mapping content type name to slot count
+        config: Schedule configuration
+        discovery_ratio: Fraction of slots for discovery (default 0.15)
+        premium_ratio: Fraction of slots for premium (default 0.25)
+
+    Returns:
+        List of ScheduleItem objects
     """
-    if not captions:
+    if not pools:
         return []
 
-    # Build Vose Alias selector
-    try:
-        selector = VoseAliasSelector(captions, lambda c: c.final_weight)
-    except ValueError:
-        # Fall back to sorted selection
-        captions_sorted = sorted(captions, key=lambda c: c.final_weight, reverse=True)
-        selector = None
+    # Get PPV slots only
+    ppv_slots = [s for s in slots if s.get("type") == "ppv"]
+    total_ppv_slots = len(ppv_slots)
 
-    items = []
+    if total_ppv_slots == 0:
+        return []
+
+    # Calculate slot counts for each tier
+    discovery_count = int(total_ppv_slots * discovery_ratio)
+    premium_count = int(total_ppv_slots * premium_ratio)
+    standard_count = total_ppv_slots - discovery_count - premium_count
+
+    # Identify slot tiers
+    premium_slot_indices: set[int] = set()
+    discovery_slot_indices: set[int] = set()
+
+    # Premium slots: at peak hours (18:00, 21:00)
+    for i, slot in enumerate(ppv_slots):
+        if slot.get("hour") in PREMIUM_HOURS:
+            if len(premium_slot_indices) < premium_count:
+                premium_slot_indices.add(i)
+
+    # Discovery slots: evenly distributed (excluding premium)
+    discovery_candidates = [i for i in range(total_ppv_slots) if i not in premium_slot_indices]
+    discovery_slot_indices = set(identify_discovery_slots(
+        [ppv_slots[i] for i in discovery_candidates],
+        discovery_count
+    ))
+    # Map back to original indices
+    mapped_discovery = set()
+    for idx, orig_idx in enumerate(discovery_candidates):
+        if idx in discovery_slot_indices:
+            mapped_discovery.add(orig_idx)
+    discovery_slot_indices = mapped_discovery
+
+    # Track content type usage vs allocation
+    content_type_used: dict[str, int] = {ct: 0 for ct in content_type_allocation.keys()}
+    available_types = set(content_type_allocation.keys())
+
+    # Build items
+    items: list[ScheduleItem] = []
     used_caption_ids: set[int] = set()
     previous_content_type: str | None = None
 
-    # Group captions by content type for rotation
-    captions_by_type: dict[str, list[Caption]] = {}
-    for cap in captions:
-        ctype = cap.content_type_name or "unknown"
-        if ctype not in captions_by_type:
-            captions_by_type[ctype] = []
-        captions_by_type[ctype].append(cap)
+    # Log slot tier distribution
+    logger.info(
+        f"Pool-based selection: {premium_count} premium, {standard_count} standard, "
+        f"{discovery_count} discovery slots"
+    )
 
-    available_types = set(captions_by_type.keys())
+    for slot_index, slot in enumerate(ppv_slots):
+        # Determine slot tier
+        if slot_index in premium_slot_indices:
+            slot_tier = "premium"
+        elif slot_index in discovery_slot_indices:
+            slot_tier = "discovery"
+        else:
+            slot_tier = "standard"
 
-    for slot in slots:
-        if slot["type"] != "ppv":
-            continue
+        # Determine target content type based on allocation and rotation
+        target_type = None
+        for ct_name in available_types:
+            if ct_name == previous_content_type:
+                continue
+            allocated = content_type_allocation.get(ct_name, 0)
+            used = content_type_used.get(ct_name, 0)
+            if used < allocated:
+                target_type = ct_name
+                break
 
-        # Determine target content type (rotation)
-        target_type = get_next_content_type(previous_content_type, available_types)
+        # If all at allocation, pick any except previous
+        if not target_type:
+            target_type = get_next_content_type(previous_content_type, available_types)
 
-        # Try to select a caption of the target type
-        selected_caption: Caption | None = None
-
-        if target_type and target_type in captions_by_type:
-            type_captions = [
-                c for c in captions_by_type[target_type]
-                if c.caption_id not in used_caption_ids
-            ]
-            if type_captions:
-                # Weight selection within type
-                weights = [c.final_weight for c in type_captions]
-                total = sum(weights)
-                if total > 0:
-                    probs = [w / total for w in weights]
-                    selected_caption = random.choices(type_captions, weights=probs, k=1)[0]
-
-        # Fall back to any available caption if target type exhausted
-        if not selected_caption:
-            if selector:
-                for _ in range(50):  # Max attempts
-                    candidate = selector.select()
-                    if candidate.caption_id not in used_caption_ids:
-                        # Check rotation constraint
-                        if candidate.content_type_name != previous_content_type or previous_content_type is None:
-                            selected_caption = candidate
-                            break
-                        elif len(used_caption_ids) > len(captions) - 5:
-                            # Near exhaustion, relax rotation
-                            selected_caption = candidate
-                            break
-
-        if not selected_caption:
-            # Last resort: any unused caption
-            unused = [c for c in captions if c.caption_id not in used_caption_ids]
-            if unused:
-                selected_caption = unused[0]
+        # Select caption from appropriate pool
+        selected_caption, pool_type = _select_from_stratified_pool(
+            pools=pools,
+            target_content_type=target_type,
+            slot_tier=slot_tier,
+            used_ids=used_caption_ids,
+            previous_type=previous_content_type,
+            persona=persona,
+            config=config,
+        )
 
         if selected_caption:
             used_caption_ids.add(selected_caption.caption_id)
             previous_content_type = selected_caption.content_type_name
 
-            # Calculate suggested price based on content type and page type
+            # Update content type usage
+            ct_name = selected_caption.content_type_name or "unknown"
+            content_type_used[ct_name] = content_type_used.get(ct_name, 0) + 1
+
+            # Calculate suggested price
             base_price = 14.99 if config.page_type == "paid" else 9.99
             if selected_caption.performance_score >= 80:
-                base_price *= 1.2  # Winners get premium pricing
+                base_price *= 1.2
             elif selected_caption.performance_score < 50:
-                base_price *= 0.9  # Lower performers discounted
+                base_price *= 0.9
+
+            # Build selection notes
+            selection_note = (
+                f"Pool: {pool_type} | Tier: {slot_tier} | "
+                f"Boost: {selected_caption.persona_boost:.2f}x"
+            )
 
             items.append(ScheduleItem(
                 item_id=slot["slot_id"],
@@ -1289,7 +1824,175 @@ def assign_captions_to_slots(
                 freshness_score=selected_caption.freshness_score,
                 performance_score=selected_caption.performance_score,
                 priority=slot["priority"],
-                notes=f"Boost: {selected_caption.persona_boost:.2f}x"
+                notes=selection_note
+            ))
+
+    # Log content type distribution
+    logger.info(f"Content type distribution: {content_type_used}")
+
+    return items
+
+
+def assign_captions_to_slots(
+    slots: list[dict[str, Any]],
+    captions: list[Caption],
+    config: ScheduleConfig,
+    pools: dict[int, StratifiedPools] | None = None,
+    persona: dict[str, str] | None = None,
+    content_type_allocation: dict[str, int] | None = None,
+) -> list[ScheduleItem]:
+    """
+    Assign captions to slots using pool-based or legacy selection.
+
+    Step 5 of pipeline: ASSIGN CAPTIONS
+
+    If pools, persona, and content_type_allocation are provided, uses the new
+    pool-based selection. Otherwise falls back to legacy hybrid selection.
+
+    Args:
+        slots: List of slot dicts
+        captions: List of Caption objects (legacy mode)
+        config: Schedule configuration
+        pools: Optional stratified pools for pool-based selection
+        persona: Optional creator persona dict
+        content_type_allocation: Optional content type slot allocation
+
+    Returns:
+        List of ScheduleItem objects
+    """
+    # Use pool-based selection if pools are provided
+    if pools is not None and persona is not None and content_type_allocation is not None:
+        return assign_captions_to_slots_pooled(
+            slots=slots,
+            pools=pools,
+            persona=persona,
+            content_type_allocation=content_type_allocation,
+            config=config,
+            discovery_ratio=config.reserved_slot_ratio,
+            premium_ratio=0.25,
+        )
+
+    # Legacy fallback: hybrid earnings-based selection
+    if not captions:
+        return []
+
+    # Partition captions by testing status
+    tested, untested = partition_captions_by_testing_status(
+        captions, config.min_uses_for_tested
+    )
+
+    # Count PPV slots
+    ppv_slots = [s for s in slots if s["type"] == "ppv"]
+    total_ppv_slots = len(ppv_slots)
+
+    # Calculate reserved slots for discovery
+    reserved_count = calculate_reserved_slots(
+        total_ppv_slots,
+        config.reserved_slot_ratio,
+        len(untested)
+    )
+
+    # Distribute reserved slots evenly across the week
+    reserved_slot_indices = set()
+    if reserved_count > 0 and total_ppv_slots > 0:
+        reserved_count = min(reserved_count, total_ppv_slots)
+        step = total_ppv_slots // reserved_count if reserved_count > 0 else total_ppv_slots
+        for i in range(reserved_count):
+            idx = min(i * step + step // 2, total_ppv_slots - 1)
+            reserved_slot_indices.add(idx)
+
+    # Build Vose Alias selectors for each pool
+    tested_selector = None
+    untested_selector = None
+
+    if tested:
+        try:
+            tested_selector = VoseAliasSelector(tested, lambda c: c.final_weight)
+        except ValueError as e:
+            logger.warning(f"Failed to construct tested_selector: {e}, falling back to max-weight")
+
+    if untested:
+        try:
+            untested_selector = VoseAliasSelector(
+                untested,
+                lambda c: c.freshness_score * c.persona_boost
+            )
+        except ValueError as e:
+            logger.warning(f"Failed to construct untested_selector: {e}, falling back to max-weight")
+
+    items = []
+    used_caption_ids: set[int] = set()
+    previous_content_type: str | None = None
+    ppv_slot_index = 0
+
+    # Group captions by content type for rotation
+    captions_by_type: dict[str, list[Caption]] = {}
+    for cap in captions:
+        ctype = cap.content_type_name or "unknown"
+        if ctype not in captions_by_type:
+            captions_by_type[ctype] = []
+        captions_by_type[ctype].append(cap)
+
+    available_types = set(captions_by_type.keys())
+
+    for slot in slots:
+        if slot["type"] != "ppv":
+            continue
+
+        is_reserved_slot = ppv_slot_index in reserved_slot_indices
+        ppv_slot_index += 1
+
+        target_type = get_next_content_type(previous_content_type, available_types)
+        selected_caption: Caption | None = None
+
+        if is_reserved_slot and untested:
+            selected_caption = _select_from_pool(
+                untested, untested_selector, used_caption_ids,
+                target_type, previous_content_type
+            )
+
+        if not selected_caption and tested:
+            selected_caption = _select_from_pool(
+                tested, tested_selector, used_caption_ids,
+                target_type, previous_content_type
+            )
+
+        if not selected_caption:
+            unused = [c for c in captions if c.caption_id not in used_caption_ids]
+            if unused:
+                logger.debug("Using fallback max-weight selection for slot")
+                selected_caption = max(unused, key=lambda c: c.final_weight)
+
+        if selected_caption:
+            used_caption_ids.add(selected_caption.caption_id)
+            previous_content_type = selected_caption.content_type_name
+
+            base_price = 14.99 if config.page_type == "paid" else 9.99
+            if selected_caption.performance_score >= 80:
+                base_price *= 1.2
+            elif selected_caption.performance_score < 50:
+                base_price *= 0.9
+
+            selection_note = f"Boost: {selected_caption.persona_boost:.2f}x | "
+            selection_note += f"Earnings: {selected_caption.earnings_source}"
+            if is_reserved_slot:
+                selection_note += " [DISCOVERY]"
+
+            items.append(ScheduleItem(
+                item_id=slot["slot_id"],
+                creator_id=config.creator_id,
+                scheduled_date=slot["date"],
+                scheduled_time=slot["time"],
+                item_type="ppv",
+                caption_id=selected_caption.caption_id,
+                caption_text=selected_caption.caption_text,
+                content_type_id=selected_caption.content_type_id,
+                content_type_name=selected_caption.content_type_name,
+                suggested_price=round(base_price, 2),
+                freshness_score=selected_caption.freshness_score,
+                performance_score=selected_caption.performance_score,
+                priority=slot["priority"],
+                notes=selection_note
             ))
 
     return items
@@ -1809,10 +2512,25 @@ def generate_schedule(
             print(f"  [AGENT MODE] Warning: Volume calibration agents failed: {e}", file=sys.stderr)
             result.agents_fallback.extend(["timezone-optimizer", "page-type-optimizer"])
 
-    # Step 2: MATCH CONTENT - Load available captions
+    # Step 2: MATCH CONTENT - Filter by vault availability with content type gate
+    # NEW: Get allowed content types from vault_matrix
+    allowed_content_types = get_allowed_content_types(conn, config.creator_id)
+    if not allowed_content_types:
+        result.validation_issues.append(ValidationIssue(
+            rule_name="no_content_types",
+            severity="error",
+            message="No content types found in vault_matrix. Cannot generate schedule."
+        ))
+        result.validation_passed = False
+        return result
+
+    logger.info(f"[Step 2] Content type gate: {len(allowed_content_types)} allowed types")
+
+    # Load available captions
     captions = load_available_captions(
         conn, config.creator_id, config.min_freshness, profile.vault_types,
-        filter_keywords=profile.filter_keywords
+        filter_keywords=profile.filter_keywords,
+        min_uses_for_tested=config.min_uses_for_tested
     )
     if not captions:
         result.validation_issues.append(ValidationIssue(
@@ -1834,7 +2552,39 @@ def generate_schedule(
     result.vault_types = [row["type_name"] for row in cursor.fetchall()]
 
     # Step 3: MATCH PERSONA - Score by voice profile
-    captions = apply_persona_scores(captions, profile)
+    captions = apply_persona_scores(captions, profile, config)
+
+    # NEW: Build persona dict for pool-based selection
+    persona_dict = {
+        "primary_tone": profile.primary_tone,
+        "emoji_frequency": profile.emoji_frequency,
+        "slang_level": profile.slang_level,
+    }
+
+    # NEW: Load stratified pools per content type (for pool-based selection)
+    stratified_pools = load_stratified_pools(
+        conn,
+        config.creator_id,
+        allowed_content_types,
+        min_freshness=config.min_freshness,
+        filter_keywords=profile.filter_keywords,
+        min_uses_for_tested=config.min_uses_for_tested,
+    )
+
+    # Log pool statistics
+    total_proven = sum(len(p.proven) for p in stratified_pools.values())
+    total_global = sum(len(p.global_earner) for p in stratified_pools.values())
+    total_discovery = sum(len(p.discovery) for p in stratified_pools.values())
+    logger.info(
+        f"[Step 2] Stratified pools loaded: "
+        f"{total_proven} proven, {total_global} global_earner, {total_discovery} discovery"
+    )
+    for ct_id, pool in stratified_pools.items():
+        logger.debug(
+            f"  {pool.content_type_name}: "
+            f"proven={len(pool.proven)}, global={len(pool.global_earner)}, "
+            f"discovery={len(pool.discovery)}, avg_earnings=${pool.content_type_avg_earnings:.2f}"
+        )
 
     # =========================================================================
     # AGENT STEP 3A: CONTENT STRATEGY OPTIMIZATION (After Step 3)
@@ -1969,8 +2719,33 @@ def generate_schedule(
     # Step 5: BUILD STRUCTURE - Create weekly slots
     slots = build_weekly_slots(config, profile.best_hours)
 
-    # Step 6: ASSIGN CAPTIONS - Weighted selection
-    items = assign_captions_to_slots(slots, caption_pool, config)
+    # Count PPV slots for allocation calculation
+    ppv_slots = [s for s in slots if s.get("type") == "ppv"]
+    total_ppv_slots = len(ppv_slots)
+    logger.info(f"[Step 5] Built {total_ppv_slots} PPV slots for the week")
+
+    # NEW: Calculate content type slot allocation based on earnings weights
+    content_type_allocation = calculate_content_type_slot_allocation(
+        conn, config.creator_id, total_ppv_slots
+    )
+    logger.info(f"[Step 5] Content type slot allocation: {content_type_allocation}")
+
+    # Log allocation details
+    for ct_name, slot_count in content_type_allocation.items():
+        pct = (slot_count / total_ppv_slots * 100) if total_ppv_slots > 0 else 0
+        logger.info(f"  {ct_name}: {slot_count} slots ({pct:.1f}%)")
+
+    # Step 6: ASSIGN CAPTIONS - Pool-based weighted selection
+    # Use new pool-based assignment with stratified pools
+    items = assign_captions_to_slots(
+        slots=slots,
+        captions=caption_pool,
+        config=config,
+        pools=stratified_pools,
+        persona=persona_dict,
+        content_type_allocation=content_type_allocation,
+    )
+    logger.info(f"[Step 6] Assigned {len(items)} PPV items using pool-based selection")
 
     # Step 6B: Assign wall posts (if enabled)
     if CONTENT_TYPE_SCHEDULERS_AVAILABLE and wall_captions:

@@ -192,3 +192,4 @@ Human-readable guides are located at: `~/Developer/EROS-SD-MAIN-PROJECT/docs/`
 |-----------|-------------|
 | [references/architecture.md](./references/architecture.md) | Full pipeline architecture |
 | [references/scheduling_rules.md](./references/scheduling_rules.md) | All business rules |
+| [references/database-schema.md](./references/database-schema.md) | Database structure & relationships |

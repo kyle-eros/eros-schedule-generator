@@ -10,7 +10,7 @@ A Claude Code slash command skill that generates optimized weekly content schedu
                     ║   ─────────────────────────────────   ║
                     ║   36 Creators │ 19.6K Captions        ║
                     ║   66K+ Historical Messages            ║
-                    ║   23,650 Lines of Code                ║
+                    ║   26,928 Lines of Code                ║
                     ╚═══════════════════════════════════════╝
 ```
 
@@ -163,88 +163,77 @@ EROS supports two execution modes to balance speed and optimization depth:
 .claude/skills/eros-schedule-generator/
 ├── SKILL.md                          # Claude Code skill definition
 ├── README.md                         # This file
+├── pyproject.toml                    # Python project configuration
+├── pytest.ini                        # Pytest configuration
 ├── .gitignore                        # Git ignore patterns
 │
-├── scripts/                          # Executable Python scripts (23 files, 23,650 lines)
+├── scripts/                          # Executable Python scripts (19 files, 26,928 lines)
 │   │
 │   │  # Core Pipeline Scripts
-│   ├── generate_schedule.py          # Main 12-step pipeline orchestrator (2,153 lines)
-│   ├── analyze_creator.py            # Creator performance analytics (943 lines)
-│   ├── select_captions.py            # Vose Alias caption selection (645 lines)
-│   ├── match_persona.py              # Persona matching & boost (894 lines)
-│   ├── volume_optimizer.py           # Multi-factor volume optimization (1,179 lines)
-│   ├── calculate_freshness.py        # Freshness score calculation (519 lines)
-│   ├── followup_generator.py         # Context-aware follow-up generation (1,059 lines)
-│   ├── validate_schedule.py          # Business rule validation (603 lines)
+│   ├── generate_schedule.py          # Main 12-step pipeline orchestrator (3,082 lines)
+│   ├── select_captions.py            # Vose Alias caption selection (489 lines)
+│   ├── match_persona.py              # Persona matching & boost (896 lines)
+│   ├── volume_optimizer.py           # Multi-factor volume optimization (1,584 lines)
+│   ├── followup_generator.py         # Context-aware follow-up generation (1,070 lines)
+│   ├── validate_schedule.py          # Business rule validation (935 lines)
+│   ├── weights.py                    # Canonical weight calculation module (193 lines)
 │   │
 │   │  # LLM Integration Scripts
-│   ├── prepare_llm_context.py        # Full mode entry point (806 lines)
-│   ├── semantic_analysis.py          # Tone detection framework (735 lines)
-│   ├── apply_llm_insights.py         # Claude AI semantic integration (701 lines)
-│   ├── quality_scoring.py            # LLM-based caption quality (1,287 lines)
-│   ├── caption_enhancer.py           # Authenticity enhancement (1,388 lines)
+│   ├── prepare_llm_context.py        # Full mode entry point (974 lines)
+│   ├── semantic_analysis.py          # Tone detection framework (743 lines)
+│   ├── quality_scoring.py            # LLM-based caption quality (1,295 lines)
+│   │
+│   │  # Content Classification
+│   ├── classify_implied_content.py   # Advanced content classification (1,150 lines)
+│   ├── generate_perfected_guides.py  # Guide generation utilities (1,030 lines)
 │   │
 │   │  # Infrastructure & Utilities
-│   ├── agent_invoker.py              # Sub-agent delegation framework (605 lines)
-│   ├── shared_context.py             # Shared dataclass definitions (191 lines)
-│   ├── batch_portfolio_analysis.py   # Portfolio-wide audit tool (5,737 lines)
+│   ├── shared_context.py             # Shared dataclass definitions (289 lines)
 │   ├── volume_validation_report.py   # Volume validation reporting (851 lines)
 │   ├── verify_deployment.py          # Deployment verification (321 lines)
 │   ├── utils.py                      # VoseAliasSelector weighted selection (183 lines)
 │   ├── logging_config.py             # Centralized logging configuration (119 lines)
 │   ├── content_type_loaders.py       # Wall posts, polls, previews loading (385 lines)
-│   ├── content_type_schedulers.py    # Content-specific scheduling logic (486 lines)
-│   │
-│   │  # Testing
-│   └── test_volume_optimizer.py      # Volume optimizer test suite (2,183 lines)
+│   └── content_type_schedulers.py    # Content-specific scheduling logic (486 lines)
+│
+├── tests/                            # Test suite
+│   ├── __init__.py                   # Test package init
+│   ├── test_volume_optimizer.py      # Volume optimizer tests (2,183 lines, 171 tests)
+│   └── test_integration.py           # Integration tests
 │
 ├── assets/
-│   ├── sql/                          # Core SQL queries (6 files)
-│   │   ├── get_creator_profile.sql   # Creator profile query
-│   │   ├── get_available_captions.sql # Fresh captions query
-│   │   ├── get_optimal_hours.sql     # Best hours by revenue
-│   │   ├── get_vault_inventory.sql   # Content availability
-│   │   ├── get_active_creators.sql   # Active creator list
-│   │   └── get_performance_trends.sql # Weekly trends
-│   │
-│   ├── sql/batch_analysis/           # Portfolio analysis queries (10 files)
-│   │   ├── portfolio_summary.sql     # Aggregate portfolio statistics
-│   │   ├── caption_health.sql        # Caption library health
-│   │   ├── ppv_metrics.sql           # PPV-specific performance
-│   │   ├── pricing_analysis.sql      # Pricing strategy analysis
-│   │   ├── content_performance.sql   # Content type ranking
-│   │   ├── timing_analysis.sql       # Time-based optimization
-│   │   ├── portfolio_positioning.sql # Competitive positioning
-│   │   ├── persona_profile.sql       # Individual persona analysis
-│   │   ├── revenue_breakdown.sql     # Revenue decomposition
-│   │   └── get_active_creators.sql   # Batch creator list
-│   │
-│   ├── visual_guide/                 # Architecture visualization
-│   │   ├── ARCHITECTURE_VISUAL.md    # Architecture diagrams
-│   │   └── ARCHITECTURE_VISUAL.html  # Interactive HTML version
-│   │
-│   ├── styles/                       # Design system
-│   │   ├── architecture-design-system.css
-│   │   └── architecture-demo.html
-│   │
-│   └── templates/                    # Reserved for output templates
+│   └── sql/                          # SQL queries
+│       ├── get_creator_profile.sql   # Creator profile query
+│       ├── get_available_captions.sql # Fresh captions query
+│       ├── get_optimal_hours.sql     # Best hours by revenue
+│       ├── get_vault_inventory.sql   # Content availability
+│       ├── get_active_creators.sql   # Active creator list
+│       ├── get_performance_trends.sql # Weekly trends
+│       │
+│       └── batch_analysis/           # Portfolio analysis queries (10 files)
+│           ├── portfolio_summary.sql # Aggregate portfolio statistics
+│           ├── caption_health.sql    # Caption library health
+│           ├── ppv_metrics.sql       # PPV-specific performance
+│           ├── pricing_analysis.sql  # Pricing strategy analysis
+│           ├── content_performance.sql # Content type ranking
+│           ├── timing_analysis.sql   # Time-based optimization
+│           ├── portfolio_positioning.sql # Competitive positioning
+│           ├── persona_profile.sql   # Individual persona analysis
+│           ├── revenue_breakdown.sql # Revenue decomposition
+│           └── get_active_creators.sql # Batch creator list
 │
-├── references/                       # Technical documentation (11 files, 6,741 lines)
-│   ├── architecture.md               # System design (725 lines)
-│   ├── database-schema.md            # Database structure (1,107 lines)
-│   ├── scheduling_rules.md           # Business rules (542 lines)
-│   ├── analytics_algorithms.md       # Algorithm documentation (399 lines)
-│   ├── extraction_map.md             # Code mapping (562 lines)
-│   ├── strategy-frameworks.md        # Strategic frameworks (321 lines)
-│   ├── industry-benchmarks.md        # OnlyFans benchmarks (266 lines)
-│   ├── validation_report.md          # Validation documentation (279 lines)
-│   ├── architecture-visual-guide.md  # Visual reference (675 lines)
-│   ├── eros_implementation_gap_analysis.md # Gap analysis (1,408 lines)
-│   └── 2025_combined_high_value_insights.md # 2025 insights (457 lines)
+├── prompts/                          # LLM prompt templates
+│   ├── content_classification_prompt.md  # Content classification specialist prompt
+│   └── classification_quick_reference.md # Quick reference for classification
 │
-├── analysis/                         # Performance analysis outputs
-├── onlyfans_best_practices_research/ # Industry research
-└── docs/                             # Additional documentation
+└── references/                       # Technical documentation (3 files)
+    ├── architecture.md               # System design & pipeline architecture
+    ├── database-schema.md            # Database structure & relationships
+    └── scheduling_rules.md           # Complete business rules & thresholds
+
+    # Note: Additional documentation (analytics, benchmarks, strategy guides)
+    # is located in the main EROS project at:
+    # ~/Developer/EROS-SD-MAIN-PROJECT/docs/
 ```
 
 ---
@@ -289,32 +278,34 @@ python scripts/validate_schedule.py --input schedule.json
 
 | Script | Lines | Pipeline Step |
 |--------|-------|---------------|
-| `generate_schedule.py` | 2,153 | Main orchestrator (all steps) |
-| `analyze_creator.py` | 943 | Step 1: Analyze |
-| `select_captions.py` | 645 | Step 2: Match Content |
-| `match_persona.py` | 894 | Step 3: Match Persona |
-| `volume_optimizer.py` | 1,179 | Step 4: Build Structure |
-| `quality_scoring.py` | 1,287 | Step 4B: Quality Scoring (Full mode) |
-| `calculate_freshness.py` | 519 | Step 5: Assign Captions |
-| `followup_generator.py` | 1,059 | Step 6: Generate Follow-ups |
-| `caption_enhancer.py` | 1,388 | Step 7B: Caption Enhancement (Full mode) |
-| `validate_schedule.py` | 603 | Step 9: Validate |
+| `generate_schedule.py` | 3,082 | Main orchestrator (all steps) |
+| `select_captions.py` | 489 | Step 2: Match Content |
+| `match_persona.py` | 896 | Step 3: Match Persona |
+| `volume_optimizer.py` | 1,584 | Step 4: Build Structure |
+| `followup_generator.py` | 1,070 | Step 6: Generate Follow-ups |
+| `validate_schedule.py` | 935 | Step 9: Validate |
+| `weights.py` | 193 | Canonical weight calculation |
 
 ### LLM Integration Scripts
 
 | Script | Lines | Purpose |
 |--------|-------|---------|
-| `prepare_llm_context.py` | 806 | Full mode entry point - context preparation for Claude |
-| `semantic_analysis.py` | 735 | Tone detection framework |
-| `apply_llm_insights.py` | 701 | Apply Claude AI semantic boosts |
+| `prepare_llm_context.py` | 974 | Full mode entry point - context preparation for Claude |
+| `semantic_analysis.py` | 743 | Tone detection framework |
+| `quality_scoring.py` | 1,295 | LLM-based caption quality assessment |
+
+### Content Classification
+
+| Script | Lines | Purpose |
+|--------|-------|---------|
+| `classify_implied_content.py` | 1,150 | Advanced content classification with inference |
+| `generate_perfected_guides.py` | 1,030 | Guide generation utilities |
 
 ### Infrastructure & Utilities
 
 | Script | Lines | Purpose |
 |--------|-------|---------|
-| `agent_invoker.py` | 605 | Sub-agent delegation framework |
-| `shared_context.py` | 191 | Shared dataclass definitions |
-| `batch_portfolio_analysis.py` | 5,737 | Portfolio-wide audit tool (standalone) |
+| `shared_context.py` | 289 | Shared dataclass definitions |
 | `volume_validation_report.py` | 851 | Volume validation reporting |
 | `verify_deployment.py` | 321 | Deployment verification |
 | `utils.py` | 183 | VoseAliasSelector (O(1) weighted selection) |
@@ -326,7 +317,8 @@ python scripts/validate_schedule.py --input schedule.json
 
 | Script | Lines | Purpose |
 |--------|-------|---------|
-| `test_volume_optimizer.py` | 2,183 | Volume optimizer test suite |
+| `test_volume_optimizer.py` | 2,183 | Volume optimizer test suite (171 tests, 95%+ coverage) |
+| `test_integration.py` | - | Integration tests |
 
 ---
 
@@ -399,26 +391,48 @@ freshness = 100 × (1 - e^(-days_since_use / 14))
 | Winner bonus | +15 for performance >= 80 |
 | New caption boost | +20 if never used |
 
-### Weight Calculation
+### Weight Calculation (Pool-Based Selection)
 
-**Quick Mode:**
+The new earnings-first weight system uses pool-based selection with different strategies:
+
+**Formula:**
 ```
-weight = (performance_score × 0.6 + freshness_score × 0.4) × persona_boost
+Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery Bonus(10%)
 ```
 
-**Full Mode:**
-```
-weight = (performance_score × 0.5 + freshness_score × 0.3 + quality_score × 0.2) × persona_boost
-```
+**Pool Types:**
+
+| Pool | Criteria | Earnings Source |
+|------|----------|-----------------|
+| PROVEN | creator_times_used >= 3, creator_avg_earnings > 0 | Creator-specific earnings (full weight) |
+| GLOBAL_EARNER | global_times_used >= 3, no creator data | Global earnings × 0.80 (20% discount) |
+| DISCOVERY | Under-tested or new imports | Content type average × 0.70 (30% discount) |
+
+**Slot Type Allocation:**
+
+| Slot Type | Pool Source | Usage |
+|-----------|-------------|-------|
+| Premium | PROVEN only | Peak hours (6pm, 9pm) |
+| Standard | PROVEN + GLOBAL_EARNER | Normal PPV slots |
+| Discovery | DISCOVERY pool | Testing new content (15% of slots) |
+
+**Discovery Bonus (DISCOVERY pool only):**
+- High global earners: up to +5 points (percentile-based)
+- Universal captions: +1.5 points
+- High performance (>=70): +1.0 points
+- Medium performance (>=50): +0.5 points
 
 ### Persona Matching Boosts
 
 | Match Type | Boost |
 |------------|-------|
 | Primary tone match | 1.20x |
+| Secondary tone match | 1.10x |
 | Emoji frequency match | 1.05x |
 | Slang level match | 1.05x |
+| Sentiment alignment | 1.05x |
 | **Maximum combined** | **1.40x** |
+| **No match penalty** | **0.95x** |
 
 ### Quality Scoring (Full Mode)
 
@@ -582,15 +596,24 @@ This is a Claude Code skill package. To use:
 
 ## References
 
-Detailed documentation available in `references/`:
+### Local Documentation (`references/`)
 
 - `architecture.md` - Full pipeline architecture and data flow
 - `scheduling_rules.md` - Complete business rules and thresholds
 - `database-schema.md` - Database structure and relationships
-- `analytics_algorithms.md` - Algorithm documentation
-- `eros_implementation_gap_analysis.md` - Implementation gap analysis
-- `2025_combined_high_value_insights.md` - 2025 market insights
-- `architecture-visual-guide.md` - Visual architecture reference
+
+### Prompt Templates (`prompts/`)
+
+- `content_classification_prompt.md` - Content classification specialist prompt
+- `classification_quick_reference.md` - Quick reference for classification
+
+### Additional Documentation
+
+Extended documentation including analytics algorithms, industry benchmarks, strategy frameworks, and 2025 insights is available in the main EROS project:
+
+```
+~/Developer/EROS-SD-MAIN-PROJECT/docs/
+```
 
 ---
 
@@ -605,7 +628,7 @@ Proprietary - For authorized use only.
 ║                                                                           ║
 ║   EROS Schedule Generator v2.0                                            ║
 ║   Built for Claude Code │ 12-Step Extended Pipeline │ AI-Enhanced         ║
-║   23 Scripts │ 23,650 Lines │ 16 SQL Queries │ 7 Sub-Agents               ║
+║   19 Scripts │ 26,928 Lines │ 16 SQL Queries │ 171 Tests                  ║
 ║                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```

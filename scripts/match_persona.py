@@ -7,9 +7,22 @@ how well they match a creator's voice profile.
 
 Boost Factors:
     - Primary tone match: 1.20x
-    - Emoji frequency match: 1.10x
-    - Slang level match: 1.10x
+    - Secondary tone match: 1.10x
+    - Emoji frequency match: 1.05x
+    - Slang level match: 1.05x
+    - Sentiment alignment: 1.05x
     - Maximum combined: 1.40x (capped)
+
+No-Match Penalty:
+    - When zero persona signals match (tone, emoji, slang, sentiment),
+      a 0.95x penalty is applied instead of neutral 1.0x
+    - This encourages better caption selection and persona alignment
+
+Text Detection:
+    - Text detection is ALWAYS enabled and should remain so
+    - It is critical for captions that don't have tone/slang/emoji
+      stored in the database
+    - Without it, many captions would incorrectly receive the penalty
 
 Usage:
     python match_persona.py --creator missalexa
@@ -50,6 +63,7 @@ EMOJI_FREQUENCY_BOOST = 1.05
 SLANG_LEVEL_BOOST = 1.05
 SENTIMENT_ALIGNMENT_BOOST = 1.05
 MAX_COMBINED_BOOST = 1.40
+NO_MATCH_PENALTY = 0.95  # 5% penalty when zero persona signals match
 
 # Tone definitions with keyword patterns for text-based detection
 TONE_OPTIONS = ["playful", "aggressive", "sweet", "dominant", "bratty", "seductive", "direct"]
@@ -487,8 +501,15 @@ def calculate_persona_boost(
         - Slang level match: 1.05x
         - Sentiment alignment: 1.05x
 
-    When caption attributes are missing, text-based detection is used
-    to infer tone, slang level, and sentiment from the caption text.
+    No-match penalty:
+        - When zero persona signals match (tone, emoji, slang, sentiment),
+          a 0.95x penalty is applied instead of neutral 1.0x
+        - This encourages better caption selection and persona alignment
+
+    Text detection is ALWAYS enabled by default and should remain so.
+    It is critical for captions that don't have tone/slang/emoji stored
+    in the database. Without it, many captions would incorrectly receive
+    the no-match penalty.
 
     Args:
         caption_tone: Caption's tone attribute (from database)
@@ -496,7 +517,7 @@ def calculate_persona_boost(
         caption_slang_level: Caption's slang level (from database)
         persona: Creator's persona profile
         caption_text: Optional caption text for text-based detection
-        use_text_detection: Whether to use text-based detection as fallback
+        use_text_detection: Whether to use text-based detection (always True)
 
     Returns:
         PersonaMatchResult with boost details
@@ -589,13 +610,28 @@ def calculate_persona_boost(
                 f"{SENTIMENT_ALIGNMENT_BOOST:.2f}x"
             )
 
-    # Cap at maximum boost
-    result.total_boost = min(total_boost, MAX_COMBINED_BOOST)
+    # Check if ANY persona signal matched
+    has_any_match = any([
+        result.tone_match,
+        result.emoji_match,
+        result.slang_match,
+        result.sentiment_match,
+    ])
 
-    if result.total_boost == MAX_COMBINED_BOOST and total_boost > MAX_COMBINED_BOOST:
+    if not has_any_match:
+        # No persona signals matched - apply 5% penalty
+        result.total_boost = NO_MATCH_PENALTY
         result.match_details.append(
-            f"Boost capped at {MAX_COMBINED_BOOST:.2f}x (was {total_boost:.2f}x)"
+            f"No persona match - penalty applied: {NO_MATCH_PENALTY:.2f}x"
         )
+    else:
+        # Cap at maximum boost (existing logic)
+        result.total_boost = min(total_boost, MAX_COMBINED_BOOST)
+
+        if result.total_boost == MAX_COMBINED_BOOST and total_boost > MAX_COMBINED_BOOST:
+            result.match_details.append(
+                f"Boost capped at {MAX_COMBINED_BOOST:.2f}x (was {total_boost:.2f}x)"
+            )
 
     return result
 
@@ -614,12 +650,16 @@ def match_captions_to_persona(
     When database attributes are missing, the caption text is analyzed
     to detect tone, slang level, and sentiment.
 
+    Text detection is ALWAYS enabled by default and should remain so.
+    Without text detection, captions missing database attributes would
+    incorrectly receive the NO_MATCH_PENALTY (0.95x).
+
     Args:
         conn: Database connection
         persona: Creator's persona profile
         caption_id: Optional specific caption to match
         limit: Maximum number of captions to process
-        use_text_detection: Whether to use text-based detection as fallback
+        use_text_detection: Whether to use text-based detection (always True)
 
     Returns:
         List of PersonaMatchResult sorted by boost (descending)
@@ -694,7 +734,8 @@ def format_markdown(
     # Summary stats
     perfect_matches = sum(1 for r in results if r.total_boost >= 1.30)
     good_matches = sum(1 for r in results if 1.10 <= r.total_boost < 1.30)
-    no_matches = sum(1 for r in results if r.total_boost == 1.0)
+    neutral_matches = sum(1 for r in results if r.total_boost == 1.0)
+    penalized = sum(1 for r in results if r.total_boost == NO_MATCH_PENALTY)
     sentiment_aligned = sum(1 for r in results if r.sentiment_match)
     detected_tones = sum(1 for r in results if r.detected_tone)
 
@@ -705,7 +746,8 @@ def format_markdown(
         f"|----------|-------|",
         f"| Perfect Match (>= 1.30x) | {perfect_matches} |",
         f"| Good Match (1.10-1.30x) | {good_matches} |",
-        f"| No Match (1.0x) | {no_matches} |",
+        f"| Neutral (1.0x) | {neutral_matches} |",
+        f"| Penalized (0.95x) | {penalized} |",
         f"| Sentiment Aligned | {sentiment_aligned} |",
         f"| Tones Detected (text) | {detected_tones} |",
         f"| Total Captions | {len(results)} |",
@@ -757,7 +799,8 @@ def format_json(
             "total_captions": len(results),
             "perfect_matches": sum(1 for r in results if r.total_boost >= 1.30),
             "good_matches": sum(1 for r in results if 1.10 <= r.total_boost < 1.30),
-            "no_matches": sum(1 for r in results if r.total_boost == 1.0),
+            "neutral_matches": sum(1 for r in results if r.total_boost == 1.0),
+            "penalized": sum(1 for r in results if r.total_boost == NO_MATCH_PENALTY),
             "sentiment_aligned": sum(1 for r in results if r.sentiment_match),
             "tones_detected": sum(1 for r in results if r.detected_tone)
         },
@@ -794,9 +837,14 @@ Persona Boost Factors:
     - Secondary tone match: 1.10x
     - Emoji frequency match: 1.05x
     - Slang level match: 1.05x
+    - Sentiment alignment: 1.05x
     - Maximum combined: 1.40x (capped)
 
-Tone Options: playful, aggressive, sweet, dominant, bratty, seductive
+No-Match Penalty:
+    - If zero persona signals match: 0.95x penalty applied
+    - Encourages better caption selection and persona alignment
+
+Tone Options: playful, aggressive, sweet, dominant, bratty, seductive, direct
 Emoji Frequency: heavy, moderate, light, none
 Slang Levels: none, light, heavy
 
