@@ -14,16 +14,25 @@ Usage:
     cat claude_analysis.json | python apply_llm_insights.py
     python apply_llm_insights.py --input analysis.json --output enhanced_weights.json
     python apply_llm_insights.py --input analysis.json --pattern-boosts pattern.json
+
+Note: This module uses print() for:
+- JSON output to stdout (data pipeline output)
+- Error messages to stderr (user-facing error reporting)
+Diagnostic logging uses the standard logging module.
 """
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
@@ -412,7 +421,7 @@ def persist_insights_to_database(
         db_path = DB_PATH
 
     if not db_path.exists():
-        print(f"Warning: Database not found at {db_path}, skipping persistence", file=sys.stderr)
+        logger.warning(f"Database not found at {db_path}, skipping persistence")
         return 0
 
     analysis_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -454,9 +463,8 @@ def persist_insights_to_database(
                 )
                 persisted_count += 1
             except sqlite3.Error as e:
-                print(
-                    f"Warning: Failed to persist caption {caption['caption_id']}: {e}",
-                    file=sys.stderr,
+                logger.warning(
+                    f"Failed to persist caption {caption['caption_id']}: {e}"
                 )
 
         conn.commit()

@@ -1,7 +1,7 @@
 # EROS Database Schema Reference
 
 > Quick reference for constructing queries in the eros-schedule-generator skill.
-> Last audited: 2025-12-04 | Database: eros_sd_main.db (97 MB)
+> Last audited: 2025-12-09 | Database: eros_sd_main.db (80 MB)
 
 ---
 
@@ -10,11 +10,11 @@
 | Table | Records | Primary Use | Status |
 |-------|---------|-------------|--------|
 | [creators](#creators) | 36 | Creator profiles and metrics | COMPLETE |
-| [mass_messages](#mass_messages) | 66,826 | PPV performance history | PARTIAL - 45% NULL creator_id |
-| [caption_bank](#caption_bank) | 19,590 | Caption library with scoring | PARTIAL - 43.5% stale |
+| [mass_messages](#mass_messages) | 68,674 | PPV performance history | PARTIAL - 45% NULL creator_id |
+| [caption_bank](#caption_bank) | 20,087 | Caption library with scoring | PARTIAL - 43.5% stale |
 | [creator_personas](#creator_personas) | 35 | Voice matching profiles | NEAR COMPLETE - 1 missing |
-| [vault_matrix](#vault_matrix) | 1,188 | Content inventory | COMPLETE |
-| [content_types](#content_types) | 33 | Content classification | COMPLETE |
+| [vault_matrix](#vault_matrix) | 1,192 | Content inventory | COMPLETE |
+| [content_types](#content_types) | 37 | Content classification | COMPLETE |
 | [caption_creator_performance](#caption_creator_performance) | 11,069 | Per-creator stats | COMPLETE |
 | [creator_analytics_summary](#creator_analytics_summary) | 36 | Pre-aggregated analytics | PARTIAL - only 90d period |
 | [volume_assignments](#volume_assignments) | 36 | Volume level assignments | COMPLETE |
@@ -24,14 +24,23 @@
 | [caption_audit_log](#caption_audit_log) | 15,084 | Caption change tracking | COMPLETE |
 | [llm_quality_scores](#llm_quality_scores) | 0* | LLM caption quality cache | NEW (v2.0) |
 | [creator_feature_flags](#creator_feature_flags) | 3 | Feature toggles | MINIMAL |
-| [schema_migrations](#schema_migrations) | 1 | DB version tracking | COMPLETE |
+| [schema_migrations](#schema_migrations) | 3 | DB version tracking | COMPLETE |
 | [agent_execution_log](#agent_execution_log) | 1 | Agent activity log | MINIMAL |
 | [schedule_templates](#schedule_templates) | 0 | Weekly schedule templates | EMPTY |
 | [schedule_items](#schedule_items) | 0 | Individual schedule items | EMPTY |
 | [volume_performance_tracking](#volume_performance_tracking) | 0 | Volume optimization tracking | EMPTY |
 | [caption_integrity_issues](#caption_integrity_issues) | 0 | Data quality issues | EMPTY |
+| [poll_bank](#poll_bank) | 6 | Poll/quiz content storage | NEW (v2.6) |
+| [free_preview_bank](#free_preview_bank) | 10 | Free preview content library | NEW (v2.6) |
+| [game_wheel_configs](#game_wheel_configs) | 0 | Spin-the-wheel configurations | NEW (v2.6) |
+| [vip_post_templates](#vip_post_templates) | 0 | VIP pricing page templates ($200+) | NEW (v3.0) |
+| [tip_incentive_templates](#tip_incentive_templates) | 0 | Tip goals and first-to-tip templates | NEW (v3.0) |
+| [link_drop_templates](#link_drop_templates) | 0 | Link drop and campaign templates | NEW (v3.0) |
+| [engagement_templates](#engagement_templates) | 0 | DM farm, like farm, comment farm | NEW (v3.0) |
+| [retention_templates](#retention_templates) | 0 | Renew-on and win-back templates | NEW (v3.0) |
+| [bump_variants](#bump_variants) | 0 | Follow-up bump message variants | NEW (v3.0) |
 
-**Total: 20 tables | 17 views | 8 triggers | 74 indexes**
+**Total: 36 tables | 28 views | 21 triggers | 144+ indexes**
 
 ---
 
@@ -108,7 +117,7 @@
 
 ### mass_messages
 
-**Records:** 66,826 | **Primary Key:** `message_id` (TEXT)
+**Records:** 68,674 | **Primary Key:** `message_id` (TEXT)
 
 **PURPOSE:** Central fact table for PPV performance analytics. Contains historical send data with engagement metrics. Has 8 triggers for automatic caption_bank and caption_creator_performance updates.
 
@@ -170,7 +179,7 @@
 
 ### caption_bank
 
-**Records:** 19,590 | **Primary Key:** `caption_id` (INTEGER AUTOINCREMENT)
+**Records:** 20,087 | **Primary Key:** `caption_id` (INTEGER AUTOINCREMENT)
 
 **PURPOSE:** Master caption library with performance scoring and style attributes. Central source for all PPV caption text. Includes freshness decay scoring and persona matching attributes.
 
@@ -188,6 +197,7 @@
 | page_name | TEXT | YES | Page name (denormalized) |
 | is_universal | INTEGER | YES | 1=works for any creator (default: 0) |
 | is_active | INTEGER | YES | 1=active, 0=deactivated (default: 1) |
+| schedulable_type | TEXT | YES | Schedulable type (ppv, ppv_follow_up, bundle, flash_bundle) (default: 'ppv') (NEW v3.0) |
 | **--- Performance Metrics ---** | | | |
 | times_used | INTEGER | YES | Global usage count (default: 0) |
 | total_earnings | REAL | YES | Lifetime earnings (default: 0.0) |
@@ -230,6 +240,7 @@
 - `idx_caption_selection` - is_active + content_type_id + caption_type + freshness_score DESC + performance_score DESC
 - `idx_caption_universal_selection` - is_active + is_universal + content_type_id + performance_score DESC (partial: is_active=1 AND is_universal=1)
 - `idx_caption_freshness_active` - is_active + freshness_score
+- `idx_caption_schedulable_type` - schedulable_type + is_active (partial: is_active=1) (NEW v3.0)
 
 ---
 
@@ -267,7 +278,7 @@
 
 ### vault_matrix
 
-**Records:** 1,188 | **Primary Key:** `vault_id` (INTEGER AUTOINCREMENT)
+**Records:** 1,192 | **Primary Key:** `vault_id` (INTEGER AUTOINCREMENT)
 
 **PURPOSE:** Content inventory matrix tracking which content types each creator has available. Used to filter captions to only those matching available vault content.
 
@@ -286,7 +297,7 @@
 
 **ISSUES/WARNINGS:**
 - All entries have `quantity_available = 0` (field not being populated)
-- 684/1,188 entries have `has_content = 1` (57.6%)
+- 684/1,192 entries have `has_content = 1` (57.6%)
 
 **DATA STATUS:** COMPLETE - Structure complete, quantity_available unused
 
@@ -298,7 +309,7 @@
 
 ### content_types
 
-**Records:** 33 | **Primary Key:** `content_type_id` (INTEGER AUTOINCREMENT)
+**Records:** 37 | **Primary Key:** `content_type_id` (INTEGER AUTOINCREMENT)
 
 **PURPOSE:** Content classification taxonomy. Defines all content categories (solo, bg, gg, anal, etc.) with priority tiers for scheduling rotation.
 
@@ -314,7 +325,7 @@
 | is_explicit | INTEGER | YES | 1=explicit, 0=SFW (default: 1) |
 | created_at | TEXT | YES | Creation timestamp |
 
-**DATA STATUS:** COMPLETE - All 33 content types defined
+**DATA STATUS:** COMPLETE - All 37 content types defined
 
 ---
 
@@ -623,7 +634,7 @@ weight = (perf * 0.4 + fresh * 0.2 + quality_normalized * 0.4) * persona_boost *
 
 ### schema_migrations
 
-**Records:** 1 | **Primary Key:** `version` (TEXT)
+**Records:** 3 | **Primary Key:** `version` (TEXT)
 
 **PURPOSE:** Database migration version tracking. Records which migrations have been applied.
 
@@ -657,6 +668,432 @@ weight = (perf * 0.4 + fresh * 0.2 + quality_normalized * 0.4) * persona_boost *
 | timestamp | TEXT | NO | Timestamp |
 
 **DATA STATUS:** MINIMAL
+
+---
+
+## Content Type Template Tables (v3.0)
+
+### vip_post_templates
+
+**Records:** 0 | **Primary Key:** `template_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** VIP pricing page templates for paid page creators at $200+ price points. Used for high-value exclusive content offerings that drive premium revenue.
+
+**SKILL INTEGRATION:** Used in content selection pipeline for VIP pricing page posts. Filtered by `page_type_filter = 'paid'` constraint. Selected via `all_schedulable_content` unified view.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| template_id | INTEGER | NO | - | Auto-increment primary key |
+| template_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| template_text | TEXT | NO | - | Full template content |
+| vip_tier_price | REAL | YES | 200.00 | VIP price point ($200+) |
+| tone | TEXT | YES | - | Voice tone (playful, sweet, seductive, etc.) |
+| emoji_style | TEXT | YES | - | Emoji usage (heavy, moderate, light, none) |
+| flyer_required | INTEGER | YES | 1 | Requires flyer/graphic (1=yes, 0=no) |
+| is_active | INTEGER | YES | 1 | Active status (1=active, 0=inactive) |
+| is_universal | INTEGER | YES | 0 | Universal template (1=yes, 0=creator-specific) |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_conversion_rate | REAL | YES | 0.0 | Average conversion rate (0.0-1.0) |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'paid' | MUST be 'paid' (CHECK constraint enforced) |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(template_hash) - Prevent duplicate templates
+- CHECK (page_type_filter = 'paid') - VIP templates only for paid pages
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_vip_post_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_vip_active` - is_active + page_type_filter
+- `idx_vip_creator` - creator_id + is_active (partial: is_active=1)
+- `idx_vip_selection` - is_active + creator_id + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+### tip_incentive_templates
+
+**Records:** 0 | **Primary Key:** `template_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Tip incentive and goal templates including first-to-tip, tip goals, tip menus, and tip races. Used to drive tip revenue through gamification and urgency.
+
+**SKILL INTEGRATION:** Used in content selection for tip incentive campaigns. Selected via `all_schedulable_content` view. Filtered by `incentive_type` and `page_type_filter`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| template_id | INTEGER | NO | - | Auto-increment primary key |
+| template_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| template_text | TEXT | NO | - | Full template content |
+| tip_goal_amount | REAL | YES | - | Tip goal target amount |
+| expiration_hours | INTEGER | YES | 24 | Campaign expiration (hours) |
+| incentive_type | TEXT | YES | 'first_to_tip' | Type: first_to_tip, tip_goal, tip_menu, tip_race |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| flyer_required | INTEGER | YES | 1 | Requires flyer/graphic (1=yes, 0=no) |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 0 | Universal template |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_conversion_rate | REAL | YES | 0.0 | Average conversion rate |
+| avg_tip_amount | REAL | YES | 0.0 | Average tip amount received |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(template_hash)
+- CHECK (incentive_type IN ('first_to_tip', 'tip_goal', 'tip_menu', 'tip_race'))
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_tip_incentive_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_tip_active` - is_active + page_type_filter
+- `idx_tip_creator` - creator_id + is_active (partial: is_active=1)
+- `idx_tip_type` - incentive_type + is_active (partial: is_active=1)
+- `idx_tip_selection` - is_active + incentive_type + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+### link_drop_templates
+
+**Records:** 0 | **Primary Key:** `template_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Link drop templates for cross-promotion, time-sensitive campaigns, and limited-time offers. Used for driving traffic to specific content or external promotions.
+
+**SKILL INTEGRATION:** Used in content selection for link drop campaigns. Selected via `all_schedulable_content` view. Filtered by `link_type` and `page_type_filter`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| template_id | INTEGER | NO | - | Auto-increment primary key |
+| template_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| template_text | TEXT | NO | - | Full template content |
+| link_type | TEXT | NO | - | Type: campaign, wall_post, ppv, bundle, promo, other |
+| expiration_hours | INTEGER | YES | 24 | Link expiration (hours) |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| flyer_required | INTEGER | YES | 0 | Requires flyer/graphic (1=yes, 0=no) |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 1 | Universal template (defaults to universal) |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| click_through_rate | REAL | YES | 0.0 | Average click-through rate |
+| conversion_rate | REAL | YES | 0.0 | Average conversion rate |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(template_hash)
+- CHECK (link_type IN ('campaign', 'wall_post', 'ppv', 'bundle', 'promo', 'other'))
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_link_drop_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_link_active` - is_active + page_type_filter
+- `idx_link_type` - link_type + is_active (partial: is_active=1)
+- `idx_link_selection` - is_active + link_type + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+### engagement_templates
+
+**Records:** 0 | **Primary Key:** `template_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Fan engagement templates for algorithm boosting including DM farm, like farm, comment farm, and question prompts. Used to drive platform engagement and visibility.
+
+**SKILL INTEGRATION:** Used in content selection for engagement campaigns. Selected via `all_schedulable_content` view. Filtered by `engagement_type` and `page_type_filter`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| template_id | INTEGER | NO | - | Auto-increment primary key |
+| template_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| template_text | TEXT | NO | - | Full template content |
+| engagement_type | TEXT | NO | - | Type: dm_farm, like_farm, comment_farm, emoji_farm, question_prompt |
+| incentive_description | TEXT | YES | - | Incentive offered for engagement |
+| call_to_action | TEXT | YES | - | Specific CTA text |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| flyer_required | INTEGER | YES | 0 | Requires flyer/graphic (1=yes, 0=no) |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 1 | Universal template (defaults to universal) |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_engagement_rate | REAL | YES | 0.0 | Average engagement rate |
+| avg_response_count | INTEGER | YES | 0 | Average responses received |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(template_hash)
+- CHECK (engagement_type IN ('dm_farm', 'like_farm', 'comment_farm', 'emoji_farm', 'question_prompt'))
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_engagement_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_engagement_type` - engagement_type + is_active
+- `idx_engagement_active` - is_active + page_type_filter
+- `idx_engagement_selection` - is_active + engagement_type + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+### retention_templates
+
+**Records:** 0 | **Primary Key:** `template_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Fan retention and win-back templates for churn prevention including renew-on posts/MMs, expired subscriber campaigns, and loyalty rewards. Used to maximize subscriber lifetime value.
+
+**SKILL INTEGRATION:** Used in content selection for retention campaigns. Selected via `all_schedulable_content` view. Filtered by `retention_type`, `urgency_level`, and `page_type_filter`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| template_id | INTEGER | NO | - | Auto-increment primary key |
+| template_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| template_text | TEXT | NO | - | Full template content |
+| retention_type | TEXT | NO | - | Type: renew_on_post, renew_on_mm, expired_subscriber, churn_prevention, winback, loyalty_reward |
+| incentive_description | TEXT | YES | - | Incentive offered |
+| discount_percentage | REAL | YES | 0.0 | Discount percentage (0-100) |
+| urgency_level | TEXT | YES | 'medium' | Urgency: low, medium, high, critical |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| flyer_required | INTEGER | YES | 0 | Requires flyer/graphic (1=yes, 0=no) |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 1 | Universal template (defaults to universal) |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_reactivation_rate | REAL | YES | 0.0 | Average reactivation rate |
+| avg_revenue_recovered | REAL | YES | 0.0 | Average revenue recovered per use |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'paid' | 'paid', 'free', or 'both' (defaults to 'paid') |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(template_hash)
+- CHECK (retention_type IN ('renew_on_post', 'renew_on_mm', 'expired_subscriber', 'churn_prevention', 'winback', 'loyalty_reward'))
+- CHECK (urgency_level IN ('low', 'medium', 'high', 'critical'))
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_retention_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_retention_type` - retention_type + is_active
+- `idx_retention_active` - is_active + page_type_filter
+- `idx_retention_urgency` - urgency_level + is_active (partial: is_active=1)
+- `idx_retention_selection` - is_active + retention_type + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+### bump_variants
+
+**Records:** 0 | **Primary Key:** `variant_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Follow-up bump message variants sent after PPV to increase conversion. Includes different bump types (flyer, descriptive, text-only) and styles (urgent, playful, seductive).
+
+**SKILL INTEGRATION:** Used in **Step 6 (GENERATE FOLLOW-UPS)** to select bump message variants. Selected via `all_schedulable_content` view. Filtered by `bump_type`, `bump_style`, and `page_type_filter`.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| variant_id | INTEGER | NO | - | Auto-increment primary key |
+| variant_hash | TEXT | NO | - | Unique hash for deduplication (UNIQUE) |
+| variant_text | TEXT | NO | - | Full bump message content |
+| bump_type | TEXT | NO | - | Type: flyer_gif, descriptive, text_only, normal, urgency, scarcity, social_proof |
+| bump_style | TEXT | YES | 'standard' | Style: standard, playful, urgent, casual, seductive |
+| flyer_required | INTEGER | YES | 0 | Requires flyer/graphic (1=yes, 0=no) |
+| recommended_delay_minutes | INTEGER | YES | 30 | Recommended delay after PPV (minutes) |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 1 | Universal template (defaults to universal) |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_conversion_lift | REAL | YES | 0.0 | Average conversion lift percentage |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(variant_hash)
+- CHECK (bump_type IN ('flyer_gif', 'descriptive', 'text_only', 'normal', 'urgency', 'scarcity', 'social_proof'))
+- CHECK (bump_style IN ('standard', 'playful', 'urgent', 'casual', 'seductive'))
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**Triggers:**
+- `trg_bump_variant_updated_at` - Auto-updates updated_at timestamp
+
+**Key Indexes:**
+- `idx_bump_type` - bump_type + is_active
+- `idx_bump_active` - is_active + page_type_filter
+- `idx_bump_style` - bump_style + is_active (partial: is_active=1)
+- `idx_bump_selection` - is_active + bump_type + freshness_score DESC + performance_score DESC (partial: is_active=1)
+
+**DATA STATUS:** NEW (v3.0) - Empty, ready for population
+
+---
+
+## Legacy Engagement Tables (v2.6)
+
+### poll_bank
+
+**Records:** 6 | **Primary Key:** `poll_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Poll and quiz content storage for interactive fan engagement.
+
+**SKILL INTEGRATION:** Can be used for poll-based engagement campaigns. Selected via `all_schedulable_content` view.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| poll_id | INTEGER | NO | - | Auto-increment primary key |
+| poll_hash | TEXT | NO | - | Unique hash for deduplication |
+| poll_question | TEXT | NO | - | Poll question text |
+| poll_options | TEXT | YES | - | JSON array of poll options |
+| poll_type | TEXT | YES | 'standard' | Type: standard, quiz, prediction |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 0 | Universal poll |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_engagement_rate | REAL | YES | 0.0 | Average engagement rate |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' (NEW v3.0) |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(poll_hash)
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**DATA STATUS:** NEW (v2.6) - 6 records populated
+
+---
+
+### free_preview_bank
+
+**Records:** 10 | **Primary Key:** `preview_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Free preview content library for teaser campaigns and content previews.
+
+**SKILL INTEGRATION:** Used for free preview campaigns. Selected via `all_schedulable_content` view.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| preview_id | INTEGER | NO | - | Auto-increment primary key |
+| preview_hash | TEXT | NO | - | Unique hash for deduplication |
+| preview_text | TEXT | NO | - | Preview text content |
+| preview_type | TEXT | YES | 'teaser' | Type: teaser, sample, behind_the_scenes |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 0 | Universal preview |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_conversion_rate | REAL | YES | 0.0 | Average conversion to full content |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' (NEW v3.0) |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(preview_hash)
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**DATA STATUS:** NEW (v2.6) - 10 records populated
+
+---
+
+### game_wheel_configs
+
+**Records:** 0 | **Primary Key:** `config_id` (INTEGER AUTOINCREMENT)
+
+**PURPOSE:** Spin-the-wheel game configurations for gamified engagement and prize wheels.
+
+**SKILL INTEGRATION:** Can be used for game-based engagement campaigns. Selected via `all_schedulable_content` view.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| config_id | INTEGER | NO | - | Auto-increment primary key |
+| config_hash | TEXT | NO | - | Unique hash for deduplication |
+| wheel_description | TEXT | NO | - | Wheel description/rules |
+| prize_tiers | TEXT | YES | - | JSON array of prize tiers |
+| spin_cost | REAL | YES | 0.0 | Cost per spin |
+| tone | TEXT | YES | - | Voice tone |
+| emoji_style | TEXT | YES | - | Emoji usage |
+| is_active | INTEGER | YES | 1 | Active status |
+| is_universal | INTEGER | YES | 0 | Universal config |
+| creator_id | TEXT | YES | - | FK to creators (NULL if universal) |
+| times_used | INTEGER | YES | 0 | Usage count |
+| avg_revenue_per_use | REAL | YES | 0.0 | Average revenue per use |
+| performance_score | REAL | YES | 50.0 | Performance score (0-100) |
+| freshness_score | REAL | YES | 100.0 | Freshness score (0-100) |
+| page_type_filter | TEXT | YES | 'both' | 'paid', 'free', or 'both' (NEW v3.0) |
+| last_used_date | TEXT | YES | - | Last used timestamp |
+| created_at | TEXT | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| updated_at | TEXT | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- UNIQUE(config_hash)
+- CHECK (page_type_filter IN ('paid', 'free', 'both'))
+- CHECK (performance_score >= 0 AND performance_score <= 100)
+- CHECK (freshness_score >= 0 AND freshness_score <= 100)
+
+**DATA STATUS:** NEW (v2.6) - Empty, ready for population
 
 ---
 
@@ -911,6 +1348,65 @@ weight = (perf * 0.4 + fresh * 0.2 + quality_normalized * 0.4) * persona_boost *
 
 ---
 
+### all_schedulable_content (NEW v3.0)
+
+**PURPOSE:** Single unified view across ALL schedulable content types for efficient content selection. Combines 10 different content sources into a single queryable interface.
+
+**SOURCES:** caption_bank, vip_post_templates, tip_incentive_templates, link_drop_templates, engagement_templates, retention_templates, bump_variants, poll_bank, free_preview_bank
+
+**KEY COLUMNS:**
+- `content_id` - Unique identifier (primary key from source table)
+- `source_table` - Origin table name (for tracking source)
+- `content_hash` - Deduplication hash
+- `content_text` - Full content text (caption_text, template_text, variant_text, etc.)
+- `content_type` - Content type name (ppv, vip_post, tip_incentive, link_drop, engagement, retention, bump, poll, free_preview)
+- `subtype` - Subtype (caption_type, incentive_type, bump_type, link_type, engagement_type, retention_type, poll_category, preview_type)
+- `freshness_score` - 0-100 freshness (polls default to 100.0)
+- `performance_score` - 0-100 performance
+- `times_used` - Usage count
+- `creator_id` - Creator ID (NULL if universal)
+- `is_universal` - Universal flag (1=available to all creators)
+- `tone` - Voice tone
+- `emoji_style` - Emoji usage
+- `page_type_filter` - 'paid', 'free', or 'both'
+- `last_used_date` - Last used timestamp
+- `created_at` - Creation timestamp
+
+**WHEN TO USE:** Query all schedulable content with a single query. Used by content_type_loaders.py for unified content selection across all content types. Filters by is_active=1 in source tables.
+
+**SQL Example:**
+```sql
+SELECT * FROM all_schedulable_content
+WHERE is_active = 1
+  AND (creator_id = ? OR is_universal = 1)
+  AND freshness_score >= 30
+  AND page_type_filter IN (?, 'both')
+ORDER BY performance_score DESC, freshness_score DESC
+LIMIT 500;
+```
+
+---
+
+### v_content_type_availability (NEW v3.0)
+
+**PURPOSE:** Shows content type availability metrics across all creators.
+
+**KEY COLUMNS:** `content_type`, `total_available`, `universal_count`, `creator_specific_count`, `avg_freshness`, `avg_performance`
+
+**WHEN TO USE:** Check content availability before scheduling. Identify content gaps.
+
+---
+
+### v_content_by_page_type (NEW v3.0)
+
+**PURPOSE:** Content availability broken down by page type filter (paid/free/both).
+
+**KEY COLUMNS:** `page_type_filter`, `content_type`, `count`, `avg_freshness`, `avg_performance`
+
+**WHEN TO USE:** Filter content for paid vs free page scheduling. Analyze page-specific content distribution.
+
+---
+
 ## Common Query Patterns
 
 ### Get creator by name (flexible search)
@@ -983,6 +1479,18 @@ ORDER BY cb.performance_score DESC, cb.freshness_score DESC
 LIMIT 500;
 ```
 
+### Query all schedulable content (v3.0 unified view)
+```sql
+SELECT content_id, source_table, content_text, content_type, subtype,
+       performance_score, freshness_score, tone, page_type_filter
+FROM all_schedulable_content
+WHERE is_active = 1
+  AND (creator_id = ? OR is_universal = 1)
+  AND freshness_score >= 30
+  AND page_type_filter IN (?, 'both')
+ORDER BY performance_score DESC, freshness_score DESC;
+```
+
 ### Get vault content availability
 ```sql
 SELECT ct.type_name, vm.has_content, vm.quantity_available
@@ -1026,19 +1534,20 @@ ORDER BY avg_earnings DESC;
 
 ---
 
-## Pipeline-Table Mapping (v2.1 - 9-Step)
+## Pipeline-Table Mapping (v3.0 - 9-Step)
 
 | Pipeline Step | Tables Read | Tables Write | Purpose |
 |---------------|-------------|--------------|---------|
 | **1. ANALYZE** | `creators`, `creator_personas`, `mass_messages` | None | Load profile, persona, best hours |
-| **2. MATCH CONTENT** | `caption_bank`, `vault_matrix`, `content_types` | None | Filter captions by vault |
+| **2. MATCH CONTENT** | `caption_bank`, `vault_matrix`, `content_types`, `all_schedulable_content` | None | Filter content by vault and page_type_filter |
 | **3. MATCH PERSONA** | `creator_personas` (from step 1) | None | Pattern/LLM tone matching, persona boost |
 | **4. BUILD STRUCTURE** | `volume_assignments`, `creators` | None | Get volume level, create time slots with payday optimization |
-| **5. ASSIGN CAPTIONS** | `caption_bank` (cached) | None | Pool-based Vose Alias weighted selection |
-| **6. GENERATE FOLLOW-UPS** | `creator_personas` (cached) | None | Context-aware bump messages (15-45 min) |
+| **5. ASSIGN CAPTIONS** | `caption_bank` (cached), `all_schedulable_content` | None | Pool-based Vose Alias weighted selection |
+| **6. GENERATE FOLLOW-UPS** | `creator_personas` (cached), `bump_variants` | None | Context-aware bump messages (15-45 min) |
 | **7. APPLY DRIP WINDOWS** | None | None | Enforce 4-8hr no-PPV zones (if enabled) |
 | **8. APPLY PAGE TYPE RULES** | `creators` (cached) | None | page_type pricing rules (if enabled) |
 | **9. VALIDATE** | None | None | Auto-correct issues, check rules, hook diversity |
+| **Content Selection (v3.0)** | `all_schedulable_content` (unified view), `vip_post_templates`, `tip_incentive_templates`, `link_drop_templates`, `engagement_templates`, `retention_templates`, `bump_variants`, `poll_bank`, `free_preview_bank` | None | Unified content query across 10+ content sources |
 
 **Mode Differences:**
 - **Quick Mode**: Pattern-based persona matching in Step 3
@@ -1074,6 +1583,13 @@ ORDER BY avg_earnings DESC;
 - `schedule_items` - Not implemented
 - `volume_performance_tracking` - Not implemented
 - `caption_integrity_issues` - Not implemented
+- `vip_post_templates` - NEW (v3.0) - Ready for population
+- `tip_incentive_templates` - NEW (v3.0) - Ready for population
+- `link_drop_templates` - NEW (v3.0) - Ready for population
+- `engagement_templates` - NEW (v3.0) - Ready for population
+- `retention_templates` - NEW (v3.0) - Ready for population
+- `bump_variants` - NEW (v3.0) - Ready for population
+- `game_wheel_configs` - NEW (v2.6) - Ready for population
 
 ### Recommendations
 
@@ -1082,6 +1598,7 @@ ORDER BY avg_earnings DESC;
 3. **Update paid page subscription prices** from OnlyFans data
 4. **Run freshness recalculation** to address stale captions
 5. **Review performance scoring algorithm** - avg score 10.8/100 seems low
+6. **Populate v3.0 template tables** for 20+ content type support
 
 ---
 
@@ -1089,14 +1606,37 @@ ORDER BY avg_earnings DESC;
 
 | Metric | Value |
 |--------|-------|
-| Schema Version | 2.6 (with engagement/tracking tables) |
+| Schema Version | 3.0 (with 20+ content type support) |
 | Last Audited | 2025-12-09 |
-| Total Tables | 28 |
-| Total Views | 20 |
-| Total Triggers | 8 |
-| Total Indexes | 84 |
-| Database Size | ~97 MB |
-| Total Records | ~115,000 |
+| Total Tables | 36 |
+| Total Views | 28 |
+| Total Triggers | 21 |
+| Total Indexes | 144+ |
+| Database Size | ~80 MB |
+| Total Records | ~90,000 |
+
+**v3.0 Changes (December 2025):**
+- **COLUMN ADDITIONS:**
+  - Added `schedulable_type` column to `caption_bank` (ppv, ppv_follow_up, bundle, flash_bundle, etc.)
+  - Added `page_type_filter` column to `poll_bank`, `free_preview_bank`, `game_wheel_configs` (paid, free, both)
+- **NEW TEMPLATE TABLES (6 tables):**
+  - `vip_post_templates` - VIP pricing page templates ($200+ price points, paid-only constraint)
+  - `tip_incentive_templates` - First-to-tip, tip goals, tip menus, tip races
+  - `link_drop_templates` - Campaign, wall post, PPV, bundle, promo link drops
+  - `engagement_templates` - DM farm, like farm, comment farm, emoji farm, question prompts
+  - `retention_templates` - Renew-on posts/MMs, expired subscriber, churn prevention, win-back, loyalty rewards
+  - `bump_variants` - Follow-up bump variants (flyer_gif, descriptive, text_only, normal, urgency, scarcity, social_proof)
+- **NEW VIEWS (3 views):**
+  - `all_schedulable_content` - Unified view combining 10 content sources (caption_bank + 6 template tables + 3 legacy tables)
+  - `v_content_type_availability` - Content type metrics (total, universal, creator-specific, avg freshness/performance)
+  - `v_content_by_page_type` - Content distribution by page type filter
+- **NEW TRIGGERS (6 triggers):**
+  - `trg_vip_post_updated_at`, `trg_tip_incentive_updated_at`, `trg_link_drop_updated_at`
+  - `trg_engagement_updated_at`, `trg_retention_updated_at`, `trg_bump_variant_updated_at`
+- **NEW INDEXES (25+ indexes):**
+  - Performance indexes on all 6 new template tables (is_active, page_type_filter, creator_id, selection indexes)
+  - `idx_caption_schedulable_type` on caption_bank for schedulable_type filtering
+- **SCHEMA VERSION:** Updated to 3.0 in schema_migrations table
 
 **v2.6 Changes (December 2025):**
 - Added `poll_bank` table for poll/quiz content storage
@@ -1119,7 +1659,7 @@ ORDER BY avg_earnings DESC;
 
 ---
 
-## Fixes Required (Audit: 2025-12-05)
+## Fixes Required (Audit: 2025-12-09)
 
 > This section documents fixes identified during the comprehensive database audit.
 > Priority: Critical > High > Medium > Low
@@ -1240,26 +1780,3 @@ WHERE va.is_active = 1
 - All indexes **FUNCTIONAL**
 
 ---
-
-## New Tables (v2.6 - Undocumented)
-
-> These tables were added in v2.6 but not yet fully documented above.
-> Full documentation pending.
-
-| Table | Records | Purpose | Status |
-|-------|---------|---------|--------|
-| poll_bank | 0 | Poll/quiz content storage | Empty |
-| game_wheel_configs | 0 | Spin-the-wheel game configurations | Empty |
-| free_preview_bank | 0 | Free preview content library | Empty |
-| caption_quality_feedback | 0 | User feedback on caption quality | Empty |
-| schedule_execution_log | 0 | Schedule execution tracking | Empty |
-| creator_revenue_targets | 0 | Revenue goal tracking | Empty |
-| content_performance_cache | 0 | Performance metrics cache | Empty |
-
-### New Views (v2.6)
-
-| View | Purpose |
-|------|---------|
-| v_caption_quality_summary | Aggregated caption quality metrics |
-| v_schedule_execution_status | Schedule execution monitoring |
-| v_revenue_vs_target | Revenue tracking vs goals |

@@ -15,15 +15,22 @@ Usage:
     python generate_perfected_guides.py --all
     python generate_perfected_guides.py --creator missalexa
     python generate_perfected_guides.py --all --dry-run
+
+Note: This module uses print() for CLI output since it is designed as
+a user-facing command-line tool for generating guide files.
 """
 
 import argparse
+import logging
 import os
 import random
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # CONSTANTS

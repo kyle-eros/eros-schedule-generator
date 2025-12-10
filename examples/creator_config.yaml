@@ -1,0 +1,274 @@
+# EROS Schedule Generator - Creator Configuration Example
+# This file demonstrates the configuration structure for creator scheduling
+# Version: 2.1.0
+
+# =============================================================================
+# CREATOR PROFILE
+# =============================================================================
+creator:
+  # Unique identifier from database
+  creator_id: "abc123-def456-ghi789"
+
+  # Page name (used for lookups)
+  page_name: "missalexa"
+
+  # Display name (shown in outputs)
+  display_name: "Miss Alexa"
+
+  # Page type determines content availability
+  # Options: paid, free
+  page_type: paid
+
+  # Current subscription price (for paid pages)
+  subscription_price: 9.99
+
+# =============================================================================
+# VOLUME CONFIGURATION
+# =============================================================================
+volume:
+  # Volume level determines daily PPV/bump targets
+  # Options: Low, Mid, High, Ultra
+  # Can be auto-calculated from fan count or manually set
+  level: Mid
+
+  # Manual override (optional)
+  # Set to true to prevent auto-calculation
+  manual_override: false
+
+  # Current fan metrics (used for auto-calculation)
+  current_active_fans: 2500
+
+  # Targets per volume level:
+  # Low:   2-3 PPV/day, 2-3 bumps/day (< 1,000 fans)
+  # Mid:   4-5 PPV/day, 4-5 bumps/day (1,000 - 5,000 fans)
+  # High:  6-8 PPV/day, 6-8 bumps/day (5,000 - 15,000 fans)
+  # Ultra: 8-10 PPV/day, 8-10 bumps/day (15,000+ fans)
+
+# =============================================================================
+# TIMEZONE CONFIGURATION
+# =============================================================================
+timezone:
+  # Creator's primary timezone
+  primary: "America/New_York"
+
+  # Best hours for engagement (local time)
+  best_hours:
+    - 10  # 10 AM
+    - 14  # 2 PM
+    - 18  # 6 PM - Prime time
+    - 21  # 9 PM - Peak engagement
+
+  # Premium slots (highest-value content)
+  premium_hours:
+    - 18  # 6 PM
+    - 21  # 9 PM
+
+# =============================================================================
+# CONTENT TYPE CONFIGURATION
+# =============================================================================
+content_types:
+  # Enabled content types for this creator
+  # Maps to content_type registry IDs
+  enabled:
+    # Tier 1 - Direct Revenue
+    - ppv              # Standard PPV mass message
+    - ppv_follow_up    # Bump after PPV (15-45 min)
+    - bundle           # Multi-piece content bundle
+    - flash_bundle     # Limited-time bundle with urgency
+
+    # Tier 2 - Feed/Wall
+    - vip_post         # VIP tier exclusive (paid pages only)
+    - link_drop        # External link promotion
+    - normal_post_bump # Regular feed engagement
+    - flyer_gif_bump   # Visual bump content
+
+    # Tier 3 - Engagement
+    - dm_farm          # DM engagement farming
+    - like_farm        # Like/engagement farming
+
+    # Tier 4 - Retention (days 5-7 only)
+    - renew_on_mm      # Renewal reminder (mass message)
+
+  # Disabled content types (not used for this creator)
+  disabled:
+    - snapchat_bundle   # Creator doesn't offer Snapchat
+    - expired_subscriber # Using different win-back strategy
+    - game_post         # Not using gamification currently
+
+  # Content type constraints (overrides from registry if needed)
+  constraints:
+    ppv:
+      min_spacing_hours: 4.0   # 4h minimum (above 3h default)
+      max_daily: 4             # Cap at 4 per day
+    bundle:
+      min_spacing_hours: 24.0
+      max_weekly: 2            # Only 2 bundles per week
+
+# =============================================================================
+# PERSONA PROFILE
+# =============================================================================
+persona:
+  # Primary tone (most common)
+  primary_tone: playful
+
+  # Secondary tone (situational)
+  secondary_tone: sweet
+
+  # Emoji usage frequency
+  # Options: heavy, moderate, light, none
+  emoji_frequency: moderate
+
+  # Favorite emojis (used for matching)
+  favorite_emojis:
+    - heart-eyes
+    - fire
+    - kiss
+    - sparkles
+    - peach
+
+  # Slang level
+  # Options: none, light, heavy
+  slang_level: light
+
+  # Average sentiment score (0.0 - 1.0)
+  avg_sentiment: 0.72
+
+  # Average caption length (characters)
+  avg_caption_length: 145
+
+# =============================================================================
+# SCHEDULING RULES
+# =============================================================================
+scheduling:
+  # Minimum PPV spacing (hours)
+  min_ppv_spacing_hours: 4.0
+
+  # Follow-up configuration
+  follow_ups:
+    enabled: true
+    min_delay_minutes: 15
+    max_delay_minutes: 45
+    # Only for captions with performance_score >= threshold
+    min_performance_score: 60
+
+  # Drip window configuration
+  drip_windows:
+    enabled: false
+    duration_hours: 6
+
+  # Content rotation
+  content_rotation:
+    enabled: true
+    # Prevent 3+ consecutive same content type
+    max_consecutive: 2
+
+  # Hook diversity
+  hook_diversity:
+    enabled: true
+    # Target unique hook types per week
+    target_unique_hooks: 4
+    # Penalty for consecutive same hook (0.0-1.0)
+    same_hook_penalty: 0.7
+
+# =============================================================================
+# FRESHNESS CONFIGURATION
+# =============================================================================
+freshness:
+  # Half-life for freshness decay (days)
+  half_life_days: 14.0
+
+  # Minimum freshness score for scheduling
+  minimum_score: 30.0
+
+  # Exhaustion threshold (below this = not schedulable)
+  exhaustion_threshold: 25.0
+
+# =============================================================================
+# PRICING STRATEGY
+# =============================================================================
+pricing:
+  # Default price ranges by content type
+  ranges:
+    ppv:
+      min: 8.00
+      max: 25.00
+      default: 15.00
+    bundle:
+      min: 15.00
+      max: 35.00
+      default: 22.00
+    flash_bundle:
+      min: 10.00
+      max: 20.00
+      default: 15.00
+
+  # Payday optimization
+  payday:
+    enabled: true
+    # Days with payday boost (1 = Monday)
+    boost_days:
+      - 1   # Typical first of month
+      - 15  # Typical mid-month
+    # Multiplier for payday slots
+    multiplier: 1.15
+
+# =============================================================================
+# POOL SELECTION STRATEGY
+# =============================================================================
+caption_pools:
+  # Stratified pool configuration
+  selection_strategy:
+    # Premium slots (6PM, 9PM)
+    premium:
+      pools: ["proven"]
+      fallback_pools: ["proven", "global_earner"]
+
+    # Standard PPV slots
+    standard:
+      pools: ["proven", "global_earner"]
+      fallback_pools: ["discovery"]
+
+    # Discovery slots (testing new content)
+    discovery:
+      pools: ["discovery"]
+      fallback_pools: ["global_earner"]
+      prioritize_recent_imports: true
+
+  # Weight formula components
+  weights:
+    earnings: 0.60      # 60%
+    freshness: 0.15     # 15%
+    persona: 0.15       # 15%
+    discovery: 0.10     # 10%
+
+# =============================================================================
+# VALIDATION SETTINGS
+# =============================================================================
+validation:
+  # Auto-correction settings
+  auto_correction:
+    enabled: true
+    max_passes: 2
+
+  # Rule severity overrides (optional)
+  severity_overrides:
+    V015_HOOK_ROTATION: warning    # Default: warning
+    V016_HOOK_DIVERSITY: info      # Default: info
+
+  # Strict mode (treat warnings as errors)
+  strict_mode: false
+
+# =============================================================================
+# OUTPUT CONFIGURATION
+# =============================================================================
+output:
+  # Default output directory
+  directory: "~/Developer/EROS-SD-MAIN-PROJECT/schedules"
+
+  # File naming pattern
+  # Available variables: {creator}, {week}, {date}
+  filename_pattern: "{creator}/{week}.md"
+
+  # Include context file for full mode
+  include_context: true
+  context_directory: "~/Developer/EROS-SD-MAIN-PROJECT/schedules/context"

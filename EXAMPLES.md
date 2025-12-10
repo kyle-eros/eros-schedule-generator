@@ -1,14 +1,20 @@
-# EROS Schedule Generator - Examples
+# EROS Schedule Generator v2.1 - Examples
 
-Practical examples for common use cases with the EROS Schedule Generator.
+Practical examples for common use cases with the EROS Schedule Generator v2.1.
 
 ## Table of Contents
 - [Quick Schedule Generation](#quick-schedule-generation)
 - [Full Semantic Analysis Mode](#full-semantic-analysis-mode)
 - [Batch Processing](#batch-processing)
 - [Python API Usage](#python-api-usage)
+- [Content Type Registry Examples](#content-type-registry-examples)
+- [Schedule Uniqueness Engine Examples](#schedule-uniqueness-engine-examples)
+- [ContentAssigner Examples](#contentassigner-examples)
 - [Caption Selection Examples](#caption-selection-examples)
+- [Pool-Based Caption Selection Examples](#pool-based-caption-selection-examples)
 - [Validation Examples](#validation-examples)
+- [Extended Validation Examples (V020-V031)](#extended-validation-examples-v020-v031)
+- [Hook Detection Examples](#hook-detection-examples)
 - [Volume Optimization](#volume-optimization)
 - [Content Strategy](#content-strategy)
 - [Error Handling](#error-handling)
@@ -23,6 +29,54 @@ Generate a 7-day schedule for a creator:
 ```bash
 # Auto-saves to ~/Developer/EROS-SD-MAIN-PROJECT/schedules/missalexa/2025-W02.md
 python scripts/generate_schedule.py --creator missalexa --week 2025-W02
+```
+
+### v2.1 CLI Examples
+
+#### Generate with Specific Content Types
+```bash
+# Generate schedule with only PPV and bundles (v2.1)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
+    --content-types "ppv bundle"
+
+# Include VIP posts and engagement content
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
+    --content-types "ppv vip_post dm_farm like_farm"
+```
+
+#### List Available Content Types
+```bash
+# List all 20+ content types (v2.1)
+python scripts/generate_schedule.py --list-content-types
+
+# Output shows:
+# - Content type ID
+# - Channel (mass_message, feed, direct)
+# - Page type restrictions (paid/free/both)
+# - Min spacing, max daily/weekly limits
+```
+
+#### Page Type Specification
+```bash
+# Generate for paid page (enables paid-only content types like vip_post) (v2.1)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
+    --page-type paid
+
+# Generate for free page (excludes vip_post, renew_on_post, etc.) (v2.1)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
+    --page-type free
+```
+
+#### Quick Mode vs Full Mode
+```bash
+# Quick mode - pattern-based, no semantic analysis (faster)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 --quick
+
+# Full mode - with LLM semantic analysis (default in v2.1)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02
+
+# Explicit full mode
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 --mode full
 ```
 
 ### Print to Console
@@ -42,6 +96,15 @@ python scripts/generate_schedule.py --creator-id abc123-def456 --week 2025-W02
 # Save to specific file
 python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
     --output ~/custom/path/schedule.md
+```
+
+### Skip Placeholders
+```bash
+# Skip slots without captions instead of generating placeholders (v2.1)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W02 \
+    --no-placeholders
+
+# Useful when caption pools are limited
 ```
 
 ### Output Example
@@ -242,6 +305,385 @@ print(f"Tier: {profile.performance_tier}")
 
 ---
 
+## Content Type Registry Examples
+
+The Content Type Registry provides centralized metadata for all 20+ schedulable content types in v2.1.
+
+### Get Content Type Metadata
+```python
+from content_type_registry import REGISTRY, get_registry
+
+# Get all content types
+all_types = REGISTRY.get_all()
+print(f"Total types: {len(all_types)}")  # 20
+
+# Get content type by ID
+ppv = REGISTRY.get("ppv")
+print(f"PPV min spacing: {ppv.min_spacing_hours}h")  # 3.0h
+print(f"PPV max daily: {ppv.max_daily}")  # 5
+print(f"PPV channel: {ppv.channel}")  # mass_message
+print(f"PPV priority tier: {ppv.priority_tier}")  # 1
+
+# Get VIP post (paid-only)
+vip = REGISTRY.get("vip_post")
+print(f"VIP page filter: {vip.page_type_filter}")  # paid
+print(f"VIP valid for free page: {vip.is_valid_for_page('free')}")  # False
+```
+
+### Filter Content Types
+```python
+from content_type_registry import REGISTRY
+
+# Get types valid for paid page
+paid_types = REGISTRY.get_types_for_page("paid")
+print(f"Paid page types: {len(paid_types)}")  # 20 (all types)
+
+# Get types valid for free page
+free_types = REGISTRY.get_types_for_page("free")
+print(f"Free page types: {len(free_types)}")  # 16 (excludes paid-only)
+
+# Validate content type for page
+is_valid = REGISTRY.validate_for_page("vip_post", "free")  # False
+is_valid = REGISTRY.validate_for_page("ppv", "free")  # True
+
+# Get types by channel
+mass_message_types = REGISTRY.get_types_by_channel("mass_message")
+print(f"Mass message types: {[t.type_id for t in mass_message_types]}")
+# ['ppv', 'ppv_follow_up', 'bundle', 'flash_bundle', 'snapchat_bundle',
+#  'renew_on_mm', 'text_only_bump']
+
+feed_types = REGISTRY.get_types_by_channel("feed")
+print(f"Feed types: {[t.type_id for t in feed_types]}")
+# ['vip_post', 'first_to_tip', 'link_drop', 'normal_post_bump', ...]
+
+# Get types by priority tier
+tier1_types = REGISTRY.get_types_by_priority(1)  # Direct Revenue types
+print(f"Tier 1 (Direct Revenue): {[t.type_id for t in tier1_types]}")
+# ['ppv', 'ppv_follow_up', 'bundle', 'flash_bundle', 'snapchat_bundle']
+
+tier2_types = REGISTRY.get_types_by_priority(2)  # Feed/Wall types
+print(f"Tier 2 (Feed/Wall): {[t.type_id for t in tier2_types]}")
+# ['vip_post', 'first_to_tip', 'link_drop', ...]
+```
+
+### Check Content Type Properties
+```python
+from content_type_registry import REGISTRY
+
+# Iterate all content types
+for content_type in REGISTRY.get_all():
+    print(f"{content_type.type_id:20} | Channel: {content_type.channel:14} | "
+          f"Spacing: {content_type.min_spacing_hours:>5}h | "
+          f"Max: {content_type.max_daily}/day")
+
+    if content_type.page_type_filter != "both":
+        print(f"  -> Page restriction: {content_type.page_type_filter.upper()}")
+
+    if content_type.theme_guidance:
+        print(f"  -> Theme: {content_type.theme_guidance}")
+
+# Check if content type exists
+if "bundle" in REGISTRY:
+    bundle = REGISTRY.get("bundle")
+    print(f"Bundle requires flyer: {bundle.requires_flyer}")  # True
+    print(f"Bundle has follow-up: {bundle.has_follow_up}")  # True
+```
+
+---
+
+## Schedule Uniqueness Engine Examples
+
+The Schedule Uniqueness Engine ensures each creator receives a 100% unique schedule through timing variance, historical weighting, and cross-week deduplication.
+
+### Apply Timing Variance
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine
+import sqlite3
+
+# Initialize engine
+conn = sqlite3.connect("database.db")
+conn.row_factory = sqlite3.Row
+engine = ScheduleUniquenessEngine(conn, creator_id="abc123-def456")
+
+# Load historical patterns from database
+engine.load_historical_patterns()
+
+# Apply 7-10 minute variance to slots
+slots = [
+    {"time": "10:00", "date": "2025-01-06", "content_type": "ppv"},
+    {"time": "14:00", "date": "2025-01-06", "content_type": "bundle"},
+    {"time": "18:00", "date": "2025-01-06", "content_type": "ppv"},
+]
+
+varied_slots = engine.apply_timing_variance(slots)
+
+# Check which slots got variance
+for slot in varied_slots:
+    variance = slot.get('timing_variance_applied', 0)
+    if variance != 0:
+        print(f"Slot at {slot['time']} shifted by {variance} minutes")
+        print(f"  New time: {slot['scheduled_time']}")
+```
+
+### Apply Historical Weighting
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine
+
+engine = ScheduleUniquenessEngine(conn, creator_id)
+engine.load_historical_patterns()
+
+# Weight caption pool based on creator's historical performance
+caption_pool = [
+    {"caption_id": 1, "performance_score": 85, "content_type": "ppv"},
+    {"caption_id": 2, "performance_score": 72, "content_type": "bundle"},
+    {"caption_id": 3, "performance_score": 90, "content_type": "ppv"},
+]
+
+slot = {"time": "18:00", "date": "2025-01-06", "day_of_week": 0}  # Monday
+
+# Apply historical weighting
+weighted_pool = engine.apply_historical_weighting(caption_pool, slot)
+
+# Check uniqueness weights
+for item in weighted_pool:
+    weight = item.get('uniqueness_weight', 1.0)
+    print(f"Caption {item['caption_id']}: weight = {weight:.3f}")
+```
+
+### Generate Schedule Fingerprint
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine
+
+engine = ScheduleUniquenessEngine(conn, creator_id)
+engine.load_historical_patterns()
+
+# Generate fingerprint for schedule
+slots = [
+    {"content_type": "ppv", "content_id": 123, "scheduled_date": "2025-01-06", "time": "10:07"},
+    {"content_type": "bundle", "content_id": 456, "scheduled_date": "2025-01-06", "time": "14:12"},
+    {"content_type": "ppv", "content_id": 789, "scheduled_date": "2025-01-06", "time": "18:03"},
+]
+
+fingerprint = engine.generate_fingerprint(slots)
+print(f"Schedule fingerprint: {fingerprint}")  # e.g., "a8b2c3d4e5f6g7h8"
+
+# Check for duplicates against recent schedules
+is_duplicate = engine.check_duplicate(fingerprint)
+if is_duplicate:
+    print("WARNING: This schedule matches a recent week!")
+else:
+    print("Schedule is unique!")
+```
+
+### Calculate Uniqueness Score
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine
+
+engine = ScheduleUniquenessEngine(conn, creator_id)
+engine.load_historical_patterns()
+
+# Calculate uniqueness score (0-100)
+score = engine.calculate_uniqueness_score(slots)
+print(f"Uniqueness score: {score}%")
+
+# Breakdown:
+# - Penalty for cross-week caption duplicates (max -30 points)
+# - Bonus for content type diversity (max +10 points)
+# - Penalty for slots without timing variance (max -10 points)
+
+if score >= 85:
+    print("Excellent uniqueness!")
+elif score >= 70:
+    print("Good uniqueness")
+else:
+    print("Consider refreshing caption pool")
+```
+
+### Get Comprehensive Metrics
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine, UniquenessMetrics
+
+engine = ScheduleUniquenessEngine(conn, creator_id)
+engine.load_historical_patterns()
+
+# Get full metrics
+metrics = engine.get_metrics(slots)
+
+print(f"Fingerprint: {metrics.fingerprint}")
+print(f"Uniqueness Score: {metrics.uniqueness_score}%")
+print(f"Timing Variance Applied: {metrics.timing_variance_applied} slots")
+print(f"Historical Weight Factor: {metrics.historical_weight_factor:.3f}")
+print(f"Cross-Week Duplicates: {metrics.cross_week_duplicates}")
+print(f"Content Type Distribution:")
+for content_type, count in metrics.content_type_distribution.items():
+    print(f"  {content_type}: {count}")
+
+# Convert to dict for JSON serialization
+metrics_dict = metrics.to_dict()
+import json
+print(json.dumps(metrics_dict, indent=2))
+```
+
+### Ensure Uniqueness with Retries
+```python
+from schedule_uniqueness import ScheduleUniquenessEngine
+
+engine = ScheduleUniquenessEngine(conn, creator_id)
+engine.load_historical_patterns()
+
+# Ensure uniqueness (with up to 5 retry attempts)
+unique_slots = engine.ensure_uniqueness(slots, max_attempts=5)
+
+# This will:
+# 1. Generate fingerprint
+# 2. Check against recent schedules
+# 3. If duplicate, re-apply timing variance with new seed
+# 4. Repeat up to max_attempts times
+# 5. Return unique schedule or original if uniqueness can't be achieved
+
+fingerprint = engine.generate_fingerprint(unique_slots)
+print(f"Final fingerprint: {fingerprint}")
+```
+
+### Convenience Function
+```python
+from schedule_uniqueness import apply_uniqueness
+import sqlite3
+
+# One-line uniqueness application
+conn = sqlite3.connect("database.db")
+conn.row_factory = sqlite3.Row
+
+slots = [...]  # Your schedule slots
+creator_id = "abc123-def456"
+
+# Apply all uniqueness operations
+unique_slots, metrics = apply_uniqueness(slots, conn, creator_id)
+
+print(f"Uniqueness Score: {metrics.uniqueness_score}%")
+print(f"Fingerprint: {metrics.fingerprint}")
+print(f"Variance Applied: {metrics.timing_variance_applied} slots")
+```
+
+---
+
+## ContentAssigner Examples
+
+The ContentAssigner provides unified content assignment for all 20+ content types with cross-type deduplication and rotation enforcement.
+
+### Basic Content Assignment
+```python
+from select_captions import ContentAssigner
+import sqlite3
+
+# Initialize ContentAssigner
+conn = sqlite3.connect("database.db")
+conn.row_factory = sqlite3.Row
+
+persona = {
+    "primary_tone": "playful",
+    "emoji_frequency": "moderate",
+    "slang_level": "light"
+}
+
+assigner = ContentAssigner(
+    conn=conn,
+    creator_id="abc123-def456",
+    page_type="paid",
+    persona=persona,
+    min_freshness=30.0
+)
+
+# Load all content pools (PPV + 19 other types)
+assigner.load_all_pools()
+
+# Assign content to each slot
+schedule_slots = [
+    {"slot_id": 1, "content_type": "ppv", "hour": 10, "date": "2025-01-06"},
+    {"slot_id": 2, "content_type": "vip_post", "hour": 14, "date": "2025-01-06"},
+    {"slot_id": 3, "content_type": "bundle", "hour": 18, "date": "2025-01-06"},
+]
+
+assigned_slots = []
+for slot in schedule_slots:
+    content = assigner.assign_content_to_slot(slot)
+    if content:
+        assigned_slots.append(content)
+        if content.get('has_caption'):
+            print(f"Assigned {content['content_type']}: {content.get('content_text', '')[:50]}...")
+        else:
+            print(f"Placeholder for {content['content_type']}: {content.get('theme_guidance', '')}")
+    else:
+        print(f"Failed to assign content for slot {slot['slot_id']}")
+```
+
+### Get Assignment Statistics
+```python
+from select_captions import ContentAssigner
+
+# After assigning content to all slots
+stats = assigner.get_assignment_stats()
+
+print(f"Total Assigned: {stats['total_assigned']}")
+print(f"Unique Content Used: {stats['unique_content_used']}")
+print(f"\nBy Content Type:")
+for content_type, count in stats['by_content_type'].items():
+    print(f"  {content_type}: {count}")
+
+print(f"\nCaption Pools Loaded: {stats['caption_pools_loaded']}")
+print(f"Content Pools Loaded: {stats['content_pools_loaded']}")
+```
+
+### Ensure No Duplicates
+```python
+from select_captions import ContentAssigner
+
+# Deduplicate assigned slots (prevents same caption used twice)
+assigned_slots = [...]  # Assigned slots from previous step
+
+deduplicated_slots = assigner.ensure_no_duplicates(assigned_slots)
+
+# Check for changes
+original_ids = {s.get('content_id') for s in assigned_slots if s.get('content_id')}
+final_ids = {s.get('content_id') for s in deduplicated_slots if s.get('content_id')}
+
+duplicates_replaced = len(original_ids) - len(final_ids)
+print(f"Duplicates replaced: {duplicates_replaced}")
+```
+
+### Enforce Content Rotation
+```python
+from select_captions import ContentAssigner
+
+# Ensure no 3x consecutive same content type
+assigned_slots = [...]  # Assigned slots
+
+rotated_slots = assigner.enforce_rotation(assigned_slots)
+
+# Rotation rules:
+# - If same content type appears 3x in a row
+# - Swap the 3rd occurrence with a different type
+# - Maintains engagement variety
+```
+
+### Handle Placeholders
+```python
+from select_captions import ContentAssigner
+
+# When pools are exhausted, ContentAssigner creates placeholders
+assigned_slots = [...]
+
+placeholders = [s for s in assigned_slots if not s.get('has_caption', True)]
+
+print(f"Placeholders: {len(placeholders)}")
+for slot in placeholders:
+    print(f"  Slot {slot.get('slot_id')}: {slot.get('content_type')}")
+    print(f"    Theme: {slot.get('theme_guidance', 'No guidance')}")
+    print(f"    Manual caption needed")
+```
+
+---
+
 ## Caption Selection Examples
 
 ### Select Captions with CLI
@@ -359,6 +801,469 @@ boost = calculate_persona_boost(
 )
 
 print(f"Persona boost: {boost:.2f}x")  # 1.28x (strong match)
+```
+
+---
+
+## Pool-Based Caption Selection Examples
+
+EROS v2.1 uses a three-pool stratification system for intelligent caption selection based on earnings performance.
+
+### Classify Caption Into Pool
+```python
+from select_captions import classify_pool, POOL_PROVEN, POOL_GLOBAL_EARNER, POOL_DISCOVERY
+
+# Classify a single caption
+caption = {
+    "creator_times_used": 5,
+    "creator_avg_earnings": 82.50,
+    "global_times_used": 15,
+    "global_avg_earnings": 65.00
+}
+
+pool = classify_pool(caption)
+print(f"Pool: {pool}")  # "PROVEN" (creator-tested, earns well)
+
+# Pool classification rules:
+# PROVEN: creator_times_used >= 3 AND creator_avg_earnings > 0
+# GLOBAL_EARNER: creator_times_used < 3 AND global_times_used >= 3 AND global_avg_earnings > 0
+# DISCOVERY: All others (new imports, under-tested)
+```
+
+### Load Stratified Pools
+```python
+from select_captions import StratifiedPools, load_stratified_pools
+import sqlite3
+
+conn = sqlite3.connect("database.db")
+conn.row_factory = sqlite3.Row
+
+# Load pools for all content types
+pools_by_id = load_stratified_pools(
+    conn=conn,
+    creator_id="abc123-def456",
+    allowed_content_types=None,  # All types from vault_matrix
+    min_freshness=30.0
+)
+
+# Iterate pools
+for content_type_id, pool in pools_by_id.items():
+    print(f"\nContent Type: {pool.type_name}")
+    print(f"  PROVEN: {len(pool.proven)} captions")
+    print(f"  GLOBAL_EARNER: {len(pool.global_earners)} captions")
+    print(f"  DISCOVERY: {len(pool.discovery)} captions")
+    print(f"  Total: {pool.total_count}")
+    print(f"  Has proven performers: {pool.has_proven}")
+
+    # Get expected earnings
+    expected = pool.get_expected_earnings()
+    print(f"  Expected earnings: ${expected:.2f}")
+```
+
+### Select from PROVEN Pool
+```python
+from select_captions import select_from_proven_pool
+
+# Premium slots use PROVEN pool (highest earners only)
+persona = {
+    "primary_tone": "playful",
+    "emoji_frequency": "moderate",
+    "slang_level": "light"
+}
+
+exclude_ids = set()  # Already selected caption IDs
+
+caption = select_from_proven_pool(
+    pools=pools_by_id,
+    persona=persona,
+    exclude_ids=exclude_ids,
+    exclude_content_type=None,  # Optional: exclude to promote variety
+    last_hook_type=None  # Optional: for hook rotation penalty
+)
+
+if caption:
+    print(f"Selected PROVEN caption:")
+    print(f"  ID: {caption.caption_id}")
+    print(f"  Text: {caption.caption_text[:60]}...")
+    print(f"  Creator earnings: ${caption.creator_avg_earnings:.2f}")
+    print(f"  Times used: {caption.creator_times_used}")
+    print(f"  Persona boost: {caption.persona_boost:.2f}x")
+    print(f"  Final weight: {caption.final_weight:.2f}")
+```
+
+### Select from GLOBAL_EARNER Pool
+```python
+from select_captions import select_from_standard_pools
+
+# Standard slots use PROVEN + GLOBAL_EARNER pools
+caption = select_from_standard_pools(
+    pools=pools_by_id,
+    persona=persona,
+    exclude_ids=exclude_ids,
+    exclude_content_type="ppv",  # Promote variety
+)
+
+if caption:
+    print(f"Selected caption from {caption.pool_type} pool")
+    if caption.pool_type == "PROVEN":
+        print(f"  Creator earnings: ${caption.creator_avg_earnings:.2f}")
+    elif caption.pool_type == "GLOBAL_EARNER":
+        print(f"  Global earnings: ${caption.global_avg_earnings:.2f}")
+        print(f"  Untested for this creator - discovery opportunity!")
+```
+
+### Select from DISCOVERY Pool
+```python
+from select_captions import select_from_discovery_pool
+
+# Discovery slots prioritize new imports and under-tested captions
+caption = select_from_discovery_pool(
+    pools=pools_by_id,
+    persona=persona,
+    exclude_ids=exclude_ids,
+    prioritize_recent_imports=True,  # Boost recent imports
+)
+
+if caption:
+    print(f"Selected DISCOVERY caption:")
+    print(f"  ID: {caption.caption_id}")
+    print(f"  Source: {caption.source}")  # "internal" or "external_import"
+    if caption.imported_at:
+        print(f"  Imported: {caption.imported_at}")
+    print(f"  Times used (creator): {caption.creator_times_used}")
+    print(f"  Times used (global): {caption.global_times_used}")
+
+    # Discovery bonuses applied:
+    # - Recent imports (< 30 days): 1.5x boost
+    # - External imports: 1.2x boost
+    # - High global earners: 1.3x boost
+```
+
+### Weight Calculation Example
+```python
+from weights import calculate_weight, get_max_earnings
+
+# Get max earnings for normalization
+proven_captions = pool.proven
+max_earnings = get_max_earnings(proven_captions, pool_type="PROVEN")
+
+# Calculate weight for a caption
+caption = proven_captions[0]
+persona_boost = 1.25  # From persona matching
+
+weight = calculate_weight(
+    caption=caption,
+    pool_type="PROVEN",
+    content_type_avg_earnings=50.0,
+    max_earnings=max_earnings,
+    persona_boost=persona_boost
+)
+
+print(f"Weight calculation:")
+print(f"  Earnings: ${caption.creator_avg_earnings:.2f}")
+print(f"  Max earnings: ${max_earnings:.2f}")
+print(f"  Freshness: {caption.freshness_score:.1f}")
+print(f"  Persona boost: {persona_boost:.2f}x")
+print(f"  Final weight: {weight:.2f}")
+
+# Weight formula:
+# Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery Bonus(10%)
+```
+
+### Hook Rotation Penalty
+```python
+from select_captions import select_from_proven_pool, SAME_HOOK_PENALTY
+from hook_detection import HookType
+
+# Track last hook type to prevent consecutive duplicates
+last_hook_type = HookType.CURIOSITY
+
+# Selection with hook rotation penalty
+caption = select_from_proven_pool(
+    pools=pools_by_id,
+    persona=persona,
+    exclude_ids=exclude_ids,
+    last_hook_type=last_hook_type  # Apply 0.7x penalty to same hook
+)
+
+if caption:
+    print(f"Hook type: {caption.hook_type.value}")
+    print(f"Hook confidence: {caption.hook_confidence:.2f}")
+
+    if caption.hook_type == last_hook_type:
+        print(f"WARNING: Same hook penalty ({SAME_HOOK_PENALTY}x) applied")
+    else:
+        print(f"Good variation: {last_hook_type.value} -> {caption.hook_type.value}")
+```
+
+---
+
+## Hook Detection Examples
+
+EROS v2.1 includes hook type detection for anti-detection rotation and authenticity scoring.
+
+### Detect Hook Type
+```python
+from hook_detection import detect_hook_type, HookType
+
+# Detect hook type from caption text
+captions = [
+    "Guess what I just filmed for you baby... 🔥",
+    "I miss you so much 💕 been thinking about you all day",
+    "EXCLUSIVE content just for my VIPs 🔒 don't miss this",
+    "Just posted something new! Check it now before it's gone",
+    "What would you do if you saw me like this? 😏",
+    "Hey babe, slide into my DMs 💌",
+    "You're gonna love what I have for you... trust me 😈"
+]
+
+for caption_text in captions:
+    hook_type, confidence = detect_hook_type(caption_text)
+    print(f"Caption: {caption_text[:50]}...")
+    print(f"  Hook: {hook_type.value}")
+    print(f"  Confidence: {confidence:.2f}")
+    print()
+
+# Hook types detected:
+# - curiosity: "Guess what...", "You won't believe..."
+# - personal: "I miss you", "thinking about you"
+# - exclusivity: "EXCLUSIVE", "VIPs only", "just for you"
+# - recency: "just posted", "new content"
+# - question: "What would you do?", "Should I...?"
+# - direct: "DM me", "check this out"
+# - teasing: "trust me", "you're gonna love"
+```
+
+### All Hook Types
+```python
+from hook_detection import HOOK_TYPES, HookType
+
+# List all available hook types
+print("Available hook types:")
+for hook in HOOK_TYPES:
+    print(f"  - {hook}")
+
+# Output:
+# - curiosity
+# - personal
+# - exclusivity
+# - recency
+# - question
+# - direct
+# - teasing
+```
+
+### Use in Caption Selection
+```python
+from select_captions import select_from_proven_pool
+from hook_detection import HookType
+
+# Track hook diversity across selections
+selected_hooks = []
+selected_captions = []
+
+for i in range(5):
+    # Get last hook for rotation penalty
+    last_hook = selected_hooks[-1] if selected_hooks else None
+
+    caption = select_from_proven_pool(
+        pools=pools_by_id,
+        persona=persona,
+        exclude_ids={c.caption_id for c in selected_captions},
+        last_hook_type=last_hook
+    )
+
+    if caption:
+        selected_captions.append(caption)
+        selected_hooks.append(caption.hook_type)
+        print(f"Caption {i+1}: {caption.hook_type.value} hook")
+
+# Check diversity
+unique_hooks = len(set(selected_hooks))
+print(f"\nHook diversity: {unique_hooks}/5 unique hooks")
+if unique_hooks >= 4:
+    print("Excellent hook diversity!")
+elif unique_hooks >= 3:
+    print("Good hook diversity")
+else:
+    print("Low hook diversity - may appear repetitive")
+```
+
+---
+
+## Extended Validation Examples (V020-V031)
+
+EROS v2.1 adds 12 new validation rules (V020-V031) for the 20+ content type system.
+
+### Page Type Validation (V020)
+```python
+from validate_schedule import ScheduleValidator
+
+validator = ScheduleValidator()
+
+# Validate with page type
+items = [
+    {"item_id": 1, "content_type_name": "ppv", "scheduled_date": "2025-01-06", "scheduled_time": "10:00"},
+    {"item_id": 2, "content_type_name": "vip_post", "scheduled_date": "2025-01-06", "scheduled_time": "14:00"},
+]
+
+# Free page validation (vip_post is paid-only)
+result = validator.validate(items, page_type="free")
+
+# Check for V020 violations
+v020_issues = [i for i in result.issues if i.rule_name == "V020"]
+if v020_issues:
+    print("Page type violations found:")
+    for issue in v020_issues:
+        print(f"  {issue.message}")
+        print(f"  Auto-correctable: {issue.auto_correctable}")
+        print(f"  Action: {issue.correction_action}")
+
+# Paid page validation (all types valid)
+result = validator.validate(items, page_type="paid")
+assert result.is_valid  # No violations
+```
+
+### VIP Post Spacing (V021)
+```python
+# V021: Minimum 24 hours between VIP posts
+items = [
+    {"item_id": 1, "content_type_name": "vip_post", "scheduled_date": "2025-01-06", "scheduled_time": "10:00"},
+    {"item_id": 2, "content_type_name": "vip_post", "scheduled_date": "2025-01-06", "scheduled_time": "20:00"},
+]
+
+result = validator.validate(items, page_type="paid")
+
+v021_issues = [i for i in result.issues if i.rule_name == "V021"]
+if v021_issues:
+    print("VIP post spacing violation:")
+    for issue in v021_issues:
+        print(f"  {issue.message}")
+        # Auto-correctable: moves second VIP post to next day
+```
+
+### Engagement Limits (V023/V024)
+```python
+from datetime import date
+
+# V023: Max 2 engagement posts per day
+# V024: Max 10 engagement posts per week
+items = [
+    {"item_id": 1, "content_type_name": "dm_farm", "scheduled_date": "2025-01-06", "scheduled_time": "10:00"},
+    {"item_id": 2, "content_type_name": "like_farm", "scheduled_date": "2025-01-06", "scheduled_time": "14:00"},
+    {"item_id": 3, "content_type_name": "dm_farm", "scheduled_date": "2025-01-06", "scheduled_time": "18:00"},
+]
+
+result = validator.validate(items, page_type="paid")
+
+# Check V023 (daily limit)
+v023_issues = [i for i in result.issues if i.rule_name == "V023"]
+if v023_issues:
+    print(f"Daily engagement limit exceeded:")
+    for issue in v023_issues:
+        print(f"  {issue.message}")
+        # Auto-correctable: moves excess to next day
+```
+
+### Retention Timing (V025)
+```python
+# V025: Retention content should be on days 5-7 (Fri-Sun)
+week_start = date(2025, 1, 6)  # Monday
+
+items = [
+    {"item_id": 1, "content_type_name": "renew_on_post", "scheduled_date": "2025-01-07", "scheduled_time": "10:00"},  # Tuesday (day 2)
+    {"item_id": 2, "content_type_name": "renew_on_mm", "scheduled_date": "2025-01-10", "scheduled_time": "14:00"},  # Friday (day 5)
+]
+
+result = validator.validate(items, page_type="paid", week_start=week_start)
+
+v025_issues = [i for i in result.issues if i.rule_name == "V025"]
+if v025_issues:
+    print("Retention timing suggestions:")
+    for issue in v025_issues:
+        print(f"  {issue.message}")
+        # Info only - recommends days 5-7 for best impact
+```
+
+### Bundle Spacing (V026/V027)
+```python
+# V026: Min 24h between regular bundles
+# V027: Min 48h between flash bundles
+items = [
+    {"item_id": 1, "content_type_name": "bundle", "scheduled_date": "2025-01-06", "scheduled_time": "10:00"},
+    {"item_id": 2, "content_type_name": "bundle", "scheduled_date": "2025-01-06", "scheduled_time": "20:00"},
+    {"item_id": 3, "content_type_name": "flash_bundle", "scheduled_date": "2025-01-07", "scheduled_time": "10:00"},
+    {"item_id": 4, "content_type_name": "flash_bundle", "scheduled_date": "2025-01-08", "scheduled_time": "10:00"},
+]
+
+result = validator.validate(items, page_type="paid")
+
+# Check V026 (bundle spacing)
+v026_issues = [i for i in result.issues if i.rule_name == "V026"]
+if v026_issues:
+    print("Bundle spacing violations:")
+    for issue in v026_issues:
+        print(f"  {issue.message}")
+        # Auto-correctable: moves to next valid slot
+
+# Check V027 (flash bundle spacing)
+v027_issues = [i for i in result.issues if i.rule_name == "V027"]
+if v027_issues:
+    print("Flash bundle spacing violations:")
+    for issue in v027_issues:
+        print(f"  {issue.message}")
+        # Auto-correctable: moves to 48h+ after previous
+```
+
+### Placeholder Warnings (V031)
+```python
+# V031: Warn when slots have no caption (placeholder)
+items = [
+    {"item_id": 1, "content_type_name": "ppv", "has_caption": True, "caption_id": 123},
+    {"item_id": 2, "content_type_name": "vip_post", "has_caption": False, "caption_id": None},
+    {"item_id": 3, "content_type_name": "bundle", "caption_id": None, "caption_text": ""},
+]
+
+result = validator.validate(items, page_type="paid")
+
+v031_issues = [i for i in result.issues if i.rule_name == "V031"]
+if v031_issues:
+    print(f"Placeholders found: {len(v031_issues)}")
+    for issue in v031_issues:
+        print(f"  {issue.message}")
+        # Info severity - manual caption entry required
+```
+
+### Auto-Correction Example
+```python
+from validate_schedule import ScheduleValidator
+
+validator = ScheduleValidator()
+
+# Schedule with violations
+items = [
+    {"item_id": 1, "content_type_name": "ppv", "scheduled_date": "2025-01-06", "scheduled_time": "10:00"},
+    {"item_id": 2, "content_type_name": "ppv", "scheduled_date": "2025-01-06", "scheduled_time": "11:00"},  # Too close
+    {"item_id": 3, "content_type_name": "vip_post", "scheduled_date": "2025-01-06", "scheduled_time": "14:00"},
+    {"item_id": 4, "content_type_name": "vip_post", "scheduled_date": "2025-01-06", "scheduled_time": "20:00"},  # < 24h
+]
+
+# Validate with auto-correction (max 2 passes)
+result = validator.validate_with_corrections(
+    items=items,
+    page_type="paid",
+    max_passes=2
+)
+
+print(f"Validation result: {'PASSED' if result.is_valid else 'FAILED'}")
+print(f"Errors: {result.error_count}")
+print(f"Warnings: {result.warning_count}")
+print(f"Corrections applied: {sum(1 for i in result.issues if 'auto_corrections' in i.rule_name)}")
+
+# Auto-correctable issues are fixed automatically:
+# - PPV spacing < 3h -> moved to next valid slot
+# - VIP post spacing < 24h -> moved to next day
+# - Engagement limit exceeded -> redistributed or removed
 ```
 
 ---

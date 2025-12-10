@@ -6,13 +6,20 @@ This script verifies all components are functional before production use.
 Usage:
     python3 verify_deployment.py
     python3 verify_deployment.py --quick  # Skip schedule generation test
+
+Note: This module uses print() for CLI output with ANSI color codes since it
+is designed as a visual deployment verification tool with formatted output.
 """
 
 import argparse
+import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Resolve paths
 SCRIPT_DIR = Path(__file__).parent

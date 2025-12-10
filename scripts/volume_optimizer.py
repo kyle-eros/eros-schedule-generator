@@ -33,16 +33,23 @@ Volume Tiers (Performance-Based):
 Hard Caps:
     - Paid pages: MIN 14, MAX 42 PPV per WEEK (2-6 per day)
     - Free pages: MIN 2, MAX 6 PPV per DAY
+
+Note: This module uses print() for CLI output (results, tables, and JSON).
+Diagnostic warnings use the standard logging module.
 """
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
@@ -872,7 +879,7 @@ class MultiFactorVolumeOptimizer:
 
         except sqlite3.Error as e:
             # Log but don't fail - fall back to calculated volume
-            print(f"Warning: Could not check volume override: {e}")
+            logger.warning(f"Could not check volume override: {e}")
             return None
 
     def _can_exceed_sweet_spot(self, metrics: CreatorMetrics) -> bool:

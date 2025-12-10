@@ -16,6 +16,10 @@ Usage:
     python batch_portfolio_analysis.py --mode deep --output-dir ./reports
     python batch_portfolio_analysis.py --creator missalexa --mode deep
 
+Note: This module uses print() for CLI output controlled by the `verbose` flag.
+The CLIOutput class provides structured output with optional ANSI color support.
+Internal logging uses the standard logging module for diagnostic output.
+
 Author: EROS Schedule Generator
 Version: 1.0.0
 """

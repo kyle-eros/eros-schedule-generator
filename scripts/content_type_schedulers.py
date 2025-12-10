@@ -2,18 +2,26 @@
 """
 Content Type Schedulers - Schedule various content types.
 
-This module provides scheduling logic for:
-- Wall/Feed posts
-- Free previews
-- Polls
-- Game wheel promotions
+This module provides scheduling logic for all 20+ OnlyFans content types:
+- PPV and follow-ups (Tier 1 - Direct Revenue)
+- Wall/Feed posts, VIP posts, link drops (Tier 2 - Feed/Wall)
+- DM farm, like farm, engagement posts (Tier 3 - Engagement)
+- Renew on, expired subscriber (Tier 4 - Retention)
+- Polls, game wheels, live promos
 
 These functions take content pools and configuration,
 returning ScheduleItem instances positioned appropriately.
+
+Slot Generation Functions:
+    Each content type has a dedicated slot generator that determines
+    WHEN content is sent based on business rules, page type, and volume level.
 """
 
+from __future__ import annotations
+
 import random
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -23,6 +31,118 @@ if TYPE_CHECKING:
         ScheduleConfig,
         ScheduleItem,
     )
+
+# Import SlotConfig from centralized models
+# Note: We extend the base SlotConfig with a more detailed to_dict method
+from models import SlotConfig as BaseSlotConfig
+
+
+# =============================================================================
+# TIMING CONSTANTS
+# =============================================================================
+
+# Peak hours for content scheduling (best engagement windows)
+PEAK_HOURS: set[int] = {10, 14, 18, 21, 23}
+
+# Premium hours (highest engagement - use for high-value content)
+PREMIUM_HOURS: set[int] = {18, 21}
+
+# Engagement hours (optimal for DM farm, like farm)
+ENGAGEMENT_HOURS: set[int] = {10, 14, 20}
+
+# Retention hours (optimal for renew on, expired subscriber)
+RETENTION_HOURS: set[int] = {11, 17}
+
+# Link drop hours (good for traffic distribution)
+LINK_DROP_HOURS: tuple[int, ...] = (12, 16, 20)
+
+# Bump variant hours (flyers, descriptive, text-only)
+BUMP_HOURS: tuple[int, ...] = (11, 15, 19, 22)
+
+# Default timing variance range (minutes) for authenticity
+TIMING_VARIANCE_RANGE: tuple[int, int] = (-10, 10)
+
+
+# =============================================================================
+# SLOT CONFIG - Extended from models.py
+# =============================================================================
+# SlotConfig is now centralized in models.py
+# We extend it here with a more detailed to_dict method for backward compatibility
+
+
+@dataclass
+class SlotConfig(BaseSlotConfig):
+    """
+    Configuration for a scheduled content slot.
+
+    Extended from models.SlotConfig with additional to_dict output fields
+    for backward compatibility with content_type_schedulers consumers.
+    """
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert slot to dictionary format for compatibility."""
+        return {
+            "slot_id": self.slot_id,
+            "date": self.day.isoformat() if isinstance(self.day, date) else self.day,
+            "day_name": self.day.strftime("%A") if isinstance(self.day, date) else "",
+            "time": self.time.strftime("%H:%M") if isinstance(self.time, time) else self.time,
+            "hour": (
+                self.time.hour if isinstance(self.time, time)
+                else int(str(self.time).split(":")[0])
+            ),
+            "type": self.content_type,
+            "channel": self.channel,
+            "priority": self.slot_priority,
+            "is_follow_up": self.is_follow_up,
+            "parent_slot_id": self.parent_slot_id,
+            "theme_guidance": self.theme_guidance,
+            "payday_multiplier": self.payday_multiplier,
+            "is_payday_optimal": self.is_payday_optimal,
+            "is_mid_cycle": self.is_mid_cycle,
+        }
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+
+def _add_timing_variance(
+    base_time: time, variance_range: tuple[int, int] = TIMING_VARIANCE_RANGE
+) -> time:
+    """
+    Add random timing variance to make schedules appear more organic.
+
+    Args:
+        base_time: The original scheduled time
+        variance_range: Tuple of (min, max) minutes to add
+
+    Returns:
+        New time with variance applied
+    """
+    variance_minutes = random.randint(*variance_range)
+    base_dt = datetime.combine(date.today(), base_time)
+    adjusted_dt = base_dt + timedelta(minutes=variance_minutes)
+    return adjusted_dt.time()
+
+
+def _get_volume_multiplier(volume_level: str) -> tuple[int, int]:
+    """
+    Get volume multipliers for daily/weekly counts based on volume level.
+
+    Args:
+        volume_level: One of "Low", "Mid", "High", "Ultra"
+
+    Returns:
+        Tuple of (daily_base, weekly_multiplier)
+    """
+    multipliers = {
+        "Low": (1, 1),
+        "Mid": (2, 2),
+        "High": (3, 3),
+        "Ultra": (4, 4),
+    }
+    return multipliers.get(volume_level, (2, 2))
 
 
 def _get_schedule_item_class():
@@ -355,7 +475,10 @@ def create_game_wheel_schedule_item(
         caption_text=promo_text,
         wheel_config_id=wheel_config.wheel_id,
         priority=4,
-        notes=f"Game Wheel | Trigger: {wheel_config.spin_trigger} >= ${wheel_config.min_trigger_amount:.2f}",
+        notes=(
+            f"Game Wheel | Trigger: {wheel_config.spin_trigger} "
+            f">= ${wheel_config.min_trigger_amount:.2f}"
+        ),
     )
 
 
@@ -482,14 +605,781 @@ def generate_poll_slots(
 
 
 # =============================================================================
+# NEW SLOT GENERATORS (Phase 3A - 20+ Content Types)
+# =============================================================================
+
+
+def generate_vip_post_slots(
+    week_start: date | str,
+    creator_id: str,
+    page_type: str,
+    start_slot_id: int = 700,
+) -> list[SlotConfig]:
+    """
+    Generate VIP post slots for paid pages only.
+
+    Strategy:
+    - Paid pages only (return [] for free pages)
+    - 1-2 per week at prime time (18:00, 21:00)
+    - 24 hour minimum spacing between VIP posts
+
+    Args:
+        week_start: Week start date
+        creator_id: Creator identifier
+        page_type: Page type ("paid" or "free")
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for VIP posts
+    """
+    # VIP posts are paid page only
+    if page_type.lower() != "paid":
+        return []
+
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    # Schedule 1-2 VIP posts per week
+    # Place on Tuesday and Friday (days 1 and 4) at prime hours
+    vip_days = [1, 4]  # Tuesday, Friday
+    vip_hours = list(PREMIUM_HOURS)  # 18:00, 21:00
+
+    for i, day_offset in enumerate(vip_days[:2]):
+        vip_date = week_start + timedelta(days=day_offset)
+        base_hour = vip_hours[i % len(vip_hours)]
+        base_time = time(hour=base_hour, minute=0)
+        varied_time = _add_timing_variance(base_time)
+
+        slots.append(
+            SlotConfig(
+                day=vip_date,
+                time=varied_time,
+                content_type="vip_post",
+                channel="feed",
+                slot_priority=2,
+                is_follow_up=False,
+                theme_guidance=(
+                    "Exclusive VIP tier content, emphasize $200+ value and premium benefits"
+                ),
+                creator_id=creator_id,
+                slot_id=slot_id,
+            )
+        )
+        slot_id += 1
+
+    return slots
+
+
+def generate_tip_incentive_slots(
+    week_start: date | str,
+    volume_level: str,
+    creator_id: str | None = None,
+    start_slot_id: int = 800,
+) -> list[SlotConfig]:
+    """
+    Generate tip incentive (first_to_tip) slots.
+
+    Strategy:
+    - 2-3 per week based on volume level
+    - Low/Mid: 2 slots, High/Ultra: 3 slots
+    - Distribute evenly across week
+    - Avoid first day (need engagement buildup)
+
+    Args:
+        week_start: Week start date
+        volume_level: Volume level ("Low", "Mid", "High", "Ultra")
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for tip incentives
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    # Determine count based on volume level
+    if volume_level in ("High", "Ultra"):
+        tip_count = 3
+        tip_day_offsets = [1, 3, 5]  # Tue, Thu, Sat
+    else:
+        tip_count = 2
+        tip_day_offsets = [2, 5]  # Wed, Sat
+
+    tip_hours = [14, 18, 20]  # Afternoon/evening for engagement
+
+    for i, day_offset in enumerate(tip_day_offsets[:tip_count]):
+        tip_date = week_start + timedelta(days=day_offset)
+        base_hour = tip_hours[i % len(tip_hours)]
+        base_time = time(hour=base_hour, minute=0)
+        varied_time = _add_timing_variance(base_time)
+
+        slots.append(
+            SlotConfig(
+                day=tip_date,
+                time=varied_time,
+                content_type="first_to_tip",
+                channel="feed",
+                slot_priority=2,
+                is_follow_up=False,
+                theme_guidance="Tip campaign with specific goal, urgency-driven competition",
+                creator_id=creator_id,
+                slot_id=slot_id,
+            )
+        )
+        slot_id += 1
+
+    return slots
+
+
+def generate_link_drop_slots(
+    week_start: date | str,
+    volume_level: str,
+    creator_id: str | None = None,
+    start_slot_id: int = 900,
+) -> list[SlotConfig]:
+    """
+    Generate link drop slots.
+
+    Strategy:
+    - 1-2 per day based on volume level
+    - Low/Mid: 1/day, High/Ultra: 2/day
+    - 4 hour minimum spacing from PPV times
+    - Peak hours: 12:00, 16:00, 20:00
+
+    Args:
+        week_start: Week start date
+        volume_level: Volume level
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for link drops
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    # Determine daily count based on volume
+    daily_base, _ = _get_volume_multiplier(volume_level)
+    links_per_day = min(daily_base, 2)  # Max 2 per day
+
+    for day_offset in range(7):  # Full week
+        current_date = week_start + timedelta(days=day_offset)
+
+        for i in range(links_per_day):
+            base_hour = LINK_DROP_HOURS[i % len(LINK_DROP_HOURS)]
+            base_time = time(hour=base_hour, minute=0)
+            varied_time = _add_timing_variance(base_time)
+
+            slots.append(
+                SlotConfig(
+                    day=current_date,
+                    time=varied_time,
+                    content_type="link_drop",
+                    channel="feed",
+                    slot_priority=2,
+                    is_follow_up=False,
+                    theme_guidance="Casual link share, drive traffic to other platforms",
+                    creator_id=creator_id,
+                    slot_id=slot_id,
+                )
+            )
+            slot_id += 1
+
+    return slots
+
+
+def generate_engagement_slots(
+    week_start: date | str,
+    volume_level: str,
+    creator_id: str | None = None,
+    start_slot_id: int = 1000,
+) -> list[SlotConfig]:
+    """
+    Generate engagement slots (DM farm and like farm).
+
+    Strategy:
+    - DM Farm: Morning (10:00) and evening (20:00) split
+    - Like Farm: Afternoon (14:00)
+    - Max 2 per day, 10 per week
+    - Scales with volume level
+
+    Args:
+        week_start: Week start date
+        volume_level: Volume level
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for engagement content
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    # Volume-based scaling
+    daily_base, _ = _get_volume_multiplier(volume_level)
+    engagement_per_day = min(daily_base, 2)  # Max 2 per day
+
+    # Alternate between DM farm and like farm throughout week
+    engagement_schedule = [
+        ("dm_farm", 10, "DM me for surprise, encourage 1-on-1 engagement"),
+        ("like_farm", 14, "Like this post for a reward, engagement boost campaign"),
+        ("dm_farm", 20, "Personal check-in, build relationship"),
+    ]
+
+    weekly_count = 0
+    max_weekly = 10
+
+    for day_offset in range(7):
+        current_date = week_start + timedelta(days=day_offset)
+
+        for i in range(engagement_per_day):
+            if weekly_count >= max_weekly:
+                break
+
+            content_type, base_hour, guidance = engagement_schedule[
+                (day_offset + i) % len(engagement_schedule)
+            ]
+            base_time = time(hour=base_hour, minute=0)
+            varied_time = _add_timing_variance(base_time)
+
+            # Determine channel based on content type
+            channel = "direct" if content_type == "dm_farm" else "feed"
+
+            slots.append(
+                SlotConfig(
+                    day=current_date,
+                    time=varied_time,
+                    content_type=content_type,
+                    channel=channel,
+                    slot_priority=3,
+                    is_follow_up=False,
+                    theme_guidance=guidance,
+                    creator_id=creator_id,
+                    slot_id=slot_id,
+                )
+            )
+            slot_id += 1
+            weekly_count += 1
+
+    return slots
+
+
+def generate_retention_slots(
+    week_start: date | str,
+    page_type: str,
+    creator_id: str | None = None,
+    start_slot_id: int = 1100,
+) -> list[SlotConfig]:
+    """
+    Generate retention slots (renew_on_mm and expired_subscriber).
+
+    Strategy:
+    - Paid pages only
+    - Renew On: Days 5-7 of week (before billing cycle)
+    - Expired Subscriber: Day 1 and Day 4 (win-back timing)
+    - Uses retention-optimized hours (11:00, 17:00)
+
+    Args:
+        week_start: Week start date
+        page_type: Page type ("paid" or "free")
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for retention content
+    """
+    # Retention content is paid page only
+    if page_type.lower() != "paid":
+        return []
+
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+    retention_hours = list(RETENTION_HOURS)
+
+    # Renew On Mass Message: Days 5-7 (Fri, Sat, Sun)
+    for i, day_offset in enumerate([4, 5, 6]):
+        if i >= 2:  # Max 2 per week
+            break
+        renew_date = week_start + timedelta(days=day_offset)
+        base_hour = retention_hours[i % len(retention_hours)]
+        base_time = time(hour=base_hour, minute=0)
+        varied_time = _add_timing_variance(base_time)
+
+        slots.append(
+            SlotConfig(
+                day=renew_date,
+                time=varied_time,
+                content_type="renew_on_mm",
+                channel="mass_message",
+                slot_priority=4,
+                is_follow_up=False,
+                theme_guidance="Subscription expiring soon, exclusive content preview to retain",
+                creator_id=creator_id,
+                slot_id=slot_id,
+            )
+        )
+        slot_id += 1
+
+    # Expired Subscriber: Day 1 and Day 4 (Mon, Thu)
+    for i, day_offset in enumerate([0, 3]):
+        expired_date = week_start + timedelta(days=day_offset)
+        base_hour = retention_hours[i % len(retention_hours)]
+        base_time = time(hour=base_hour, minute=0)
+        varied_time = _add_timing_variance(base_time)
+
+        slots.append(
+            SlotConfig(
+                day=expired_date,
+                time=varied_time,
+                content_type="expired_subscriber",
+                channel="direct",
+                slot_priority=4,
+                is_follow_up=False,
+                theme_guidance=(
+                    "Miss you message, highlight what they are missing, special offer to return"
+                ),
+                creator_id=creator_id,
+                slot_id=slot_id,
+            )
+        )
+        slot_id += 1
+
+    return slots
+
+
+def generate_bump_variant_slots(
+    week_start: date | str,
+    volume_level: str,
+    creator_id: str | None = None,
+    start_slot_id: int = 1200,
+) -> list[SlotConfig]:
+    """
+    Generate bump variant slots (flyer/GIF, descriptive, text-only).
+
+    Strategy:
+    - Flyer/GIF bumps: 2 per day, 4 hour spacing
+    - Descriptive bumps: 1-2 per day based on volume
+    - Text-only bumps: Fill remaining engagement slots
+    - Total scales with volume level
+
+    Args:
+        week_start: Week start date
+        volume_level: Volume level
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for bump variants
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    daily_base, _ = _get_volume_multiplier(volume_level)
+
+    # Bump type rotation with hours
+    bump_types = [
+        ("flyer_gif_bump", 11, "Eye-catching visual content, quick engagement grab"),
+        ("descriptive_bump", 15, "Detailed content preview, build anticipation"),
+        ("flyer_gif_bump", 19, "Evening visual bump, catch after-work crowd"),
+        ("text_only_bump", 22, "Personal message tone, casual check-in or tease"),
+    ]
+
+    for day_offset in range(7):
+        current_date = week_start + timedelta(days=day_offset)
+        bumps_today = min(daily_base, 2)  # Max 2 bumps per day
+
+        for i in range(bumps_today):
+            content_type, base_hour, guidance = bump_types[
+                (day_offset + i) % len(bump_types)
+            ]
+            base_time = time(hour=base_hour, minute=0)
+            varied_time = _add_timing_variance(base_time)
+
+            # Text-only goes to mass_message, others to feed
+            channel = "mass_message" if content_type == "text_only_bump" else "feed"
+
+            slots.append(
+                SlotConfig(
+                    day=current_date,
+                    time=varied_time,
+                    content_type=content_type,
+                    channel=channel,
+                    slot_priority=2 if content_type != "text_only_bump" else 3,
+                    is_follow_up=False,
+                    theme_guidance=guidance,
+                    creator_id=creator_id,
+                    slot_id=slot_id,
+                )
+            )
+            slot_id += 1
+
+    return slots
+
+
+def generate_game_post_slots(
+    week_start: date | str,
+    creator_id: str | None = None,
+    start_slot_id: int = 1300,
+) -> list[SlotConfig]:
+    """
+    Generate game post slot (spin the wheel, contests).
+
+    Strategy:
+    - 1 per week maximum
+    - Saturday evening (prime engagement window)
+    - 7 PM for maximum participation
+
+    Args:
+        week_start: Week start date
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List with single SlotConfig for game post
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    # Saturday is day 5 (0=Monday)
+    game_date = week_start + timedelta(days=5)
+    base_time = time(hour=19, minute=0)  # 7 PM
+    varied_time = _add_timing_variance(base_time)
+
+    return [
+        SlotConfig(
+            day=game_date,
+            time=varied_time,
+            content_type="game_post",
+            channel="feed",
+            slot_priority=2,
+            is_follow_up=False,
+            theme_guidance="Spin the wheel, chance to win prizes, gamification and fun",
+            creator_id=creator_id,
+            slot_id=start_slot_id,
+        )
+    ]
+
+
+def generate_live_promo_slots(
+    week_start: date | str,
+    live_schedule: list[datetime] | None = None,
+    creator_id: str | None = None,
+    start_slot_id: int = 1400,
+) -> list[SlotConfig]:
+    """
+    Generate live stream promotion slots.
+
+    Strategy:
+    - 2-4 hours before each scheduled live session
+    - If no schedule provided, skip (return empty list)
+    - Creates anticipation and maximizes live attendance
+
+    Args:
+        week_start: Week start date
+        live_schedule: List of datetime for upcoming lives (optional)
+        creator_id: Optional creator identifier
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances for live promos
+    """
+    if not live_schedule:
+        return []
+
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    week_end = week_start + timedelta(days=6)
+
+    slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    for live_dt in live_schedule:
+        # Only process lives within this week
+        if isinstance(live_dt, datetime):
+            live_date = live_dt.date()
+        else:
+            continue
+
+        if not (week_start <= live_date <= week_end):
+            continue
+
+        # Schedule promo 2-4 hours before live
+        promo_lead_hours = random.choice([2, 3, 4])
+        promo_dt = live_dt - timedelta(hours=promo_lead_hours)
+        promo_time = _add_timing_variance(promo_dt.time())
+
+        slots.append(
+            SlotConfig(
+                day=promo_dt.date(),
+                time=promo_time,
+                content_type="live_promo",
+                channel="feed",
+                slot_priority=2,
+                is_follow_up=False,
+                theme_guidance=(
+                    f"Live stream in {promo_lead_hours} hours! "
+                    "Time and date announcement, exclusive preview"
+                ),
+                creator_id=creator_id,
+                slot_id=slot_id,
+            )
+        )
+        slot_id += 1
+
+    return slots
+
+
+# =============================================================================
+# UNIFIED SLOT BUILDER
+# =============================================================================
+
+
+def resolve_slot_conflicts(slots: list[SlotConfig]) -> list[SlotConfig]:
+    """
+    Resolve conflicts when multiple slots are at the same time.
+
+    Strategy:
+    - Group slots by (day, time)
+    - For each group, keep slot with lowest priority_tier (highest priority)
+    - Move lower priority slots to next available time (15-30 min offset)
+
+    Args:
+        slots: List of SlotConfig instances
+
+    Returns:
+        List of SlotConfig with conflicts resolved
+    """
+    if not slots:
+        return []
+
+    # Group by (day, time hour)
+    time_groups: dict[tuple[date, int], list[SlotConfig]] = {}
+    for slot in slots:
+        key = (slot.day, slot.time.hour)
+        if key not in time_groups:
+            time_groups[key] = []
+        time_groups[key].append(slot)
+
+    resolved: list[SlotConfig] = []
+
+    for (day, hour), group in time_groups.items():
+        if len(group) == 1:
+            resolved.append(group[0])
+            continue
+
+        # Sort by priority (lower number = higher priority)
+        group.sort(key=lambda s: s.slot_priority)
+
+        # Keep highest priority slot as-is
+        resolved.append(group[0])
+
+        # Offset lower priority slots by 15-30 minutes each
+        for i, slot in enumerate(group[1:], 1):
+            offset_minutes = 15 * i
+            new_dt = datetime.combine(day, slot.time) + timedelta(minutes=offset_minutes)
+
+            # Create new slot with adjusted time
+            resolved.append(
+                SlotConfig(
+                    day=slot.day,
+                    time=new_dt.time(),
+                    content_type=slot.content_type,
+                    channel=slot.channel,
+                    slot_priority=slot.slot_priority,
+                    is_follow_up=slot.is_follow_up,
+                    parent_slot_id=slot.parent_slot_id,
+                    theme_guidance=slot.theme_guidance,
+                    creator_id=slot.creator_id,
+                    payday_multiplier=slot.payday_multiplier,
+                    is_payday_optimal=slot.is_payday_optimal,
+                    is_mid_cycle=slot.is_mid_cycle,
+                    slot_id=slot.slot_id,
+                )
+            )
+
+    # Sort by datetime
+    resolved.sort(key=lambda s: (s.day, s.time))
+    return resolved
+
+
+def build_all_content_slots(
+    week_start: date | str,
+    creator_profile: dict[str, Any],
+    enabled_types: set[str] | None = None,
+    live_schedule: list[datetime] | None = None,
+    start_slot_id: int = 700,
+) -> list[SlotConfig]:
+    """
+    Build weekly slots for all enabled content types.
+
+    This is the unified slot builder that calls individual slot generators
+    based on page type and enabled content types.
+
+    Args:
+        week_start: Week start date
+        creator_profile: Creator profile dict with keys:
+            - creator_id: Creator identifier
+            - page_type: "paid" or "free"
+            - volume_level: "Low", "Mid", "High", "Ultra"
+        enabled_types: Set of content type IDs to generate (None = all valid)
+        live_schedule: Optional list of datetime for live streams
+        start_slot_id: Starting ID for slots
+
+    Returns:
+        List of SlotConfig instances sorted by datetime with conflicts resolved
+    """
+    if isinstance(week_start, str):
+        week_start = datetime.strptime(week_start, "%Y-%m-%d").date()
+
+    creator_id = creator_profile.get("creator_id", "")
+    page_type = creator_profile.get("page_type", "free")
+    volume_level = creator_profile.get("volume_level", "Mid")
+
+    all_slots: list[SlotConfig] = []
+    slot_id = start_slot_id
+
+    # Import registry for validation
+    try:
+        from content_type_registry import REGISTRY
+        registry_available = True
+    except ImportError:
+        registry_available = False
+        REGISTRY = None
+
+    # Define slot generators and their content types
+    generators: list[tuple[str, callable, dict]] = [
+        # (content_type, generator_func, kwargs)
+        ("vip_post", generate_vip_post_slots, {
+            "week_start": week_start,
+            "creator_id": creator_id,
+            "page_type": page_type,
+            "start_slot_id": slot_id,
+        }),
+        ("first_to_tip", generate_tip_incentive_slots, {
+            "week_start": week_start,
+            "volume_level": volume_level,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 100,
+        }),
+        ("link_drop", generate_link_drop_slots, {
+            "week_start": week_start,
+            "volume_level": volume_level,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 200,
+        }),
+        ("dm_farm", generate_engagement_slots, {
+            "week_start": week_start,
+            "volume_level": volume_level,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 300,
+        }),
+        ("renew_on_mm", generate_retention_slots, {
+            "week_start": week_start,
+            "page_type": page_type,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 400,
+        }),
+        ("flyer_gif_bump", generate_bump_variant_slots, {
+            "week_start": week_start,
+            "volume_level": volume_level,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 500,
+        }),
+        ("game_post", generate_game_post_slots, {
+            "week_start": week_start,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 600,
+        }),
+        ("live_promo", generate_live_promo_slots, {
+            "week_start": week_start,
+            "live_schedule": live_schedule,
+            "creator_id": creator_id,
+            "start_slot_id": slot_id + 700,
+        }),
+    ]
+
+    for content_type, generator_func, kwargs in generators:
+        # Skip if content type is not enabled
+        if enabled_types is not None and content_type not in enabled_types:
+            continue
+
+        # Validate content type for page type if registry available
+        if registry_available and REGISTRY is not None:
+            try:
+                if not REGISTRY.validate_for_page(content_type, page_type):
+                    continue
+            except KeyError:
+                # Content type not in registry, skip validation
+                pass
+
+        # Generate slots for this content type
+        try:
+            slots = generator_func(**kwargs)
+            all_slots.extend(slots)
+        except Exception:
+            # Log but don't fail on individual generator errors
+            continue
+
+    # Sort by datetime and priority
+    all_slots.sort(key=lambda s: (s.day, s.time, s.slot_priority))
+
+    # Resolve any conflicts
+    resolved = resolve_slot_conflicts(all_slots)
+
+    return resolved
+
+
+# =============================================================================
 # MODULE EXPORTS
 # =============================================================================
 
 __all__ = [
+    # Existing exports
     "select_wall_posts_for_slots",
     "select_previews_for_ppvs",
     "select_polls_for_week",
     "create_game_wheel_schedule_item",
     "generate_wall_post_slots",
     "generate_poll_slots",
+    # New slot config
+    "SlotConfig",
+    # Timing constants
+    "PEAK_HOURS",
+    "PREMIUM_HOURS",
+    "ENGAGEMENT_HOURS",
+    "RETENTION_HOURS",
+    "LINK_DROP_HOURS",
+    "BUMP_HOURS",
+    "TIMING_VARIANCE_RANGE",
+    # New slot generators
+    "generate_vip_post_slots",
+    "generate_tip_incentive_slots",
+    "generate_link_drop_slots",
+    "generate_engagement_slots",
+    "generate_retention_slots",
+    "generate_bump_variant_slots",
+    "generate_game_post_slots",
+    "generate_live_promo_slots",
+    # Unified builders
+    "build_all_content_slots",
+    "resolve_slot_conflicts",
 ]

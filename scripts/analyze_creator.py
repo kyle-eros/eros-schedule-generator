@@ -10,16 +10,22 @@ Usage:
     python analyze_creator.py --creator missalexa
     python analyze_creator.py --creator-id abc123 --period 90
     python analyze_creator.py --creator missalexa --output brief.md
+
+Note: This module uses print() for CLI output (results and error messages).
 """
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 from volume_optimizer import MultiFactorVolumeOptimizer, VolumeStrategy
 

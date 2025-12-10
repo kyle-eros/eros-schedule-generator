@@ -28,10 +28,13 @@ Usage:
     python match_persona.py --creator missalexa
     python match_persona.py --creator-id abc123 --output matches.json
     python match_persona.py --creator missalexa --caption-id 12345
+
+Note: This module uses print() for CLI output (results and error messages).
 """
 
 import argparse
 import json
+import logging
 import re
 import sqlite3
 import sys
@@ -40,6 +43,9 @@ from pathlib import Path
 from typing import Any
 
 from shared_context import PersonaProfile
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent

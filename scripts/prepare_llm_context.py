@@ -30,11 +30,13 @@ Modes:
 """
 
 import argparse
+import difflib
 import json
 import logging
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
@@ -52,6 +54,7 @@ from match_persona import (  # noqa: E402
     detect_slang_level_from_text,
     detect_tone_from_text,
 )
+from models import PatternProfile, ScoredCaption, SelectionPool  # noqa: E402
 from volume_optimizer import MultiFactorVolumeOptimizer  # noqa: E402
 
 
@@ -104,6 +107,49 @@ def format_notes_for_llm(notes: dict) -> str:
 SCRIPT_DIR = Path(__file__).parent
 
 from database import DB_PATH, HOME_DIR  # noqa: E402
+
+
+def get_all_creator_names(conn: sqlite3.Connection) -> list[tuple[str, str]]:
+    """Get all active creator page names and display names for fuzzy matching."""
+    cursor = conn.execute(
+        "SELECT page_name, display_name FROM creators WHERE is_active = 1 ORDER BY page_name"
+    )
+    return [(row["page_name"], row["display_name"] or row["page_name"]) for row in cursor]
+
+
+def find_closest_creators(
+    input_name: str, conn: sqlite3.Connection, threshold: float = 0.6
+) -> list[tuple[str, str, float]]:
+    """
+    Find closest matching creator names using fuzzy matching.
+
+    Returns list of (page_name, display_name, similarity_score) tuples,
+    sorted by similarity descending.
+    """
+    all_creators = get_all_creator_names(conn)
+    matches = []
+
+    input_lower = input_name.lower().replace("_", "").replace("-", "").replace(" ", "")
+
+    for page_name, display_name in all_creators:
+        # Check against page_name
+        page_lower = page_name.lower().replace("_", "").replace("-", "").replace(" ", "")
+        page_similarity = difflib.SequenceMatcher(None, input_lower, page_lower).ratio()
+
+        # Check against display_name
+        display_lower = display_name.lower().replace("_", "").replace("-", "").replace(" ", "")
+        display_similarity = difflib.SequenceMatcher(None, input_lower, display_lower).ratio()
+
+        # Use the higher similarity
+        best_similarity = max(page_similarity, display_similarity)
+
+        if best_similarity >= threshold:
+            matches.append((page_name, display_name, best_similarity))
+
+    # Sort by similarity descending
+    matches.sort(key=lambda x: x[2], reverse=True)
+    return matches[:5]  # Return top 5 matches
+
 
 # Default output directory for schedules/context
 _env_schedules_path = os.environ.get("EROS_SCHEDULES_PATH", "")
@@ -379,6 +425,58 @@ def load_creator_context(
     )
 
 
+def load_other_creator_names(conn: sqlite3.Connection, exclude_page_name: str) -> set[str]:
+    """
+    Load all creator names except the target creator to detect cross-contamination.
+
+    Returns a set of lowercase names that should NOT appear in captions
+    for the target creator (unless it's their own name).
+    """
+    cursor = conn.execute(
+        "SELECT page_name, display_name FROM creators WHERE is_active = 1"
+    )
+    names = set()
+    target_lower = exclude_page_name.lower().replace("_", " ")
+
+    for row in cursor:
+        page_name = (row["page_name"] or "").lower().replace("_", " ")
+        display_name = (row["display_name"] or "").lower()
+
+        # Skip short names (< 4 chars) to avoid false positives
+        if len(page_name) >= 4 and page_name != target_lower:
+            names.add(page_name)
+        if len(display_name) >= 4 and display_name.lower() != target_lower:
+            names.add(display_name)
+
+    # Also remove any name that's part of the target name
+    target_parts = set(target_lower.split())
+    names = {n for n in names if n not in target_parts}
+
+    return names
+
+
+def validate_caption_ownership(
+    caption_text: str, other_creator_names: set[str]
+) -> tuple[bool, str | None]:
+    """
+    Check if a caption references other creators (data quality issue).
+
+    Args:
+        caption_text: The caption text to validate
+        other_creator_names: Set of other creator names to check against
+
+    Returns:
+        Tuple of (is_valid, detected_name_if_invalid)
+    """
+    text_lower = caption_text.lower()
+
+    for name in other_creator_names:
+        if name in text_lower:
+            return False, name
+
+    return True, None
+
+
 def load_captions_for_context(
     conn: sqlite3.Connection, creator: CreatorContext, limit: int = 100
 ) -> tuple[list[CaptionContext], dict[str, Any]]:
@@ -412,6 +510,10 @@ def load_captions_for_context(
     cursor = conn.execute(query, (creator.creator_id, limit))
     rows = cursor.fetchall()
 
+    # Load other creator names for cross-contamination detection
+    other_creator_names = load_other_creator_names(conn, creator.page_name)
+    filtered_count = 0
+
     # Build persona for boost calculation
     persona = PersonaProfile(
         creator_id=creator.creator_id,
@@ -438,9 +540,19 @@ def load_captions_for_context(
     total_fresh = 0.0
 
     for row in rows:
+        text = row["caption_text"] or ""
+
+        # Validate caption doesn't reference other creators
+        is_valid, detected_name = validate_caption_ownership(text, other_creator_names)
+        if not is_valid:
+            filtered_count += 1
+            logger.warning(
+                f"Filtered caption {row['caption_id']}: references other creator '{detected_name}'"
+            )
+            continue  # Skip this caption
+
         stats["total_evaluated"] += 1
 
-        text = row["caption_text"] or ""
         perf = row["performance_score"] or 50.0
         fresh = row["freshness_score"] or 100.0
 
@@ -519,18 +631,330 @@ def load_captions_for_context(
         stats["avg_performance"] = round(total_perf / stats["total_evaluated"], 1)
         stats["avg_freshness"] = round(total_fresh / stats["total_evaluated"], 1)
 
+    # Track filtered captions (cross-creator contamination)
+    stats["filtered_cross_creator"] = filtered_count
+    if filtered_count > 0:
+        logger.info(
+            f"Filtered {filtered_count} captions referencing other creators"
+        )
+
     # Sort: needs_analysis first, then by performance
     captions.sort(key=lambda c: (not c.needs_semantic_analysis, -c.performance_score))
 
     return captions, stats
 
 
-def format_context_for_claude(context: ScheduleContext) -> str:
+# =============================================================================
+# NEW PATTERN-BASED SELECTION CONTEXT FORMATTERS
+# =============================================================================
+
+
+def format_pattern_profile_section(profile: PatternProfile | None) -> str:
+    """
+    Format pattern profile for LLM context.
+
+    Returns markdown section showing:
+    - Sample count and confidence level
+    - Top performing content types (by avg earnings)
+    - Top performing tones
+    - Whether using global fallback
+
+    Args:
+        profile: PatternProfile from select_captions module, or None.
+
+    Returns:
+        Formatted markdown string for LLM context.
+    """
+    if profile is None:
+        return """
+## Pattern Profile
+*No pattern profile available. Using discovery-only selection.*
+"""
+
+    section = f"""
+## Pattern Profile
+
+**Data Confidence:** {profile.confidence:.0%} ({profile.sample_count} samples analyzed)
+{"[!] Using global portfolio patterns (new/sparse creator)" if profile.is_global_fallback else "[OK] Using creator-specific patterns"}
+
+### Top Performing Content Types
+| Content Type | Avg Earnings | Sample Count | Score |
+|--------------|-------------|--------------|-------|
+"""
+
+    # Sort by normalized_score
+    top_content = sorted(
+        profile.content_type_patterns.items(),
+        key=lambda x: x[1].normalized_score,
+        reverse=True,
+    )[:5]
+
+    for ct_name, stats in top_content:
+        section += (
+            f"| {ct_name} | ${stats.avg_earnings:.2f} | "
+            f"{stats.sample_count} | {stats.normalized_score:.0f} |\n"
+        )
+
+    section += """
+### Top Performing Tones
+| Tone | Avg Earnings | Sample Count | Score |
+|------|-------------|--------------|-------|
+"""
+
+    top_tones = sorted(
+        profile.tone_patterns.items(),
+        key=lambda x: x[1].normalized_score,
+        reverse=True,
+    )[:5]
+
+    for tone, stats in top_tones:
+        section += (
+            f"| {tone} | ${stats.avg_earnings:.2f} | "
+            f"{stats.sample_count} | {stats.normalized_score:.0f} |\n"
+        )
+
+    return section
+
+
+def format_pool_analysis_section(pool: SelectionPool | None) -> str:
+    """
+    Format caption pool analysis for LLM context.
+
+    Shows:
+    - Total captions available
+    - Freshness tier distribution
+    - Content type distribution
+    - Exploration candidates count
+
+    Args:
+        pool: SelectionPool containing scored captions.
+
+    Returns:
+        Formatted markdown string for LLM context.
+    """
+    if pool is None or not pool.captions:
+        return """
+## Caption Pool Analysis
+*No selection pool available.*
+"""
+
+    section = f"""
+## Caption Pool Analysis
+
+**Pool Size:** {len(pool.captions)} fresh captions available
+
+### Freshness Distribution
+| Tier | Count | Description |
+|------|-------|-------------|
+| Never Used | {pool.never_used_count} | First time for this creator |
+| Fresh | {pool.fresh_count} | Not used in 60+ days |
+
+**Reuse Rate:** {(pool.fresh_count / len(pool.captions) * 100) if pool.captions else 0:.1f}% are reusable captions
+
+### Content Type Distribution
+| Content Type | Count |
+|--------------|-------|
+"""
+
+    # Count by content type
+    ct_counts: dict[str, int] = {}
+    for caption in pool.captions:
+        ct = caption.content_type_name or "Unknown"
+        ct_counts[ct] = ct_counts.get(ct, 0) + 1
+
+    for ct, count in sorted(ct_counts.items(), key=lambda x: x[1], reverse=True):
+        section += f"| {ct} | {count} |\n"
+
+    # Count exploration candidates (never_used + low pattern score)
+    exploration_candidates = sum(
+        1 for c in pool.captions if c.never_used_on_page or c.pattern_score < 30
+    )
+
+    section += f"""
+### Exploration Potential
+**{exploration_candidates}** captions identified as exploration candidates (testing new patterns)
+"""
+
+    return section
+
+
+def get_selection_instructions() -> str:
+    """
+    Return instructions explaining the fresh-focused selection system.
+
+    These instructions help Claude understand the new selection logic
+    when reviewing or adjusting schedules.
+
+    Returns:
+        Formatted markdown string with selection logic explanation.
+    """
+    return """
+## Selection Logic (Fresh-Focused v2.0)
+
+The caption selection uses a **fresh-first approach** optimized for novelty:
+
+### Weight Formula
+```
+PatternMatch (40%) + NeverUsedBonus (25%) + Persona (15%) + FreshnessBonus (10%) + Exploration (10%)
+```
+
+### Key Behaviors:
+1. **Hard 60-Day Exclusion**: Captions used in the last 60 days are NEVER selected
+2. **Never-Used Priority**: First-time captions get 1.5x weight multiplier
+3. **Pattern Matching**: Historical success patterns guide selection (not reuse proven winners)
+4. **Exploration Slots**: 10-15% of slots test low-pattern-score captions for discovery
+
+### Freshness Tiers:
+- **Never Used** (1.5x): Caption has never been sent to this creator's fans
+- **Fresh** (1.0x): Last sent 60+ days ago, safe to reuse
+- **Excluded** (filtered): Used recently, completely blocked
+
+### When reviewing captions:
+- Prioritize **never_used** tier for maximum novelty
+- Consider **pattern_score** as guidance, not guarantee
+- Exploration slots intentionally break patterns to discover new winners
+"""
+
+
+def format_selection_summary(
+    slots: list[Any],
+    pool: SelectionPool | None,
+) -> str:
+    """
+    Format summary of selection results.
+
+    Provides a quick overview of selection outcomes including
+    exploration slot ratio and pool utilization.
+
+    Args:
+        slots: List of scheduled slots with caption assignments.
+        pool: SelectionPool used for selection.
+
+    Returns:
+        Formatted markdown summary table.
+    """
+    if not slots or pool is None or not pool.captions:
+        return """
+## Selection Summary
+*No selection data available.*
+"""
+
+    exploration_count = sum(1 for s in slots if getattr(s, "is_exploration", False))
+    never_used_count = sum(
+        1
+        for s in slots
+        if hasattr(s, "caption")
+        and s.caption
+        and getattr(s.caption, "freshness_tier", None) == "never_used"
+    )
+
+    return f"""
+## Selection Summary
+
+| Metric | Value |
+|--------|-------|
+| Total Slots | {len(slots)} |
+| Exploration Slots | {exploration_count} ({exploration_count / len(slots) * 100:.0f}%) |
+| Never-Used Captions | {never_used_count} ({never_used_count / len(slots) * 100:.0f}%) |
+| Pool Utilization | {len(slots) / len(pool.captions) * 100:.1f}% of available pool |
+"""
+
+
+def prepare_full_context(
+    conn: sqlite3.Connection,
+    creator_id: str,
+    week: str,
+    pattern_profile: PatternProfile | None = None,
+    pool: SelectionPool | None = None,
+    include_selection_guide: bool = True,
+) -> str:
+    """
+    Prepare comprehensive LLM context for schedule generation.
+
+    This function assembles all context sections needed for Claude to
+    understand and reason about the caption selection. It integrates
+    the new pattern-based selection system with existing creator context.
+
+    Sections:
+    1. Creator Profile (existing)
+    2. Pattern Profile (NEW)
+    3. Caption Pool Analysis (UPDATED)
+    4. Selection Instructions (NEW)
+    5. Schedule Structure (existing)
+    6. Business Rules (existing)
+
+    Args:
+        conn: Database connection.
+        creator_id: Creator UUID or page_name.
+        week: Week string in ISO format (YYYY-Www).
+        pattern_profile: PatternProfile from select_captions module.
+        pool: SelectionPool containing scored captions.
+        include_selection_guide: Whether to include selection instructions.
+
+    Returns:
+        Complete markdown context string for LLM processing.
+    """
+    from datetime import date
+
+    context_parts = []
+
+    # Header
+    context_parts.append("# EROS Schedule Generation Context (v2.0)\n")
+    context_parts.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    context_parts.append(f"**Week**: {week}")
+    context_parts.append(f"**Selection System**: Fresh-Focused Pattern Matching\n")
+    context_parts.append("---\n")
+
+    # 1. Creator Profile (using existing function)
+    creator = load_creator_context(conn, creator_id=creator_id)
+    if creator:
+        context_parts.append("## Creator Profile\n")
+        context_parts.append(f"**{creator.display_name}** (@{creator.page_name})")
+        context_parts.append(f"- Page Type: {creator.page_type}")
+        context_parts.append(f"- Active Fans: {creator.active_fans:,}")
+        context_parts.append(f"- Volume: {creator.volume_level} ({creator.ppv_per_day} PPV/day)")
+        context_parts.append(f"- Primary Tone: {creator.primary_tone}")
+        context_parts.append(f"- Slang Level: {creator.slang_level}")
+        context_parts.append(f"- Best Hours: {', '.join(f'{h:02d}:00' for h in creator.best_hours[:6])}\n")
+
+    # 2. Pattern Profile (NEW)
+    if pattern_profile:
+        context_parts.append(format_pattern_profile_section(pattern_profile))
+
+    # 3. Pool Analysis (UPDATED with freshness tiers)
+    if pool:
+        context_parts.append(format_pool_analysis_section(pool))
+
+    # 4. Selection Instructions (NEW)
+    if include_selection_guide:
+        context_parts.append(get_selection_instructions())
+
+    # 5. Business Rules Summary
+    context_parts.append("""
+## Business Rules
+
+| Rule | Requirement |
+|------|-------------|
+| PPV Spacing | Minimum 3 hours between PPVs |
+| Content Rotation | No same content type 3x consecutive |
+| Freshness Threshold | All captions must score >= 30 |
+| Daily Volume | Follow volume level guidelines |
+| Persona Match | Prioritize tone-matched captions |
+""")
+
+    return "\n".join(context_parts)
+
+
+def format_context_for_claude(context: ScheduleContext, week_arg: str | None = None) -> str:
     """
     Format the complete context as markdown for Claude to process.
 
     This is the KEY integration point - the output becomes part of Claude's
     conversation context, and Claude applies its semantic reasoning directly.
+
+    Args:
+        context: The ScheduleContext containing creator and caption data
+        week_arg: The original week argument (e.g., '2025-W50') for the footer command
     """
     c = context.creator
 
@@ -813,6 +1237,36 @@ def format_context_for_claude(context: ScheduleContext) -> str:
             ]
         )
 
+    # Add workflow footer with required next step
+    # Use week_arg if provided, otherwise construct from week_start date
+    if week_arg:
+        week_for_command = week_arg
+    else:
+        # Construct week string from context.week_start (ISO date format: YYYY-MM-DD)
+        week_date = date.fromisoformat(context.week_start)
+        iso_year, iso_week, _ = week_date.isocalendar()
+        week_for_command = f"{iso_year}-W{iso_week:02d}"
+
+    lines.extend(
+        [
+            "---",
+            "",
+            "═══════════════════════════════════════════════════════════════════",
+            "REQUIRED NEXT STEP - DO NOT SKIP",
+            "",
+            f"Run: python3 scripts/generate_schedule.py --creator {c.page_name} --week {week_for_command}",
+            "",
+            "This runs the full 9-step pipeline with:",
+            "- Pool-based caption selection (PROVEN/GLOBAL_EARNER/DISCOVERY)",
+            "- Vault matrix content filtering",
+            "- Content restriction enforcement",
+            "- Real validation (not manual claims)",
+            "- Output saved to schedules directory",
+            "═══════════════════════════════════════════════════════════════════",
+            "",
+        ]
+    )
+
     return "\n".join(lines)
 
 
@@ -842,11 +1296,16 @@ Examples:
         "--week", "-w", required=True, help="Week in ISO format (YYYY-Www, e.g., 2025-W01)"
     )
     parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Use quick mode (minimal context). Default is full mode.",
+    )
+    parser.add_argument(
         "--mode",
         "-m",
         choices=["quick", "full"],
         default="full",
-        help="Generation mode: quick (pattern only) or full (semantic analysis)",
+        help="Context preparation mode: quick (minimal) or full (semantic analysis). Default: full",
     )
     parser.add_argument("--output", "-o", help="Output file path (overrides auto-save location)")
     parser.add_argument(
@@ -864,8 +1323,22 @@ Examples:
         help="Output format (default: markdown)",
     )
     parser.add_argument("--db", default=str(DB_PATH), help=f"Database path (default: {DB_PATH})")
+    parser.add_argument(
+        "--fuzzy",
+        action="store_true",
+        help="Auto-select closest matching creator if similarity > 80%%",
+    )
+    parser.add_argument(
+        "--chain",
+        action="store_true",
+        help="After outputting context, automatically run generate_schedule.py with same args",
+    )
 
     args = parser.parse_args()
+
+    # Handle --quick flag override
+    if args.quick:
+        args.mode = "quick"
 
     if not args.creator and not args.creator_id:
         parser.error("Must specify --creator or --creator-id")
@@ -887,6 +1360,40 @@ Examples:
 
         # Load creator context
         creator = load_creator_context(conn, creator_name=args.creator, creator_id=args.creator_id)
+
+        if not creator:
+            # Creator not found - try fuzzy matching
+            if args.creator:
+                matches = find_closest_creators(args.creator, conn, threshold=0.5)
+
+                if matches:
+                    top_match = matches[0]
+                    page_name, display_name, similarity = top_match
+
+                    if args.fuzzy and similarity > 0.8:
+                        # Auto-select with fuzzy flag and high similarity
+                        print(
+                            f"Fuzzy match: '{args.creator}' -> '{page_name}' "
+                            f"({similarity:.0%} similarity)",
+                            file=sys.stderr,
+                        )
+                        creator = load_creator_context(conn, creator_name=page_name)
+                    else:
+                        # Show suggestions and exit
+                        print(f"Error: Creator '{args.creator}' not found.", file=sys.stderr)
+                        print("", file=sys.stderr)
+                        print("Did you mean:", file=sys.stderr)
+                        for pname, dname, sim in matches[:3]:
+                            print(f"  - {pname} ({dname}) - {sim:.0%} match", file=sys.stderr)
+                        print("", file=sys.stderr)
+                        print("Use --fuzzy to auto-select when similarity > 80%", file=sys.stderr)
+                        sys.exit(1)
+                else:
+                    print(f"Error: Creator '{args.creator}' not found and no similar names.", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                print("Error: Creator not found", file=sys.stderr)
+                sys.exit(1)
 
         if not creator:
             print("Error: Creator not found", file=sys.stderr)
@@ -927,7 +1434,7 @@ Examples:
             )
         else:
             # Markdown format for Claude's native processing
-            output = format_context_for_claude(context)
+            output = format_context_for_claude(context, week_arg=args.week)
 
         # Write output
         if args.output:
@@ -970,6 +1477,39 @@ Examples:
                 f"  Captions: {len(captions)} ({stats['needs_analysis']} need analysis)",
                 file=sys.stderr,
             )
+
+        # Chain to generate_schedule.py if --chain flag is set
+        if args.chain:
+            print("", file=sys.stderr)
+            print("=" * 70, file=sys.stderr)
+            print("CHAINING: Running generate_schedule.py", file=sys.stderr)
+            print("=" * 70, file=sys.stderr)
+            print("", file=sys.stderr)
+
+            # Build the command to run generate_schedule.py
+            generate_script = SCRIPT_DIR / "generate_schedule.py"
+            cmd = [
+                sys.executable,
+                str(generate_script),
+                "--creator",
+                creator.page_name,
+                "--week",
+                args.week,
+            ]
+
+            # Pass through the database path if specified
+            if args.db != str(DB_PATH):
+                cmd.extend(["--db", args.db])
+
+            try:
+                result = subprocess.run(cmd, check=False)
+                sys.exit(result.returncode)
+            except FileNotFoundError:
+                print(f"Error: generate_schedule.py not found at {generate_script}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                print(f"Error running generate_schedule.py: {e}", file=sys.stderr)
+                sys.exit(1)
 
 
 if __name__ == "__main__":

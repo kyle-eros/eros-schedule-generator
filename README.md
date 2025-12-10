@@ -16,6 +16,20 @@ A Claude Code slash command skill that generates optimized weekly content schedu
 
 ---
 
+## Quick Start
+
+```bash
+# Generate a 7-day schedule (default: full semantic analysis)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W50
+
+# Quick mode (pattern-based, faster)
+python scripts/generate_schedule.py --creator missalexa --week 2025-W50 --quick
+```
+
+**Output:** Auto-saves to `~/Developer/EROS-SD-MAIN-PROJECT/schedules/{creator}/{week}.md`
+
+---
+
 ## Overview
 
 EROS (Enhanced Revenue Optimization System) is a Claude Code skill package that automates content scheduling for OnlyFans creators. It combines performance analytics, freshness scoring, persona matching, LLM-enhanced quality assessment, and business rule validation to produce optimized weekly schedules.
@@ -25,15 +39,18 @@ EROS (Enhanced Revenue Optimization System) is a Claude Code skill package that 
 | Feature | Description |
 |---------|-------------|
 | **9-Step Pipeline** | Complete scheduling workflow from analysis to validation |
+| **20 Content Types** | Comprehensive registry covering PPV, feed/wall, engagement, retention |
+| **30 Validation Rules** | Extended validation (V001-V018, V020-V031) with auto-correction |
+| **Schedule Uniqueness Engine** | Fingerprinting and timing variance for organic appearance |
+| **Pool-Based Selection** | PROVEN/GLOBAL_EARNER/DISCOVERY stratification for earnings optimization |
+| **Hook Detection** | 7 hook types with anti-detection rotation penalty |
 | **Dual Execution Modes** | Quick mode (<30 sec) or Full mode with semantic analysis (<60 sec) |
 | **Vose Alias Algorithm** | O(1) weighted random selection for caption diversity |
 | **Persona Matching** | 1.0-1.4x boost based on tone/emoji/slang alignment |
-| **Quality Scoring** | LLM-based caption quality assessment (Full mode) |
-| **Caption Enhancement** | Authenticity tweaks for natural-sounding content |
-| **Context-Aware Follow-ups** | Intelligent bump message generation |
+| **Auto-Correction** | Self-healing validation with 10+ correction actions |
+| **Page Type Intelligence** | Paid-only vs free page content filtering |
 | **Freshness Decay** | 14-day exponential decay prevents caption fatigue |
 | **Sub-Agent Delegation** | 7 specialized agents for advanced optimization |
-| **Business Rules** | 8+ validation rules for PPV spacing, drip windows, etc. |
 
 ---
 
@@ -147,6 +164,7 @@ EROS supports two execution modes to balance speed and optimization depth:
 .claude/skills/eros-schedule-generator/
 ├── SKILL.md                          # Claude Code skill definition
 ├── README.md                         # This file
+├── .env.example                      # Environment variable template
 ├── pyproject.toml                    # Python project configuration
 ├── pytest.ini                        # Pytest configuration
 ├── .gitignore                        # Git ignore patterns
@@ -154,13 +172,19 @@ EROS supports two execution modes to balance speed and optimization depth:
 ├── scripts/                          # Executable Python scripts (19 files, 26,928 lines)
 │   │
 │   │  # Core Pipeline Scripts
-│   ├── generate_schedule.py          # Main 12-step pipeline orchestrator (3,082 lines)
-│   ├── select_captions.py            # Vose Alias caption selection (489 lines)
+│   ├── generate_schedule.py          # Main 9-step pipeline orchestrator (3,082 lines)
+│   ├── select_captions.py            # Pool-based caption selection (1,934 lines)
 │   ├── match_persona.py              # Persona matching & boost (896 lines)
 │   ├── volume_optimizer.py           # Multi-factor volume optimization (1,584 lines)
 │   ├── followup_generator.py         # Context-aware follow-up generation (1,070 lines)
-│   ├── validate_schedule.py          # Business rule validation (935 lines)
+│   ├── validate_schedule.py          # 30 validation rules with auto-correction (2,078 lines)
 │   ├── weights.py                    # Canonical weight calculation module (193 lines)
+│   │
+│   │  # Content Type System (NEW v2.1)
+│   ├── content_type_registry.py      # 20 content type definitions (731 lines)
+│   ├── schedule_uniqueness.py        # Uniqueness engine with fingerprinting (775 lines)
+│   ├── content_type_loaders.py       # 20+ content type loaders (2,240 lines)
+│   ├── content_type_schedulers.py    # Slot generators for all types (1,410 lines)
 │   │
 │   │  # LLM Integration Scripts
 │   ├── prepare_llm_context.py        # Full mode entry point (974 lines)
@@ -176,9 +200,7 @@ EROS supports two execution modes to balance speed and optimization depth:
 │   ├── volume_validation_report.py   # Volume validation reporting (851 lines)
 │   ├── verify_deployment.py          # Deployment verification (321 lines)
 │   ├── utils.py                      # VoseAliasSelector weighted selection (183 lines)
-│   ├── logging_config.py             # Centralized logging configuration (119 lines)
-│   ├── content_type_loaders.py       # Wall posts, polls, previews loading (385 lines)
-│   └── content_type_schedulers.py    # Content-specific scheduling logic (486 lines)
+│   └── logging_config.py             # Centralized logging configuration (119 lines)
 │
 ├── tests/                            # Test suite
 │   ├── __init__.py                   # Test package init
@@ -193,6 +215,7 @@ EROS supports two execution modes to balance speed and optimization depth:
 │       ├── get_vault_inventory.sql   # Content availability
 │       ├── get_active_creators.sql   # Active creator list
 │       ├── get_performance_trends.sql # Weekly trends
+│       ├── schema_v3_content_types.sql # 20+ content type schema (NEW v2.1)
 │       │
 │       └── batch_analysis/           # Portfolio analysis queries (10 files)
 │           ├── portfolio_summary.sql # Aggregate portfolio statistics
@@ -219,6 +242,28 @@ EROS supports two execution modes to balance speed and optimization depth:
     # is located in the main EROS project at:
     # ~/Developer/EROS-SD-MAIN-PROJECT/docs/
 ```
+
+### Modular Architecture
+
+The EROS Schedule Generator uses a **modular, layered architecture** for maintainability and extensibility:
+
+**Layer 1 - CLI Wrapper:**
+- `generate_schedule.py` - Main entry point, orchestrates 9-step pipeline
+- `prepare_llm_context.py` - Context preparation for full semantic analysis
+
+**Layer 2 - Pipeline Core:**
+- `select_captions.py` - Pool-based selection engine (PROVEN/GLOBAL_EARNER/DISCOVERY)
+- `content_type_registry.py` - Centralized metadata for 20+ schedulable content types
+- `schedule_uniqueness.py` - Timing variance and fingerprinting for organic schedules
+
+**Layer 3 - Validation & Enrichment:**
+- `validate_schedule.py` - 30 validation rules with self-healing auto-correction
+- `match_persona.py` - Voice profile matching with 1.0-1.4x boost
+- `followup_generator.py` - Context-aware follow-up generation
+
+**Layer 4 - Data Access:**
+- SQL queries in `assets/sql/` - Database access layer
+- `shared_context.py` - Shared dataclass definitions across modules
 
 ---
 
@@ -263,11 +308,11 @@ python scripts/validate_schedule.py --input schedule.json
 | Script | Lines | Pipeline Step |
 |--------|-------|---------------|
 | `generate_schedule.py` | 3,082 | Main 9-step orchestrator |
-| `select_captions.py` | 489 | Step 2: Match Content |
+| `select_captions.py` | 1,934 | Step 5: Pool-based caption assignment |
 | `match_persona.py` | 896 | Step 3: Match Persona |
 | `volume_optimizer.py` | 1,584 | Step 4: Build Structure |
 | `followup_generator.py` | 1,070 | Step 6: Generate Follow-ups |
-| `validate_schedule.py` | 935 | Step 9: Validate |
+| `validate_schedule.py` | 2,078 | Step 9: Validate (30 rules + auto-correction) |
 | `weights.py` | 193 | Canonical weight calculation |
 
 ### LLM Integration Scripts
@@ -285,6 +330,15 @@ python scripts/validate_schedule.py --input schedule.json
 | `classify_implied_content.py` | 1,150 | Advanced content classification with inference |
 | `generate_perfected_guides.py` | 1,030 | Guide generation utilities |
 
+### Content Type System (NEW v2.1)
+
+| Script | Lines | Purpose |
+|--------|-------|---------|
+| `content_type_registry.py` | 731 | Centralized 20 content type definitions with constraints |
+| `schedule_uniqueness.py` | 775 | Uniqueness engine: timing variance, fingerprinting, deduplication |
+| `content_type_loaders.py` | 2,240 | Loaders for all 20+ content types with page guards |
+| `content_type_schedulers.py` | 1,410 | Slot generators with conflict resolution |
+
 ### Infrastructure & Utilities
 
 | Script | Lines | Purpose |
@@ -294,8 +348,6 @@ python scripts/validate_schedule.py --input schedule.json
 | `verify_deployment.py` | 321 | Deployment verification |
 | `utils.py` | 183 | VoseAliasSelector (O(1) weighted selection) |
 | `logging_config.py` | 119 | Centralized logging configuration |
-| `content_type_loaders.py` | 385 | Wall posts, polls, previews loading |
-| `content_type_schedulers.py` | 486 | Content-specific scheduling logic |
 
 ### Testing
 
@@ -357,6 +409,39 @@ EROS includes a sub-agent delegation system (`agent_invoker.py`) that routes spe
 
 ---
 
+## Content Type Registry (NEW v2.1)
+
+EROS v2.1 introduces a centralized registry of 20 schedulable content types organized into 4 tiers:
+
+### Content Types by Tier
+
+| Tier | Name | Types | Key Features |
+|------|------|-------|--------------|
+| **1 - Direct Revenue** | Primary monetization | ppv, ppv_follow_up, bundle, flash_bundle, snapchat_bundle | Mass message, has follow-ups |
+| **2 - Feed/Wall** | Engagement & visibility | vip_post, first_to_tip, link_drop, normal_post_bump, renew_on_post, game_post, flyer_gif_bump, descriptive_bump, wall_link_drop, live_promo | Feed posts, varied spacing |
+| **3 - Engagement** | Interaction farming | dm_farm, like_farm, text_only_bump | Engagement farming, limits apply |
+| **4 - Retention** | Churn prevention | renew_on_mm, expired_subscriber | Paid-only, renewal focus |
+
+### Page Type Restrictions
+
+**Paid-Only Types (4 types):**
+- `vip_post` - Exclusive VIP tier content post
+- `renew_on_post` - Subscription renewal reminder post
+- `renew_on_mm` - Renewal reminder via mass message
+- `expired_subscriber` - Win-back message for expired subscribers
+
+All other 16 types are valid on both paid and free pages.
+
+### Constraint Overview
+
+Each content type has defined constraints:
+- **Min Spacing**: 15 minutes (ppv_follow_up) to 168 hours (game_post)
+- **Daily Limits**: 1-5 sends per day depending on type
+- **Weekly Limits**: 2-35 sends per week depending on type
+- **Flyer Requirements**: Most types require attached media
+
+---
+
 ## Key Algorithms
 
 ### Freshness Scoring
@@ -375,7 +460,7 @@ freshness = 100 × (1 - e^(-days_since_use / 14))
 | Winner bonus | +15 for performance >= 80 |
 | New caption boost | +20 if never used |
 
-### Weight Calculation (Pool-Based Selection)
+### Weight Calculation (Pool-Based Selection - v2.1)
 
 The new earnings-first weight system uses pool-based selection with different strategies:
 
@@ -400,11 +485,11 @@ Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery Bonus(10%)
 | Standard | PROVEN + GLOBAL_EARNER | Normal PPV slots |
 | Discovery | DISCOVERY pool | Testing new content (15% of slots) |
 
-**Discovery Bonus (DISCOVERY pool only):**
-- High global earners: up to +5 points (percentile-based)
-- Universal captions: +1.5 points
-- High performance (>=70): +1.0 points
-- Medium performance (>=50): +0.5 points
+**Weight Modifiers (v2.1):**
+- **Hook rotation penalty**: 0.70x for same hook as previous caption (anti-detection)
+- **External import bonus**: 1.50x for imports < 30 days (prioritize new content)
+- **Payday multiplier**: 1.20x for premium slots (high-earning captions)
+- **Discovery bonus**: Percentile-based for high global earners in DISCOVERY pool
 
 ### Persona Matching Boosts
 
@@ -426,6 +511,35 @@ Weight = Earnings(60%) + Freshness(15%) + Persona(15%) + Discovery Bonus(10%)
 | Hook Strength | 25% |
 | CTA Effectiveness | 20% |
 | Conversion Potential | 20% |
+
+### Hook Detection & Rotation (v2.1)
+
+EROS v2.1 includes anti-detection hook rotation to prevent platform pattern recognition:
+
+**7 Hook Types:**
+- `curiosity` - "guess what I'm doing..." / "you won't believe..."
+- `personal` - "thinking about you..." / "just for you..."
+- `exclusivity` - "exclusive content..." / "VIP access..."
+- `recency` - "just finished..." / "brand new..."
+- `question` - "what do you think..." / "should I..."
+- `direct` - "check out this..." / "new content for you..."
+- `teasing` - "almost ready..." / "preview of..."
+
+**Anti-Detection Strategy:**
+- **30% penalty** for consecutive same-hook captions
+- Promotes natural variation in opening hooks
+- Tracked in validation (V015) and enforced in selection
+
+### Schedule Uniqueness Engine (v2.1)
+
+Ensures schedules appear organic and avoid detectable patterns:
+
+**Uniqueness Mechanisms:**
+1. **SHA-256 Fingerprinting**: Detects duplicate schedules across weeks
+2. **Timing Variance**: 7-10 minute randomization on all send times
+3. **Content Deduplication**: No caption used twice in same week
+4. **Hook Diversity**: Target 4+ different hook types per week
+5. **Type Rotation**: No content type 3x consecutively
 
 ---
 
@@ -450,31 +564,67 @@ Volume is now determined by performance metrics, not just fan count:
 
 ---
 
-## Business Rules
+## Business Rules & Validation (v2.1)
 
-### PPV Spacing
-- **Minimum**: 3 hours (error if violated)
-- **Recommended**: 4 hours (warning if below)
+EROS v2.1 includes **30 validation rules** (V001-V018, V020-V031) with self-healing auto-correction:
 
-### Follow-up Rules
-- Only for captions with performance_score >= 60
-- Delay: 15-45 minutes after PPV
-- Maximum 1 follow-up per PPV
+### Core Validation Rules (V001-V018)
 
-### Drip Window Rules
-- Duration: 4-8 hours after drip content
-- NO PPVs within drip window
-- Bumps ARE allowed within drip windows
+| Rule | Code | Severity | Auto-Correctable | Description |
+|------|------|----------|------------------|-------------|
+| PPV Spacing | V001 | Error if <3h, Warning if <4h | Yes | Move to valid slot |
+| Freshness Minimum | V002 | Error if <25, Warning if <30 | Yes | Swap caption |
+| Follow-up Timing | V003 | Warning | Yes | Adjust to 25 minutes |
+| Duplicate Captions | V004 | Error | Yes | Swap with fresh caption |
+| Vault Availability | V005 | Warning | No | Info only |
+| Volume Compliance | V006 | Warning | No | Info only |
+| Wall Post Spacing | V008 | Error if <1h, Warning if <2h | Yes | Move to valid slot |
+| Preview-PPV Linkage | V009 | Error if after PPV | Yes | Reorder |
+| Poll Spacing | V010 | Error if same day | Yes | Move to next day |
+| Poll Duration | V011 | Error | Yes | Set to 24/48/72h |
+| Game Wheel Validity | V012 | Warning | Yes | Remove excess |
+| Hook Rotation | V015 | Warning | No | Info only |
+| Hook Diversity | V016 | Info | No | Info only |
+| Content Rotation | V017 | Info | No | Info only |
 
-### Validation Checklist
-- PPV spacing >= 3 hours
-- All captions have freshness >= 30
-- Content types match vault availability
-- Follow-ups are 15-45 min after parent PPV
-- No PPVs within drip windows
-- Daily PPV count matches volume level
-- No duplicate captions in same week
-- No same content type 3x consecutive
+### Extended Content Type Rules (V020-V031)
+
+| Rule | Code | Severity | Auto-Correctable | Description |
+|------|------|----------|------------------|-------------|
+| Page Type Violation | V020 | Error | Yes | Remove paid-only content from free page |
+| VIP Post Spacing | V021 | Error if <24h | Yes | Move to valid slot |
+| Link Drop Spacing | V022 | Warning if <4h | Yes | Move to valid slot |
+| Engagement Daily Limit | V023 | Warning | Yes | Move to next day |
+| Engagement Weekly Limit | V024 | Warning | Yes | Remove excess |
+| Retention Timing | V025 | Info | No | Recommend days 5-7 |
+| Bundle Spacing | V026 | Error if <24h | Yes | Move to valid slot |
+| Flash Bundle Spacing | V027 | Error if <48h | Yes | Move to valid slot |
+| Game Post Weekly | V028 | Warning | Yes | Remove excess |
+| Bump Variant Rotation | V029 | Warning | Yes | Swap content type |
+| Content Type Rotation | V030 | Info | No | Info only |
+| Placeholder Warning | V031 | Info | No | Manual caption needed |
+
+### Auto-Correction Actions (10+ Actions)
+
+1. **move_slot**: Move item to new time slot (spacing violations)
+2. **swap_caption**: Replace with fresh caption from pool
+3. **adjust_timing**: Adjust follow-up timing
+4. **remove_item**: Remove excess items (limits)
+5. **move_to_next_day**: Move to next available day
+6. **swap_content_type**: Change to alternative type
+7. **reorder**: Reorder preview-PPV linkage
+8. **set_duration**: Set valid poll duration
+9. **filter_page_type**: Remove invalid content types
+10. **enforce_rotation**: Swap for variety
+
+### Validation Process
+
+**Self-Healing Loop:**
+1. Run validation (30 rules)
+2. Collect auto-correctable issues
+3. Apply corrections (up to 10 actions)
+4. Re-validate
+5. Repeat until valid or max passes (default: 2)
 
 ---
 
@@ -612,6 +762,7 @@ Proprietary - For authorized use only.
 ║                                                                           ║
 ║   EROS Schedule Generator v2.1                                            ║
 ║   Built for Claude Code │ 9-Step Pipeline │ Pool-Based Selection          ║
+║   20 Content Types │ 30 Validation Rules │ Auto-Correction Engine         ║
 ║   19 Scripts │ 26,928 Lines │ 16 SQL Queries │ 171 Tests                  ║
 ║                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════╝

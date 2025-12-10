@@ -20,127 +20,84 @@ Usage:
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from hook_detection import HookType, detect_hook_type
 
+# Import centralized models
+from models import ValidationIssue, ValidationResult
+
+
+# =============================================================================
+# VALIDATION RULE CODES
+# =============================================================================
+
+
+class ValidationRule(Enum):
+    """
+    Enumeration of all validation rule codes.
+
+    Codes V001-V019 are core validation rules.
+    Codes V020-V039 are extended content type rules.
+    """
+
+    # Core validation rules (existing)
+    PPV_SPACING = "V001"
+    FRESHNESS_MINIMUM = "V002"
+    FOLLOW_UP_TIMING = "V003"
+    DUPLICATE_CAPTIONS = "V004"
+    VAULT_AVAILABILITY = "V005"
+    VOLUME_COMPLIANCE = "V006"
+    PRICE_BOUNDS = "V007"
+    WALL_POST_SPACING = "V008"
+    PREVIEW_PPV_LINKAGE = "V009"
+    POLL_SPACING = "V010"
+    POLL_DURATION = "V011"
+    GAME_WHEEL_VALIDITY = "V012"
+    WALL_POST_VOLUME = "V013"
+    POLL_VOLUME = "V014"
+    HOOK_ROTATION = "V015"
+    HOOK_DIVERSITY = "V016"
+    CONTENT_ROTATION = "V017"
+    EMPTY_SCHEDULE = "V018"
+
+    # Extended content type rules (new)
+    PAGE_TYPE_VIOLATION = "V020"
+    VIP_POST_SPACING = "V021"
+    LINK_DROP_SPACING = "V022"
+    ENGAGEMENT_DAILY_LIMIT = "V023"
+    ENGAGEMENT_WEEKLY_LIMIT = "V024"
+    RETENTION_TIMING = "V025"
+    BUNDLE_SPACING = "V026"
+    FLASH_BUNDLE_SPACING = "V027"
+    GAME_POST_WEEKLY = "V028"
+    BUMP_VARIANT_ROTATION = "V029"
+    CONTENT_TYPE_ROTATION = "V030"
+    PLACEHOLDER_WARNING = "V031"
+
+
+# =============================================================================
+# CONTENT TYPE SETS FOR VALIDATION
+# =============================================================================
+
+# Content types that are only valid on paid pages
+PAID_ONLY_TYPES = {"vip_post", "renew_on_post", "renew_on_mm", "expired_subscriber"}
+
+# Engagement content types (limited to 2/day, 10/week)
+ENGAGEMENT_TYPES = {"dm_farm", "like_farm"}
+
+# Bump content types for rotation checks
+BUMP_TYPES = {"flyer_gif_bump", "descriptive_bump", "text_only_bump", "normal_post_bump"}
+
+# Retention content types
+RETENTION_TYPES = {"renew_on_post", "renew_on_mm", "expired_subscriber"}
+
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent
-
-
-@dataclass(frozen=True, slots=True)
-class ValidationIssue:
-    """
-    Represents a validation issue with optional auto-correction capability.
-
-    Attributes:
-        rule_name: The name of the validation rule that was violated.
-        severity: The severity level - "error", "warning", or "info".
-        message: Human-readable description of the issue.
-        item_ids: Tuple of schedule item IDs affected by this issue.
-        auto_correctable: Whether this issue can be automatically corrected.
-        correction_action: The type of correction to apply:
-            - "move_slot": Move item to a new time slot
-            - "swap_caption": Replace caption with another
-            - "adjust_timing": Adjust follow-up timing
-        correction_value: The value to apply for correction (JSON or string).
-            - For move_slot: JSON {"new_date": "YYYY-MM-DD", "new_time": "HH:MM"}
-            - For swap_caption: new caption_id as string
-            - For adjust_timing: new timing in minutes as string
-    """
-
-    rule_name: str
-    severity: str  # error, warning, info
-    message: str
-    item_ids: tuple[int, ...] = ()
-    # Auto-correction fields
-    auto_correctable: bool = False
-    correction_action: str = ""  # "move_slot", "swap_caption", "adjust_timing"
-    correction_value: str = ""  # New value to apply (JSON or string)
-
-
-@dataclass(slots=True)
-class ValidationResult:
-    """Result of validation."""
-
-    is_valid: bool = True
-    error_count: int = 0
-    warning_count: int = 0
-    info_count: int = 0
-    issues: list[ValidationIssue] = field(default_factory=list)
-
-    def add_error(
-        self,
-        rule: str,
-        message: str,
-        item_ids: list[int] | None = None,
-        auto_correctable: bool = False,
-        correction_action: str = "",
-        correction_value: str = "",
-    ):
-        """Add an error issue with optional auto-correction data."""
-        self.issues.append(
-            ValidationIssue(
-                rule_name=rule,
-                severity="error",
-                message=message,
-                item_ids=tuple(item_ids) if item_ids else (),
-                auto_correctable=auto_correctable,
-                correction_action=correction_action,
-                correction_value=correction_value,
-            )
-        )
-        self.error_count += 1
-        self.is_valid = False
-
-    def add_warning(
-        self,
-        rule: str,
-        message: str,
-        item_ids: list[int] | None = None,
-        auto_correctable: bool = False,
-        correction_action: str = "",
-        correction_value: str = "",
-    ):
-        """Add a warning issue with optional auto-correction data."""
-        self.issues.append(
-            ValidationIssue(
-                rule_name=rule,
-                severity="warning",
-                message=message,
-                item_ids=tuple(item_ids) if item_ids else (),
-                auto_correctable=auto_correctable,
-                correction_action=correction_action,
-                correction_value=correction_value,
-            )
-        )
-        self.warning_count += 1
-
-    def add_info(
-        self,
-        rule: str,
-        message: str,
-        item_ids: list[int] | None = None,
-        auto_correctable: bool = False,
-        correction_action: str = "",
-        correction_value: str = "",
-    ):
-        """Add an info issue with optional auto-correction data."""
-        self.issues.append(
-            ValidationIssue(
-                rule_name=rule,
-                severity="info",
-                message=message,
-                item_ids=tuple(item_ids) if item_ids else (),
-                auto_correctable=auto_correctable,
-                correction_action=correction_action,
-                correction_value=correction_value,
-            )
-        )
-        self.info_count += 1
 
 
 class ScheduleValidator:
@@ -185,6 +142,8 @@ class ScheduleValidator:
         items: list[dict[str, Any]],
         volume_target: int | None = None,
         vault_types: list[int] | None = None,
+        page_type: str = "free",
+        week_start: date | None = None,
     ) -> ValidationResult:
         """
         Validate schedule items against all rules.
@@ -193,6 +152,8 @@ class ScheduleValidator:
             items: List of schedule item dicts
             volume_target: Optional daily PPV target
             vault_types: Optional list of available content_type_ids
+            page_type: Page type for validation ("paid" or "free")
+            week_start: Start date of the scheduling week for timing rules
 
         Returns:
             ValidationResult with all issues found
@@ -202,6 +163,10 @@ class ScheduleValidator:
         if not items:
             result.add_warning("empty_schedule", "Schedule has no items")
             return result
+
+        # =====================================================================
+        # CORE VALIDATION RULES (V001-V019)
+        # =====================================================================
 
         # Run all validations
         self._check_ppv_spacing(items, result)
@@ -216,7 +181,7 @@ class ScheduleValidator:
         if vault_types:
             self._check_vault_availability(items, vault_types, result)
 
-        # NEW: Check expanded content type rules
+        # Expanded content type rules (Phase 2)
         self._check_wall_post_spacing(items, result)
         self._check_preview_ppv_linkage(items, result)
         self._check_poll_spacing(items, result)
@@ -227,6 +192,40 @@ class ScheduleValidator:
 
         # Hook rotation for anti-detection (Phase 3)
         self._check_hook_rotation(items, result)
+
+        # =====================================================================
+        # EXTENDED CONTENT TYPE VALIDATION (V020-V031)
+        # =====================================================================
+
+        # V020: Page type compliance
+        self._check_page_type_compliance(items, page_type, result)
+
+        # V021: VIP post spacing (24h minimum)
+        self._check_vip_post_spacing(items, result)
+
+        # V022: Link drop spacing (4h minimum)
+        self._check_link_drop_spacing(items, result)
+
+        # V023/V024: Engagement limits (2/day, 10/week)
+        self._check_engagement_limits(items, result)
+
+        # V025: Retention timing (days 5-7 for renew_on)
+        self._check_retention_timing(items, week_start, result)
+
+        # V026/V027: Bundle spacing (24h regular, 48h flash)
+        self._check_bundle_spacing(items, result)
+
+        # V028: Game post limit (1/week)
+        self._check_game_post_limit(items, result)
+
+        # V029: Bump variant rotation (no 3x consecutive same)
+        self._check_bump_variant_rotation(items, result)
+
+        # V030: Content type rotation (no 3x consecutive same)
+        self._check_content_type_rotation(items, result)
+
+        # V031: Placeholder content warnings
+        self._check_placeholder_content(items, result)
 
         return result
 
@@ -831,6 +830,542 @@ class ScheduleValidator:
             )
 
     # =========================================================================
+    # EXTENDED CONTENT TYPE VALIDATION (Phase 4 - 20+ Content Types)
+    # =========================================================================
+
+    def _check_page_type_compliance(
+        self, items: list[dict[str, Any]], page_type: str, result: ValidationResult
+    ) -> None:
+        """
+        V020: Ensure paid-only content is not scheduled on free pages.
+
+        Content types like vip_post, renew_on_post, renew_on_mm, and expired_subscriber
+        are only valid on paid subscription pages.
+
+        Args:
+            items: List of schedule item dicts
+            page_type: The page type ("paid" or "free")
+            result: ValidationResult to add issues to
+        """
+        if page_type.lower() == "paid":
+            return  # No restrictions on paid pages
+
+        for item in items:
+            content_type = item.get("content_type_name") or item.get("content_type")
+            if content_type in PAID_ONLY_TYPES:
+                result.add_error(
+                    ValidationRule.PAGE_TYPE_VIOLATION.value,
+                    f"Content type '{content_type}' requires paid page, but page is '{page_type}'. "
+                    f"Item {item.get('item_id')} should be removed or page type changed.",
+                    [item.get("item_id")],
+                    auto_correctable=True,
+                    correction_action="remove_item",
+                    correction_value="",
+                )
+
+    def _check_vip_post_spacing(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V021: Ensure minimum 24 hours between VIP posts.
+
+        VIP posts are premium content announcements that should be spaced
+        to maintain exclusivity and avoid fatigue.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        vip_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) == "vip_post"
+        ]
+
+        if len(vip_items) < 2:
+            return
+
+        # Sort by datetime
+        vip_with_dt = []
+        for item in vip_items:
+            dt = self._parse_datetime(item)
+            if dt:
+                vip_with_dt.append((dt, item))
+
+        vip_with_dt.sort(key=lambda x: x[0])
+
+        for i in range(1, len(vip_with_dt)):
+            prev_dt, prev_item = vip_with_dt[i - 1]
+            curr_dt, curr_item = vip_with_dt[i]
+
+            spacing_hours = (curr_dt - prev_dt).total_seconds() / 3600
+
+            if spacing_hours < 24:
+                # Calculate new time: 24 hours after previous VIP post
+                new_dt = prev_dt + timedelta(hours=24.25)  # Add 15 min buffer
+                correction_value = json.dumps(
+                    {"new_date": new_dt.strftime("%Y-%m-%d"), "new_time": new_dt.strftime("%H:%M")}
+                )
+
+                result.add_error(
+                    ValidationRule.VIP_POST_SPACING.value,
+                    f"VIP post spacing {spacing_hours:.1f}h < 24h minimum between items "
+                    f"{prev_item.get('item_id')} and {curr_item.get('item_id')}",
+                    [prev_item.get("item_id"), curr_item.get("item_id")],
+                    auto_correctable=True,
+                    correction_action="move_slot",
+                    correction_value=correction_value,
+                )
+
+    def _check_link_drop_spacing(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V022: Ensure minimum 4 hours between link drops.
+
+        Link drops should be spaced to avoid appearing spammy and to
+        give each link proper visibility.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        link_types = {"link_drop", "wall_link_drop"}
+        link_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) in link_types
+        ]
+
+        if len(link_items) < 2:
+            return
+
+        # Sort by datetime
+        links_with_dt = []
+        for item in link_items:
+            dt = self._parse_datetime(item)
+            if dt:
+                links_with_dt.append((dt, item))
+
+        links_with_dt.sort(key=lambda x: x[0])
+
+        for i in range(1, len(links_with_dt)):
+            prev_dt, prev_item = links_with_dt[i - 1]
+            curr_dt, curr_item = links_with_dt[i]
+
+            spacing_hours = (curr_dt - prev_dt).total_seconds() / 3600
+
+            if spacing_hours < 4:
+                new_dt = prev_dt + timedelta(hours=4.25)  # Add 15 min buffer
+                correction_value = json.dumps(
+                    {"new_date": new_dt.strftime("%Y-%m-%d"), "new_time": new_dt.strftime("%H:%M")}
+                )
+
+                result.add_warning(
+                    ValidationRule.LINK_DROP_SPACING.value,
+                    f"Link drop spacing {spacing_hours:.1f}h < 4h recommended between items "
+                    f"{prev_item.get('item_id')} and {curr_item.get('item_id')}",
+                    [prev_item.get("item_id"), curr_item.get("item_id")],
+                    auto_correctable=True,
+                    correction_action="move_slot",
+                    correction_value=correction_value,
+                )
+
+    def _check_engagement_limits(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V023/V024: Ensure engagement content limits (2/day, 10/week).
+
+        Engagement content (dm_farm, like_farm) should be limited to avoid
+        appearing overly promotional and to maintain authenticity.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        engagement_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) in ENGAGEMENT_TYPES
+        ]
+
+        if not engagement_items:
+            return
+
+        # V023: Check daily limit (max 2 per day)
+        by_day: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for item in engagement_items:
+            date_str = item.get("scheduled_date", "")
+            if date_str:
+                by_day[date_str].append(item)
+
+        for day, day_items in by_day.items():
+            if len(day_items) > 2:
+                # Flag excess items for removal or rescheduling
+                for excess_item in day_items[2:]:
+                    result.add_warning(
+                        ValidationRule.ENGAGEMENT_DAILY_LIMIT.value,
+                        f"Engagement content exceeds 2/day limit on {day}. "
+                        f"Item {excess_item.get('item_id')} should be moved to another day.",
+                        [excess_item.get("item_id")],
+                        auto_correctable=True,
+                        correction_action="move_to_next_day",
+                        correction_value="",
+                    )
+
+        # V024: Check weekly limit (max 10 per week)
+        if len(engagement_items) > 10:
+            # Sort by datetime to find excess items
+            sorted_items = sorted(
+                engagement_items,
+                key=lambda x: (x.get("scheduled_date", ""), x.get("scheduled_time", "")),
+            )
+            for excess_item in sorted_items[10:]:
+                result.add_warning(
+                    ValidationRule.ENGAGEMENT_WEEKLY_LIMIT.value,
+                    f"Engagement content exceeds 10/week limit. "
+                    f"Item {excess_item.get('item_id')} should be removed.",
+                    [excess_item.get("item_id")],
+                    auto_correctable=True,
+                    correction_action="remove_item",
+                    correction_value="",
+                )
+
+    def _check_retention_timing(
+        self,
+        items: list[dict[str, Any]],
+        week_start: date | None,
+        result: ValidationResult,
+    ) -> None:
+        """
+        V025: Retention content should be on days 5-7 for renew_on types.
+
+        Renewal messages are most effective toward the end of the week when
+        subscribers are closer to their renewal dates.
+
+        Args:
+            items: List of schedule item dicts
+            week_start: The start date of the scheduling week
+            result: ValidationResult to add issues to
+        """
+        retention_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) in RETENTION_TYPES
+        ]
+
+        if not retention_items or not week_start:
+            return
+
+        for item in retention_items:
+            date_str = item.get("scheduled_date", "")
+            if not date_str:
+                continue
+
+            try:
+                item_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                day_of_week = (item_date - week_start).days
+
+                # Renew_on content (not expired_subscriber) should be days 5-7 (Fri-Sun)
+                content_type = item.get("content_type_name") or item.get("content_type")
+                if content_type in {"renew_on_post", "renew_on_mm"} and day_of_week < 4:
+                    result.add_info(
+                        ValidationRule.RETENTION_TIMING.value,
+                        f"Retention content '{content_type}' on day {day_of_week + 1} of week. "
+                        f"Recommend days 5-7 (Fri-Sun) for maximum renewal impact.",
+                        [item.get("item_id")],
+                    )
+            except ValueError:
+                continue  # Skip items with invalid date format
+
+    def _check_bundle_spacing(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V026/V027: Bundle spacing (24h regular, 48h flash).
+
+        Bundles should be spaced to maintain perceived value and avoid
+        discount fatigue.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        # Check regular bundles (24h spacing)
+        bundle_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) == "bundle"
+        ]
+
+        if len(bundle_items) >= 2:
+            bundles_with_dt = []
+            for item in bundle_items:
+                dt = self._parse_datetime(item)
+                if dt:
+                    bundles_with_dt.append((dt, item))
+
+            bundles_with_dt.sort(key=lambda x: x[0])
+
+            for i in range(1, len(bundles_with_dt)):
+                prev_dt, prev_item = bundles_with_dt[i - 1]
+                curr_dt, curr_item = bundles_with_dt[i]
+
+                spacing_hours = (curr_dt - prev_dt).total_seconds() / 3600
+
+                if spacing_hours < 24:
+                    new_dt = prev_dt + timedelta(hours=24.25)
+                    correction_value = json.dumps(
+                        {
+                            "new_date": new_dt.strftime("%Y-%m-%d"),
+                            "new_time": new_dt.strftime("%H:%M"),
+                        }
+                    )
+
+                    result.add_error(
+                        ValidationRule.BUNDLE_SPACING.value,
+                        f"Bundle spacing {spacing_hours:.1f}h < 24h minimum between items "
+                        f"{prev_item.get('item_id')} and {curr_item.get('item_id')}",
+                        [prev_item.get("item_id"), curr_item.get("item_id")],
+                        auto_correctable=True,
+                        correction_action="move_slot",
+                        correction_value=correction_value,
+                    )
+
+        # Check flash bundles (48h spacing)
+        flash_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) == "flash_bundle"
+        ]
+
+        if len(flash_items) >= 2:
+            flash_with_dt = []
+            for item in flash_items:
+                dt = self._parse_datetime(item)
+                if dt:
+                    flash_with_dt.append((dt, item))
+
+            flash_with_dt.sort(key=lambda x: x[0])
+
+            for i in range(1, len(flash_with_dt)):
+                prev_dt, prev_item = flash_with_dt[i - 1]
+                curr_dt, curr_item = flash_with_dt[i]
+
+                spacing_hours = (curr_dt - prev_dt).total_seconds() / 3600
+
+                if spacing_hours < 48:
+                    new_dt = prev_dt + timedelta(hours=48.25)
+                    correction_value = json.dumps(
+                        {
+                            "new_date": new_dt.strftime("%Y-%m-%d"),
+                            "new_time": new_dt.strftime("%H:%M"),
+                        }
+                    )
+
+                    result.add_error(
+                        ValidationRule.FLASH_BUNDLE_SPACING.value,
+                        f"Flash bundle spacing {spacing_hours:.1f}h < 48h minimum between items "
+                        f"{prev_item.get('item_id')} and {curr_item.get('item_id')}",
+                        [prev_item.get("item_id"), curr_item.get("item_id")],
+                        auto_correctable=True,
+                        correction_action="move_slot",
+                        correction_value=correction_value,
+                    )
+
+    def _check_game_post_limit(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V028: Maximum 1 game post per week.
+
+        Game posts (spin the wheel, etc.) should be limited to maintain
+        their special nature and avoid gamification fatigue.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        game_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) == "game_post"
+        ]
+
+        if len(game_items) > 1:
+            # Sort by datetime
+            sorted_items = sorted(
+                game_items,
+                key=lambda x: (x.get("scheduled_date", ""), x.get("scheduled_time", "")),
+            )
+
+            # Keep the first one, flag the rest
+            for excess_item in sorted_items[1:]:
+                result.add_warning(
+                    ValidationRule.GAME_POST_WEEKLY.value,
+                    f"Only 1 game post per week recommended. "
+                    f"Item {excess_item.get('item_id')} should be removed.",
+                    [excess_item.get("item_id")],
+                    auto_correctable=True,
+                    correction_action="remove_item",
+                    correction_value="",
+                )
+
+    def _check_bump_variant_rotation(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V029: No 3 consecutive same bump type.
+
+        Bump message variants should be rotated to maintain authenticity
+        and avoid predictable patterns.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        bump_items = [
+            item
+            for item in items
+            if (item.get("content_type_name") or item.get("content_type")) in BUMP_TYPES
+        ]
+
+        if len(bump_items) < 3:
+            return
+
+        # Sort by datetime
+        bumps_with_dt = []
+        for item in bump_items:
+            dt = self._parse_datetime(item)
+            if dt:
+                bumps_with_dt.append((dt, item))
+
+        bumps_with_dt.sort(key=lambda x: x[0])
+
+        for i in range(2, len(bumps_with_dt)):
+            curr_type = (
+                bumps_with_dt[i][1].get("content_type_name")
+                or bumps_with_dt[i][1].get("content_type")
+            )
+            prev1_type = (
+                bumps_with_dt[i - 1][1].get("content_type_name")
+                or bumps_with_dt[i - 1][1].get("content_type")
+            )
+            prev2_type = (
+                bumps_with_dt[i - 2][1].get("content_type_name")
+                or bumps_with_dt[i - 2][1].get("content_type")
+            )
+
+            if curr_type == prev1_type == prev2_type:
+                result.add_warning(
+                    ValidationRule.BUMP_VARIANT_ROTATION.value,
+                    f"3 consecutive '{curr_type}' bumps detected. "
+                    f"Consider varying bump types for authenticity.",
+                    [bumps_with_dt[i][1].get("item_id")],
+                    auto_correctable=True,
+                    correction_action="swap_content_type",
+                    correction_value=self._get_alternative_bump_type(curr_type),
+                )
+
+    def _get_alternative_bump_type(self, current_type: str) -> str:
+        """
+        Get an alternative bump type for rotation.
+
+        Args:
+            current_type: The current bump content type
+
+        Returns:
+            An alternative bump type string
+        """
+        alternatives = list(BUMP_TYPES - {current_type})
+        return alternatives[0] if alternatives else current_type
+
+    def _check_content_type_rotation(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V030: No 3 consecutive same content type (any type, not just bumps).
+
+        Content types should be rotated to maintain variety and engagement.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        if len(items) < 3:
+            return
+
+        # Sort by datetime
+        items_with_dt = []
+        for item in items:
+            dt = self._parse_datetime(item)
+            if dt:
+                items_with_dt.append((dt, item))
+
+        items_with_dt.sort(key=lambda x: x[0])
+
+        for i in range(2, len(items_with_dt)):
+            curr_type = (
+                items_with_dt[i][1].get("content_type_name")
+                or items_with_dt[i][1].get("content_type")
+            )
+            prev1_type = (
+                items_with_dt[i - 1][1].get("content_type_name")
+                or items_with_dt[i - 1][1].get("content_type")
+            )
+            prev2_type = (
+                items_with_dt[i - 2][1].get("content_type_name")
+                or items_with_dt[i - 2][1].get("content_type")
+            )
+
+            # Skip None types
+            if not all([curr_type, prev1_type, prev2_type]):
+                continue
+
+            if curr_type == prev1_type == prev2_type:
+                # Don't double-report if already caught by bump rotation
+                if curr_type not in BUMP_TYPES:
+                    result.add_info(
+                        ValidationRule.CONTENT_TYPE_ROTATION.value,
+                        f"3 consecutive '{curr_type}' items detected. "
+                        f"Consider varying content types for better engagement.",
+                        [items_with_dt[i][1].get("item_id")],
+                    )
+
+    def _check_placeholder_content(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V031: Warn when slots have placeholder content (no caption).
+
+        Slots without captions are placeholders that need content before
+        the schedule can be executed.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        for item in items:
+            # Check for explicit placeholder flag or missing caption
+            has_caption = item.get("has_caption", True)
+            caption_id = item.get("caption_id")
+            caption_text = item.get("caption_text", "")
+
+            if not has_caption or (caption_id is None and not caption_text):
+                content_type = (
+                    item.get("content_type_name")
+                    or item.get("content_type")
+                    or "unknown"
+                )
+                result.add_info(
+                    ValidationRule.PLACEHOLDER_WARNING.value,
+                    f"Slot {item.get('item_id')} uses placeholder - no caption available "
+                    f"for content type '{content_type}'. Manual caption entry required.",
+                    [item.get("item_id")],
+                )
+
+    # =========================================================================
     # AUTO-CORRECTION METHODS (Phase 2 - Self-Healing Validation)
     # =========================================================================
 
@@ -951,9 +1486,15 @@ class ScheduleValidator:
             - move_slot: Move item to new time (correction_value = JSON with new_date, new_time)
             - swap_caption: Placeholder - marks item for caption replacement
             - adjust_timing: Adjust follow-up timing relative to parent
+            - remove_item: Remove item from schedule (new for Phase 4)
+            - move_to_next_day: Move item to next day at same time (new for Phase 4)
+            - swap_content_type: Change content type to alternative (new for Phase 4)
         """
         # Build lookup tables
         items_by_id: dict[int, dict] = {item.get("item_id"): item for item in items}
+
+        # Track items to remove (processed after loop)
+        items_to_remove: set[int] = set()
 
         for correction in corrections:
             if not correction.auto_correctable:
@@ -1012,6 +1553,43 @@ class ScheduleValidator:
                         except (ValueError, TypeError):
                             pass  # Invalid timing value, skip
 
+            elif action == "remove_item":
+                # Remove item from schedule
+                item_id = item_ids[0]
+                if item_id is not None:
+                    items_to_remove.add(item_id)
+
+            elif action == "move_to_next_day":
+                # Move item to next day at same time
+                item_id = item_ids[0]
+                item = items_by_id.get(item_id)
+
+                if item:
+                    date_str = item.get("scheduled_date", "")
+                    if date_str:
+                        try:
+                            current_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                            next_date = current_date + timedelta(days=1)
+                            item["scheduled_date"] = next_date.strftime("%Y-%m-%d")
+                        except ValueError:
+                            pass  # Invalid date format, skip
+
+            elif action == "swap_content_type":
+                # Swap content type to alternative
+                item_id = item_ids[0]
+                item = items_by_id.get(item_id)
+
+                if item and value:
+                    # Update the content type to the alternative
+                    if item.get("content_type_name"):
+                        item["content_type_name"] = value
+                    elif item.get("content_type"):
+                        item["content_type"] = value
+
+        # Remove flagged items from list
+        if items_to_remove:
+            items = [item for item in items if item.get("item_id") not in items_to_remove]
+
         return items
 
     def validate_with_corrections(
@@ -1021,6 +1599,8 @@ class ScheduleValidator:
         vault_types: list[int] | None = None,
         max_passes: int = 2,
         available_captions: list[dict[str, Any]] | None = None,
+        page_type: str = "free",
+        week_start: date | None = None,
     ) -> ValidationResult:
         """
         Validate schedule with automatic correction loop.
@@ -1035,26 +1615,36 @@ class ScheduleValidator:
             vault_types: Optional list of available content_type_ids.
             max_passes: Maximum number of validation/correction passes (default: 2).
             available_captions: Optional pool of fresh captions for swap corrections.
+            page_type: Page type for validation ("paid" or "free").
+            week_start: Start date of the scheduling week for timing rules.
 
         Returns:
             ValidationResult with final validation state and any remaining issues.
 
-        Auto-correctable issues (limited set):
+        Auto-correctable issues (Phase 2 + Phase 4):
             1. PPV spacing violation (<3hr) -> Move to next valid slot
             2. Duplicate caption -> Swap with unused caption of same type
             3. Freshness below 30 -> Swap with fresher caption
             4. Follow-up timing outside 15-45min -> Adjust to 25 minutes
+            5. Page type violation -> Remove item (V020)
+            6. VIP post spacing -> Move to valid slot (V021)
+            7. Engagement limit exceeded -> Move to next day or remove (V023/V024)
+            8. Bundle/Flash bundle spacing -> Move to valid slot (V026/V027)
+            9. Game post exceeded -> Remove excess (V028)
+            10. Bump variant rotation -> Swap content type (V029)
 
         NOT auto-correctable (require human judgment):
             - Content rotation patterns
             - Pricing decisions
             - Volume targets
+            - Retention timing (info only)
+            - Placeholder content (info only)
         """
         corrections_applied: list[str] = []
 
         for pass_num in range(1, max_passes + 1):
-            # Run standard validation
-            result = self.validate(items, volume_target, vault_types)
+            # Run standard validation with extended parameters
+            result = self.validate(items, volume_target, vault_types, page_type, week_start)
 
             # Check if valid or no errors
             if result.is_valid or result.error_count == 0:
@@ -1140,7 +1730,7 @@ class ScheduleValidator:
                 continue
 
         # Final validation after all passes
-        final_result = self.validate(items, volume_target, vault_types)
+        final_result = self.validate(items, volume_target, vault_types, page_type, week_start)
 
         # Add correction summary
         if corrections_applied:
@@ -1237,27 +1827,42 @@ def main():
         description="Validate schedule against business rules.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Validation Rules:
-    1. ppv_spacing        - PPVs must be 3+ hours apart (4 recommended)
-    2. followup_timing    - Follow-ups must be 15-45 min after parent
-    3. duplicate_captions - No duplicate captions in same week
-    4. content_rotation   - Warn on 3+ consecutive same content type
-    5. freshness_threshold - All captions must have freshness >= 30
-    6. volume_compliance  - Daily PPV count should match target
-    7. vault_availability - Content types should be in vault
-    8. wall_post_spacing  - Wall posts must be 2+ hours apart
-    9. preview_ppv_linkage - Previews must be 1-3h before linked PPV
-    10. poll_spacing      - Polls must be 2+ days apart
-    11. poll_duration     - Poll duration must be 24/48/72h
-    12. game_wheel_validity - Only one game wheel per week
-    13. wall_post_volume  - Max 4 wall posts per day
-    14. poll_volume       - Max 3 polls per week
-    15. hook_rotation     - Warn on consecutive same hook types (Phase 3)
-    16. hook_diversity    - Info if < 4 hook types used in week (Phase 3)
+Validation Rules (V001-V019 Core):
+    V001 ppv_spacing        - PPVs must be 3+ hours apart (4 recommended)
+    V002 freshness_minimum  - All captions must have freshness >= 30
+    V003 followup_timing    - Follow-ups must be 15-45 min after parent
+    V004 duplicate_captions - No duplicate captions in same week
+    V005 vault_availability - Content types should be in vault
+    V006 volume_compliance  - Daily PPV count should match target
+    V008 wall_post_spacing  - Wall posts must be 2+ hours apart
+    V009 preview_ppv_linkage - Previews must be 1-3h before linked PPV
+    V010 poll_spacing       - Polls must be 2+ days apart
+    V011 poll_duration      - Poll duration must be 24/48/72h
+    V012 game_wheel_validity - Only one game wheel per week
+    V013 wall_post_volume   - Max 4 wall posts per day
+    V014 poll_volume        - Max 3 polls per week
+    V015 hook_rotation      - Warn on consecutive same hook types
+    V016 hook_diversity     - Info if < 4 hook types used in week
+    V017 content_rotation   - Warn on 3+ consecutive same content type
+
+Extended Content Type Rules (V020-V031):
+    V020 page_type_violation   - Paid-only content on free page (ERROR)
+    V021 vip_post_spacing      - Min 24h between VIP posts (ERROR)
+    V022 link_drop_spacing     - Min 4h between link drops (WARNING)
+    V023 engagement_daily_limit - Max 2 engagement posts per day (WARNING)
+    V024 engagement_weekly_limit - Max 10 engagement posts per week (WARNING)
+    V025 retention_timing      - Retention content on days 5-7 (INFO)
+    V026 bundle_spacing        - Min 24h between bundles (ERROR)
+    V027 flash_bundle_spacing  - Min 48h between flash bundles (ERROR)
+    V028 game_post_weekly      - Max 1 game post per week (WARNING)
+    V029 bump_variant_rotation - No 3x consecutive same bump type (WARNING)
+    V030 content_type_rotation - No 3x consecutive same type (INFO)
+    V031 placeholder_warning   - Slot has no caption (INFO)
 
 Examples:
     python validate_schedule.py --input schedule.json
     python validate_schedule.py --input schedule.json --strict
+    python validate_schedule.py --input schedule.json --page-type paid
     python validate_schedule.py --input schedule.json --volume-target 5
         """,
     )
@@ -1273,6 +1878,16 @@ Examples:
     )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
     parser.add_argument("--volume-target", type=int, help="Expected daily PPV target")
+    parser.add_argument(
+        "--page-type",
+        choices=["paid", "free"],
+        default="free",
+        help="Page type for validation (default: free)",
+    )
+    parser.add_argument(
+        "--week-start",
+        help="Week start date in YYYY-MM-DD format for retention timing rules",
+    )
     parser.add_argument(
         "--min-ppv-spacing",
         type=float,
@@ -1306,13 +1921,27 @@ Examples:
         print("Error: Cannot find items in schedule", file=sys.stderr)
         sys.exit(1)
 
+    # Parse week start date if provided
+    week_start_date: date | None = None
+    if args.week_start:
+        try:
+            week_start_date = datetime.strptime(args.week_start, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"Error: Invalid week-start date format: {args.week_start}", file=sys.stderr)
+            sys.exit(1)
+
     # Create validator
     validator = ScheduleValidator(
         min_ppv_spacing_hours=args.min_ppv_spacing, min_freshness=args.min_freshness
     )
 
-    # Validate
-    result = validator.validate(items, volume_target=args.volume_target)
+    # Validate with extended parameters
+    result = validator.validate(
+        items,
+        volume_target=args.volume_target,
+        page_type=args.page_type,
+        week_start=week_start_date,
+    )
 
     # In strict mode, treat warnings as errors
     if args.strict and result.warning_count > 0:

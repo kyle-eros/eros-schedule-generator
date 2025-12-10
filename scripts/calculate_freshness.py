@@ -17,10 +17,13 @@ Usage:
     python calculate_freshness.py --batch
     python calculate_freshness.py --caption-id 12345
     python calculate_freshness.py --creator missalexa --update
+
+Note: This module uses print() for CLI output (results and error messages).
 """
 
 import argparse
 import json
+import logging
 import math
 import sqlite3
 import sys
@@ -28,6 +31,9 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Path resolution for database
 SCRIPT_DIR = Path(__file__).parent

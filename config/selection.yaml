@@ -1,0 +1,97 @@
+# EROS Schedule Generator - Caption Selection Configuration
+# =========================================================
+# Configuration for the redesigned caption selection system that prioritizes
+# fresh/unused captions guided by historical performance patterns.
+#
+# This system uses a two-tier approach:
+# 1. Hard filtering: Exclude recently-used captions (exclusion window)
+# 2. Weighted selection: Score remaining captions by patterns, freshness, persona
+#
+# Values can be overridden via environment variables (EROS_SELECTION_* prefix).
+# Format: EROS_SELECTION_<KEY> (uppercase, underscores)
+# Example: EROS_SELECTION_EXCLUSION_DAYS=90
+
+# -----------------------------------------------------
+# Core Selection Settings
+# -----------------------------------------------------
+selection:
+  # Hard exclusion window (days) - captions used within this window are excluded
+  # Range: 30-120 days. Higher = more exclusion, lower = more caption availability
+  exclusion_days: 60
+
+  # Exploration slot ratio - percentage of selections reserved for random picks
+  # This prevents over-optimization and discovers new high-performers
+  # Range: 0.05-0.25 (5-25%). Recommended: 0.10-0.15 (10-15%)
+  exploration_ratio: 0.15
+
+  # Pattern extraction settings
+  # Minimum samples required to establish a performance pattern
+  # Too low = noisy patterns, too high = ignores sparse data
+  min_pattern_samples: 3
+
+  # How far back to look for pattern extraction (days)
+  # Balances recency vs. sample size
+  pattern_lookback_days: 90
+
+  # Caching settings for pattern extraction (performance optimization)
+  # Time-to-live for cached patterns (hours)
+  pattern_cache_ttl_hours: 24
+  # Maximum number of patterns to cache
+  pattern_cache_max_size: 100
+
+  # Fallback behavior for creators with insufficient history
+  # When enabled, uses global cross-creator patterns with a discount factor
+  use_global_fallback: true
+  # Discount factor applied to global patterns (0.5-1.0)
+  # Lower = less trust in global patterns, higher = more reliance
+  global_fallback_discount: 0.7
+
+  # Legacy mode toggle for gradual rollout and A/B testing
+  # When true, uses the original weight-based selection algorithm
+  use_legacy_weights: false
+
+# -----------------------------------------------------
+# Weight Formula Components
+# -----------------------------------------------------
+# These weights determine the scoring formula for caption selection.
+# IMPORTANT: All weights must sum to 1.0 (+/- 0.01 tolerance)
+#
+# Final score = (pattern_match * weight) + (never_used_bonus * weight) +
+#               (persona * weight) + (freshness_bonus * weight) + (exploration * weight)
+weights:
+  # Pattern match score - how well caption matches historical winning patterns
+  # (e.g., content type, price point, time slot performance)
+  pattern_match: 0.40
+
+  # Never-used bonus - boost for captions that have never been scheduled
+  # Ensures fresh content enters rotation
+  never_used_bonus: 0.25
+
+  # Persona match score - how well caption tone matches creator's voice profile
+  # Uses text detection and persona database matching
+  persona: 0.15
+
+  # Freshness bonus - additional boost for captions not used recently
+  # (distinct from never_used: this rewards relative freshness)
+  freshness_bonus: 0.10
+
+  # Exploration factor - random boost to encourage variety
+  # Prevents algorithm from always selecting same "optimal" captions
+  exploration: 0.10
+
+# -----------------------------------------------------
+# Freshness Tier Multipliers
+# -----------------------------------------------------
+# Multipliers applied based on caption usage recency.
+# These multiply the base freshness_bonus weight.
+#
+# Tiers:
+# - never_used: Caption has never been scheduled (highest priority)
+# - fresh: Caption outside exclusion window but has been used before
+# - excluded: Caption within exclusion window (hard-filtered, not scored)
+freshness_tiers:
+  # Multiplier for never-before-used captions
+  never_used: 1.5
+  # Multiplier for fresh (outside exclusion window) captions
+  fresh: 1.0
+  # Note: Excluded captions are hard-filtered before scoring, no multiplier needed

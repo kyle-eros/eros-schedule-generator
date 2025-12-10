@@ -1,0 +1,378 @@
+{
+  "schedule": [
+    {
+      "item_id": 1,
+      "slot_id": "mon-ppv-1",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "10:07",
+      "message_type": "ppv",
+      "content_type_id": 1,
+      "content_type_name": "ppv",
+      "caption_id": 4521,
+      "caption_text": "guess what I just filmed for you baby... you're going to lose your mind when you see this",
+      "price": 18.00,
+      "freshness_score": 87.3,
+      "pool": "proven",
+      "hook_type": "curiosity",
+      "hook_confidence": 0.85,
+      "has_follow_up": true,
+      "timing_variance_applied": 7,
+      "persona_boost": 1.32,
+      "semantic_analysis": {
+        "detected_tone": "playful",
+        "tone_confidence": 0.91,
+        "matches_creator_voice": true,
+        "emoji_alignment": "good",
+        "slang_alignment": "perfect",
+        "authenticity_score": 0.89,
+        "reasoning": "Strong playful energy with teasing build-up. Casual 'baby' aligns with creator's voice profile. Question-based curiosity hook creates engagement."
+      },
+      "payday_multiplier": 1.0
+    },
+    {
+      "item_id": 2,
+      "slot_id": "mon-bump-1",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "10:33",
+      "message_type": "bump",
+      "content_type_id": 2,
+      "content_type_name": "ppv_follow_up",
+      "caption_id": 4521,
+      "caption_text": "only 2 hours left to grab this... don't miss out babe",
+      "price": 18.00,
+      "freshness_score": 87.3,
+      "pool": "proven",
+      "hook_type": "urgency",
+      "hook_confidence": 0.92,
+      "parent_item_id": 1,
+      "timing_variance_applied": 0,
+      "persona_boost": 1.28,
+      "semantic_analysis": {
+        "detected_tone": "playful",
+        "tone_confidence": 0.87,
+        "matches_creator_voice": true,
+        "emoji_alignment": "good",
+        "slang_alignment": "good",
+        "authenticity_score": 0.85,
+        "reasoning": "Urgency hook with casual 'babe' maintains voice consistency. Scarcity messaging effective for conversion."
+      },
+      "payday_multiplier": 1.0
+    },
+    {
+      "item_id": 3,
+      "slot_id": "mon-ppv-2",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "14:12",
+      "message_type": "ppv",
+      "content_type_id": 3,
+      "content_type_name": "bundle",
+      "caption_id": 3892,
+      "caption_text": "3 brand new videos just for you... unlock this bundle before it expires",
+      "price": 22.00,
+      "freshness_score": 92.1,
+      "pool": "proven",
+      "hook_type": "exclusivity",
+      "hook_confidence": 0.78,
+      "has_follow_up": true,
+      "timing_variance_applied": -3,
+      "persona_boost": 1.35,
+      "semantic_analysis": {
+        "detected_tone": "seductive",
+        "tone_confidence": 0.82,
+        "matches_creator_voice": true,
+        "emoji_alignment": "moderate",
+        "slang_alignment": "good",
+        "authenticity_score": 0.88,
+        "reasoning": "Exclusivity hook with value proposition (3 videos). 'Just for you' creates personal connection. Slight urgency with expiration mention."
+      },
+      "payday_multiplier": 1.0
+    },
+    {
+      "item_id": 4,
+      "slot_id": "mon-bump-2",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "14:38",
+      "message_type": "bump",
+      "content_type_id": 2,
+      "content_type_name": "ppv_follow_up",
+      "caption_id": 3892,
+      "caption_text": "still available but not for long... last chance",
+      "price": 22.00,
+      "freshness_score": 92.1,
+      "pool": "proven",
+      "hook_type": "urgency",
+      "hook_confidence": 0.88,
+      "parent_item_id": 3,
+      "timing_variance_applied": 0,
+      "persona_boost": 1.25,
+      "semantic_analysis": {
+        "detected_tone": "direct",
+        "tone_confidence": 0.79,
+        "matches_creator_voice": true,
+        "emoji_alignment": "good",
+        "slang_alignment": "moderate",
+        "authenticity_score": 0.82,
+        "reasoning": "Direct urgency messaging. Short and punchy for bump. Effective FOMO trigger without being pushy."
+      },
+      "payday_multiplier": 1.0
+    },
+    {
+      "item_id": 5,
+      "slot_id": "mon-ppv-3",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "18:03",
+      "message_type": "ppv",
+      "content_type_id": 1,
+      "content_type_name": "ppv",
+      "caption_id": 2156,
+      "caption_text": "I miss you so much... come see what I've been up to today",
+      "price": 15.00,
+      "freshness_score": 78.5,
+      "pool": "global_earner",
+      "hook_type": "personal",
+      "hook_confidence": 0.91,
+      "has_follow_up": true,
+      "timing_variance_applied": 3,
+      "persona_boost": 1.38,
+      "semantic_analysis": {
+        "detected_tone": "sweet",
+        "tone_confidence": 0.94,
+        "matches_creator_voice": true,
+        "emoji_alignment": "perfect",
+        "slang_alignment": "good",
+        "authenticity_score": 0.92,
+        "reasoning": "Excellent persona match. Personal connection hook with emotional warmth. 'I miss you' creates intimacy. Very authentic to creator voice."
+      },
+      "payday_multiplier": 1.15
+    },
+    {
+      "item_id": 6,
+      "slot_id": "mon-bump-3",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "18:28",
+      "message_type": "bump",
+      "content_type_id": 2,
+      "content_type_name": "ppv_follow_up",
+      "caption_id": 2156,
+      "caption_text": "hey you still there? I made this just for you...",
+      "price": 15.00,
+      "freshness_score": 78.5,
+      "pool": "global_earner",
+      "hook_type": "personal",
+      "hook_confidence": 0.85,
+      "parent_item_id": 5,
+      "timing_variance_applied": 0,
+      "persona_boost": 1.35,
+      "semantic_analysis": {
+        "detected_tone": "sweet",
+        "tone_confidence": 0.89,
+        "matches_creator_voice": true,
+        "emoji_alignment": "good",
+        "slang_alignment": "perfect",
+        "authenticity_score": 0.90,
+        "reasoning": "Continues personal connection from parent PPV. Casual 'hey' opening feels natural. 'Just for you' reinforces exclusivity while maintaining warmth."
+      },
+      "payday_multiplier": 1.15
+    },
+    {
+      "item_id": 7,
+      "slot_id": "mon-ppv-4",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "21:08",
+      "message_type": "ppv",
+      "content_type_id": 1,
+      "content_type_name": "ppv",
+      "caption_id": 5823,
+      "caption_text": "POV: you wake up to me in your bed... want to see what happens next?",
+      "price": 20.00,
+      "freshness_score": 95.2,
+      "pool": "proven",
+      "hook_type": "question",
+      "hook_confidence": 0.89,
+      "has_follow_up": true,
+      "timing_variance_applied": 8,
+      "persona_boost": 1.40,
+      "semantic_analysis": {
+        "detected_tone": "seductive",
+        "tone_confidence": 0.96,
+        "matches_creator_voice": true,
+        "emoji_alignment": "perfect",
+        "slang_alignment": "perfect",
+        "authenticity_score": 0.95,
+        "reasoning": "Maximum persona boost. POV framing creates immersion. Question hook drives engagement. Prime time slot (9PM) placement optimal for this high-performer."
+      },
+      "payday_multiplier": 1.0
+    },
+    {
+      "item_id": 8,
+      "slot_id": "mon-bump-4",
+      "scheduled_date": "2025-01-06",
+      "scheduled_time": "21:37",
+      "message_type": "bump",
+      "content_type_id": 2,
+      "content_type_name": "ppv_follow_up",
+      "caption_id": 5823,
+      "caption_text": "running out of time on this one... grab it now",
+      "price": 20.00,
+      "freshness_score": 95.2,
+      "pool": "proven",
+      "hook_type": "urgency",
+      "hook_confidence": 0.94,
+      "parent_item_id": 7,
+      "timing_variance_applied": 0,
+      "persona_boost": 1.30,
+      "semantic_analysis": {
+        "detected_tone": "direct",
+        "tone_confidence": 0.84,
+        "matches_creator_voice": true,
+        "emoji_alignment": "moderate",
+        "slang_alignment": "good",
+        "authenticity_score": 0.83,
+        "reasoning": "Effective urgency bump. Slightly more transactional tone than parent PPV but acceptable for conversion-focused follow-up."
+      },
+      "payday_multiplier": 1.0
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "is_valid": true,
+    "error_count": 0,
+    "warning_count": 1,
+    "info_count": 2,
+    "corrections_applied": 2,
+    "issues": [
+      {
+        "rule_name": "V015",
+        "rule_description": "HOOK_ROTATION",
+        "severity": "warning",
+        "message": "Consecutive urgency hooks in bump messages at items 4 and 6",
+        "item_ids": [4, 6],
+        "auto_correctable": false
+      },
+      {
+        "rule_name": "V016",
+        "rule_description": "HOOK_DIVERSITY",
+        "severity": "info",
+        "message": "Excellent hook diversity: 5 unique hook types used",
+        "hook_types_used": ["curiosity", "exclusivity", "personal", "question", "urgency"],
+        "hook_diversity_score": 0.71
+      },
+      {
+        "rule_name": "V031",
+        "rule_description": "PLACEHOLDER_WARNING",
+        "severity": "info",
+        "message": "0 placeholder slots in schedule (all slots have captions)",
+        "placeholder_count": 0
+      }
+    ],
+    "auto_corrections": [
+      {
+        "rule_name": "V001",
+        "action": "move_slot",
+        "original_time": "13:55",
+        "corrected_time": "14:12",
+        "reason": "PPV spacing violation - moved to maintain 4h minimum"
+      },
+      {
+        "rule_name": "V003",
+        "action": "adjust_timing",
+        "original_delay": 52,
+        "corrected_delay": 25,
+        "reason": "Follow-up timing outside 15-45 min range"
+      }
+    ]
+  },
+  "summary": {
+    "total_items": 8,
+    "ppv_count": 4,
+    "bump_count": 4,
+    "content_type_distribution": {
+      "ppv": 3,
+      "bundle": 1,
+      "ppv_follow_up": 4
+    },
+    "pool_distribution": {
+      "proven": 6,
+      "global_earner": 2,
+      "discovery": 0
+    },
+    "hook_distribution": {
+      "curiosity": 1,
+      "exclusivity": 1,
+      "personal": 2,
+      "question": 1,
+      "urgency": 3
+    },
+    "price_range": {
+      "min": 15.00,
+      "max": 22.00,
+      "avg": 18.75
+    },
+    "freshness_stats": {
+      "min": 78.5,
+      "max": 95.2,
+      "avg": 88.1
+    },
+    "persona_stats": {
+      "min_boost": 1.25,
+      "max_boost": 1.40,
+      "avg_boost": 1.33,
+      "items_with_max_boost": 1,
+      "coverage_above_1_2": 8
+    },
+    "semantic_stats": {
+      "avg_authenticity": 0.88,
+      "tone_distribution": {
+        "playful": 2,
+        "seductive": 2,
+        "sweet": 2,
+        "direct": 2
+      }
+    }
+  },
+  "uniqueness": {
+    "fingerprint": "a8b2c3d4e5f6g7h8",
+    "uniqueness_score": 92,
+    "timing_variance_applied": 5,
+    "cross_week_duplicates": 0,
+    "historical_weight_factor": 0.85,
+    "content_type_diversity": 0.75
+  },
+  "llm_insights": {
+    "semantic_analysis_performed": true,
+    "model_used": "claude-sonnet-4-20250514",
+    "analysis_timestamp": "2025-01-06T09:31:45Z",
+    "total_captions_analyzed": 8,
+    "persona_profile": {
+      "primary_tone": "playful",
+      "secondary_tone": "sweet",
+      "emoji_frequency": "moderate",
+      "slang_level": "light"
+    },
+    "recommendations": [
+      {
+        "type": "hook_diversity",
+        "priority": "low",
+        "message": "Consider adding a 'teasing' or 'direct' hook to increase variety"
+      },
+      {
+        "type": "prime_time_optimization",
+        "priority": "info",
+        "message": "Highest persona boost (1.40x) correctly placed in prime time slot (9PM)"
+      }
+    ]
+  },
+  "metadata": {
+    "creator_id": "abc123-def456-ghi789",
+    "creator_name": "missalexa",
+    "page_name": "missalexa",
+    "page_type": "paid",
+    "week": "2025-W02",
+    "volume_level": "Mid",
+    "mode": "full",
+    "generated_at": "2025-01-06T09:32:17Z",
+    "generator_version": "2.1.0",
+    "output_path": "~/Developer/EROS-SD-MAIN-PROJECT/schedules/missalexa/2025-W02.md",
+    "context_path": "~/Developer/EROS-SD-MAIN-PROJECT/schedules/context/missalexa/2025-W02_context.md"
+  }
+}

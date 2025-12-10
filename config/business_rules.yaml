@@ -1,0 +1,164 @@
+# EROS Schedule Generator - Business Rules Configuration
+# =====================================================
+# All business rules in a single, externalized config file.
+# Values can be overridden via environment variables (EROS_* prefix).
+#
+# Format: EROS_<SECTION>_<KEY> (uppercase, underscores)
+# Example: EROS_PPV_MIN_SPACING_HOURS=4
+
+# -----------------------------------------------------
+# PPV (Pay-Per-View) Rules
+# -----------------------------------------------------
+ppv:
+  # Critical: minimum hours between PPV messages (hard rule)
+  min_spacing_hours: 3
+  # Recommended spacing for optimal engagement
+  recommended_spacing_hours: 4
+  # Maximum PPV messages per day (hard cap)
+  max_per_day: 6
+  # Maximum PPV messages per week (hard cap)
+  max_per_week: 42
+
+# -----------------------------------------------------
+# Caption Freshness Rules
+# -----------------------------------------------------
+freshness:
+  # Minimum freshness score required for caption selection
+  minimum_score: 30
+  # Days before caption freshness fully decays
+  decay_days: 14
+  # Weight factor for freshness in selection algorithm
+  selection_weight: 0.4
+
+# -----------------------------------------------------
+# Follow-up (Bump) Message Rules
+# -----------------------------------------------------
+follow_up:
+  # Minimum minutes after PPV to send follow-up
+  min_minutes: 15
+  # Maximum minutes after PPV to send follow-up
+  max_minutes: 45
+
+# -----------------------------------------------------
+# Drip Window Rules (no-PPV zones)
+# -----------------------------------------------------
+drip_window:
+  # Start hour of drip window (24h format, EST)
+  start_hour: 14
+  # End hour of drip window (24h format, EST)
+  end_hour: 22
+  # Whether drip windows are enabled by default
+  enabled_default: false
+
+# -----------------------------------------------------
+# Payday Optimization Rules
+# -----------------------------------------------------
+payday:
+  # Weight boost for premium content on payday
+  premium_boost: 1.2
+  # Weight penalty for premium content mid-cycle
+  premium_penalty: 0.9
+  # Days of month considered payday (1st and 15th)
+  days: [1, 15]
+
+# -----------------------------------------------------
+# Volume Tiers by Fan Count
+# -----------------------------------------------------
+# Each tier defines [min_ppv_per_day, max_ppv_per_day]
+# and [min_bump_per_day, max_bump_per_day]
+volume_tiers:
+  # Base tier: <1,000 fans
+  low:
+    ppv_per_day: [2, 3]
+    bump_per_day: [2, 3]
+    fan_range: [0, 999]
+  # Growth tier: 1,000-4,999 fans
+  mid:
+    ppv_per_day: [3, 4]
+    bump_per_day: [2, 3]
+    fan_range: [1000, 4999]
+  # Scale tier: 5,000-14,999 fans
+  high:
+    ppv_per_day: [4, 5]
+    bump_per_day: [3, 4]
+    fan_range: [5000, 14999]
+  # High/Ultra tier: 15,000+ fans
+  ultra:
+    ppv_per_day: [5, 6]
+    bump_per_day: [4, 5]
+    fan_range: [15000, null]  # null = no upper limit
+
+# -----------------------------------------------------
+# Content Type Configuration
+# -----------------------------------------------------
+content_types:
+  # Premium content types (prioritized on paydays)
+  premium: ["bundle", "sextape", "bg", "gg", "custom"]
+  # Content type rotation order (preferred sequence)
+  rotation_order:
+    - solo
+    - bundle
+    - winner
+    - sextape
+    - bg
+    - gg
+    - toy_play
+    - custom
+    - dick_rate
+
+# -----------------------------------------------------
+# Validation Rules
+# -----------------------------------------------------
+validation:
+  # Maximum auto-correction passes before failing
+  max_correction_passes: 2
+  # Whether auto-correction is enabled
+  auto_correct_enabled: true
+  # Maximum consecutive items of same content type
+  max_consecutive_same_type: 3
+
+# -----------------------------------------------------
+# Content Spacing Rules (hours between same type)
+# -----------------------------------------------------
+spacing:
+  # Wall post minimum spacing (hours)
+  wall_post_min_hours: 1
+  # Wall post recommended spacing (hours)
+  wall_post_recommended_hours: 2
+  # Poll minimum spacing (days)
+  poll_min_days: 2
+  # VIP post minimum spacing (hours)
+  vip_post_min_hours: 24
+  # Link drop recommended spacing (hours)
+  link_drop_hours: 4
+  # Bundle minimum spacing (hours)
+  bundle_min_hours: 24
+  # Flash bundle minimum spacing (hours)
+  flash_bundle_min_hours: 48
+
+# -----------------------------------------------------
+# Preview-PPV Linkage Rules
+# -----------------------------------------------------
+preview:
+  # Minimum hours before linked PPV
+  min_lead_hours: 1
+  # Maximum hours before linked PPV
+  max_lead_hours: 3
+
+# -----------------------------------------------------
+# Engagement Content Limits
+# -----------------------------------------------------
+engagement:
+  # Daily limit for engagement content (dm_farm, like_farm)
+  daily_limit: 2
+  # Weekly limit for engagement content
+  weekly_limit: 10
+
+# -----------------------------------------------------
+# Performance Weight Configuration
+# -----------------------------------------------------
+weights:
+  # Weight factor for performance in selection algorithm
+  performance_weight: 0.6
+  # Weight factor for freshness in selection algorithm
+  freshness_weight: 0.4

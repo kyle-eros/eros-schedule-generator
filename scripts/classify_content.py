@@ -7,15 +7,23 @@ Usage:
     python classify_content.py --creator missalexa --dry-run
     python classify_content.py --creator all --batch-size 50
     python classify_content.py --caption-ids 1234,5678,9012
+
+Note: This module uses print() for CLI output since it is designed as
+a user-facing command-line tool. Diagnostic logging would be added if
+the classification logic is expanded to include API integration.
 """
 
 import argparse
 import json
+import logging
 import os
 import sqlite3
 import sys
 from datetime import datetime
 from typing import Any
+
+# Configure module logger (for future API integration diagnostics)
+logger = logging.getLogger(__name__)
 
 # Classification prompt templates
 CLASSIFICATION_SYSTEM_PROMPT = """
