@@ -1708,14 +1708,19 @@ class AgentInvoker:
         """
         fan_count = context.get("fan_count", 1000)
 
+        # Volume Tiers (from CLAUDE.md):
+        # - Low (<1,000 fans): 3 PPV/day = 21/week (target: 14-21)
+        # - Mid (1,000-5,000): 4 PPV/day = 28/week (target: 21-28)
+        # - High (5,000-15,000): 5 PPV/day = 35/week (target: 28-35)
+        # - Ultra (15,000+): 6 PPV/day = 42/week (target: 35-42)
         if fan_count < 1000:
-            return {"level": "Low", "ppv_per_day": 2, "bump_per_day": 2}
+            return {"level": "Low", "ppv_per_day": 3, "bump_per_day": 3}
         elif fan_count < 5000:
-            return {"level": "Mid", "ppv_per_day": 3, "bump_per_day": 3}
+            return {"level": "Mid", "ppv_per_day": 4, "bump_per_day": 4}
         elif fan_count < 15000:
-            return {"level": "High", "ppv_per_day": 4, "bump_per_day": 4}
+            return {"level": "High", "ppv_per_day": 5, "bump_per_day": 5}
         else:
-            return {"level": "Ultra", "ppv_per_day": 5, "bump_per_day": 5}
+            return {"level": "Ultra", "ppv_per_day": 6, "bump_per_day": 6}
 
     def _fallback_validation(self, context: dict[str, Any]) -> dict[str, Any]:
         """

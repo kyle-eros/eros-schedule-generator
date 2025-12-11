@@ -36,7 +36,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
+
+import yaml
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -48,6 +51,11 @@ __all__ = [
     "get_registry",
     "Channel",
     "PageTypeFilter",
+    "normalize_content_type",
+    "get_display_name",
+    "get_pricing_category",
+    "get_item_type_for_content_type",
+    "load_content_type_mapping",
 ]
 
 
@@ -57,6 +65,281 @@ __all__ = [
 
 Channel = Literal["mass_message", "feed", "direct", "poll", "gamification"]
 PageTypeFilter = Literal["paid", "free", "both"]
+
+
+# =============================================================================
+# CONTENT TYPE MAPPING (Lazy-loaded from YAML config)
+# =============================================================================
+
+# Path to the content type mapping configuration file
+_MAPPING_FILE = Path(__file__).parent.parent / "config" / "content_type_mapping.yaml"
+
+# Module-level cache for mapping data (lazy-loaded)
+_content_type_mapping: dict[str, str] = {}
+_display_names: dict[str, str] = {}
+_pricing_categories: dict[str, str | None] = {}
+_mapping_loaded: bool = False
+
+# Hardcoded fallback mapping if YAML file is missing
+_FALLBACK_MAPPING: dict[str, str] = {
+    "bundle_offer": "bundle",
+    "flash_sale": "flash_bundle",
+    "shower_bath": "solo",
+    "exclusive_content": "ppv",
+    "tip_request": "first_to_tip",
+    "blowjob_dildo": "solo",
+    "deepthroat_dildo": "solo",
+    "tits_play": "solo",
+    "pussy_play": "solo",
+    "toy_play": "solo",
+    "boy_girl": "bg",
+    "girl_girl": "bg",
+    "dick_rating": "dick_rating",
+    "joi": "custom",
+    "gfe": "custom",
+    "default": "ppv",
+}
+
+_FALLBACK_DISPLAY_NAMES: dict[str, str] = {
+    "ppv": "PPV",
+    "ppv_follow_up": "PPV Follow-up",
+    "bundle": "Bundle",
+    "flash_bundle": "Flash Bundle",
+    "solo": "Solo",
+    "sextape": "Sextape",
+    "bg": "B/G",
+    "custom": "Custom",
+    "dick_rating": "Dick Rating",
+    "first_to_tip": "First to Tip",
+    "dm_farm": "DM Farm",
+    "normal_post_bump": "Post Bump",
+}
+
+# Channel to item_type mapping for deriving schedule item types from registry channels
+_CHANNEL_TO_ITEM_TYPE: dict[str, str] = {
+    "mass_message": "ppv",
+    "feed": "wall_post",
+    "direct": "ppv",
+    "poll": "poll",
+    "gamification": "game_wheel",
+}
+
+
+def load_content_type_mapping() -> None:
+    """
+    Load content type mapping from YAML configuration file.
+
+    This function loads the mapping lazily on first use and caches the results.
+    If the YAML file is missing or invalid, falls back to hardcoded defaults.
+    """
+    global _content_type_mapping, _display_names, _pricing_categories, _mapping_loaded
+
+    if _mapping_loaded:
+        return
+
+    if _MAPPING_FILE.exists():
+        try:
+            with open(_MAPPING_FILE) as f:
+                data = yaml.safe_load(f)
+
+            _content_type_mapping = data.get("content_type_mapping", {})
+            _display_names = data.get("display_names", {})
+            _pricing_categories = data.get("pricing_categories", {})
+            _mapping_loaded = True
+            logger.debug(
+                f"Loaded content type mapping from {_MAPPING_FILE}: "
+                f"{len(_content_type_mapping)} mappings, {len(_display_names)} display names"
+            )
+        except (yaml.YAMLError, OSError) as e:
+            logger.warning(f"Failed to load content type mapping from {_MAPPING_FILE}: {e}")
+            logger.info("Using fallback hardcoded mapping")
+            _content_type_mapping = _FALLBACK_MAPPING.copy()
+            _display_names = _FALLBACK_DISPLAY_NAMES.copy()
+            _pricing_categories = {}
+            _mapping_loaded = True
+    else:
+        logger.info(f"Content type mapping file not found: {_MAPPING_FILE}")
+        logger.info("Using fallback hardcoded mapping")
+        _content_type_mapping = _FALLBACK_MAPPING.copy()
+        _display_names = _FALLBACK_DISPLAY_NAMES.copy()
+        _pricing_categories = {}
+        _mapping_loaded = True
+
+
+def normalize_content_type(db_type: str | None) -> str:
+    """
+    Normalize a database content type to a registry type.
+
+    This function maps various database content type names (e.g., 'bundle_offer',
+    'shower_bath', 'exclusive_content') to their normalized registry type IDs
+    (e.g., 'bundle', 'solo', 'ppv').
+
+    Args:
+        db_type: Content type name from database (can be None)
+
+    Returns:
+        Normalized registry type name (e.g., 'ppv', 'bundle', 'solo')
+
+    Example:
+        >>> normalize_content_type("bundle_offer")
+        'bundle'
+        >>> normalize_content_type("shower_bath")
+        'solo'
+        >>> normalize_content_type(None)
+        'ppv'
+    """
+    if not _mapping_loaded:
+        load_content_type_mapping()
+
+    if not db_type:
+        return _content_type_mapping.get("default", "ppv")
+
+    # Normalize to lowercase for matching
+    db_type_lower = db_type.lower().strip()
+
+    # Direct lookup
+    if db_type_lower in _content_type_mapping:
+        return _content_type_mapping[db_type_lower]
+
+    # Check for partial matches (contains key terms)
+    if "bundle" in db_type_lower or "flash" in db_type_lower:
+        return "bundle"
+    if "solo" in db_type_lower or "selfie" in db_type_lower:
+        return "solo"
+    if "sextape" in db_type_lower or "video" in db_type_lower:
+        return "sextape"
+    if "b/g" in db_type_lower or "bg" in db_type_lower or "couple" in db_type_lower:
+        return "bg"
+    if "custom" in db_type_lower or "personalized" in db_type_lower:
+        return "custom"
+    if "dick" in db_type_lower or "rating" in db_type_lower:
+        return "dick_rating"
+
+    # Return default
+    return _content_type_mapping.get("default", "ppv")
+
+
+def get_display_name(registry_type: str | None) -> str:
+    """
+    Get the human-readable display name for a registry content type.
+
+    Args:
+        registry_type: Normalized registry type ID (e.g., 'ppv', 'bundle')
+
+    Returns:
+        Human-readable display name (e.g., 'PPV', 'Bundle')
+
+    Example:
+        >>> get_display_name("ppv")
+        'PPV'
+        >>> get_display_name("flash_bundle")
+        'Flash Bundle'
+    """
+    if not _mapping_loaded:
+        load_content_type_mapping()
+
+    if not registry_type:
+        return "PPV"
+
+    return _display_names.get(registry_type, registry_type.replace("_", " ").title())
+
+
+def get_pricing_category(registry_type: str | None) -> str:
+    """
+    Get the pricing category for a registry content type.
+
+    This maps registry types to their pricing categories for price calculation.
+    Pricing categories align with CLAUDE.md 2025 Market Rates.
+
+    Args:
+        registry_type: Normalized registry type ID
+
+    Returns:
+        Pricing category name (solo, bundle, sextape, bg, custom, dick_rating)
+        or 'default' if no specific category applies
+
+    Example:
+        >>> get_pricing_category("ppv")
+        'solo'
+        >>> get_pricing_category("flash_bundle")
+        'bundle'
+    """
+    if not _mapping_loaded:
+        load_content_type_mapping()
+
+    if not registry_type:
+        return "default"
+
+    # Check explicit pricing category mapping
+    if registry_type in _pricing_categories:
+        category = _pricing_categories[registry_type]
+        return category if category else "default"
+
+    # If registry type is already a pricing category, return it
+    if registry_type in ("solo", "bundle", "sextape", "bg", "custom", "dick_rating"):
+        return registry_type
+
+    return "default"
+
+
+def get_item_type_for_content_type(content_type_name: str | None) -> str:
+    """
+    Derive the schedule item_type from a content type's registry channel.
+
+    This function maps the content type registry's `channel` field to the
+    appropriate `item_type` for ScheduleItem creation. It ensures that
+    content types like tip_request (first_to_tip) with channel="feed"
+    are correctly classified as wall_post instead of ppv.
+
+    Args:
+        content_type_name: Content type name (e.g., 'first_to_tip', 'ppv').
+            Can be None, in which case defaults to "ppv".
+
+    Returns:
+        The appropriate item_type string:
+        - "ppv" for mass_message channel (default)
+        - "wall_post" for feed channel
+        - "poll" for poll channel
+        - "game_wheel" for gamification channel
+        - "ppv" for direct channel (DM-based content)
+        - "ppv" for unknown content types (safe default)
+
+    Example:
+        >>> get_item_type_for_content_type("first_to_tip")
+        'wall_post'
+        >>> get_item_type_for_content_type("ppv")
+        'ppv'
+        >>> get_item_type_for_content_type(None)
+        'ppv'
+    """
+    # Default for None or empty
+    if not content_type_name:
+        return "ppv"
+
+    # Ensure mapping is loaded
+    if not _mapping_loaded:
+        load_content_type_mapping()
+
+    try:
+        type_id = content_type_name.lower().strip()
+
+        # First, try direct lookup in the global REGISTRY
+        # (REGISTRY is defined later in this module, imported at module level)
+        if type_id in REGISTRY._types:
+            content_type = REGISTRY.get(type_id)
+            return _CHANNEL_TO_ITEM_TYPE.get(content_type.channel, "ppv")
+
+        # Try normalizing from database type name
+        normalized = normalize_content_type(type_id)
+        if normalized in REGISTRY._types:
+            content_type = REGISTRY.get(normalized)
+            return _CHANNEL_TO_ITEM_TYPE.get(content_type.channel, "ppv")
+
+    except (KeyError, ValueError, AttributeError):
+        pass
+
+    # Safe default
+    return "ppv"
 
 
 # =============================================================================
@@ -732,6 +1015,29 @@ def main() -> None:
     print(f"  vip_post valid for 'paid': {registry.validate_for_page('vip_post', 'paid')}")
     print(f"  vip_post valid for 'free': {registry.validate_for_page('vip_post', 'free')}")
     print(f"  ppv valid for 'free': {registry.validate_for_page('ppv', 'free')}")
+    print()
+
+    # Content Type Mapping Examples
+    print("Content Type Mapping (Database -> Registry):")
+    print("-" * 70)
+    test_mappings = [
+        "bundle_offer",
+        "shower_bath",
+        "exclusive_content",
+        "flash_sale",
+        "tip_request",
+        "blowjob_dildo",
+        "boy_girl",
+        "solo",
+        "ppv",
+        "unknown_type",
+        None,
+    ]
+    for db_type in test_mappings:
+        registry_type = normalize_content_type(db_type)
+        display = get_display_name(registry_type)
+        pricing = get_pricing_category(registry_type)
+        print(f"  {str(db_type):<20} -> {registry_type:<15} | Display: {display:<15} | Pricing: {pricing}")
     print()
 
     print("=" * 70)

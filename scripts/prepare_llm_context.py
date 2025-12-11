@@ -159,6 +159,9 @@ DEFAULT_SCHEDULES_DIR = (
     else HOME_DIR / "Developer" / "EROS-SD-MAIN-PROJECT" / "schedules"
 )
 
+# Old schedules directory (for migration notice)
+OLD_SCHEDULES_DIR = HOME_DIR / ".eros" / "schedules"
+
 
 def format_week_string(week_start: date) -> str:
     """Format date as ISO week string (YYYY-Www)."""
@@ -172,6 +175,60 @@ VERY_LOW_CONFIDENCE_THRESHOLD = 0.4
 HIGH_VALUE_PERFORMANCE_THRESHOLD = 70
 MAX_CAPTIONS_FOR_CONTEXT = 40
 MAX_CAPTION_TEXT_LENGTH = 400
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticBoostResult:
+    """
+    Result of Claude's semantic analysis for a single caption.
+
+    This structure is filled in by Claude during semantic analysis and
+    read by generate_schedule.py to apply enhanced persona boosts.
+
+    Attributes:
+        caption_id: Unique caption identifier.
+        detected_tone: Claude's detected tone (e.g., "bratty", "playful").
+        persona_boost: Final persona boost multiplier (1.0-1.4).
+        quality_score: Content quality score (0.0-1.0).
+        reasoning: Brief explanation of the analysis.
+    """
+
+    caption_id: int
+    detected_tone: str
+    persona_boost: float
+    quality_score: float
+    reasoning: str
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticCaptionEntry:
+    """
+    A single caption entry in the semantic analysis template.
+
+    Contains all data needed for Claude to perform semantic analysis
+    on a caption and determine appropriate persona boosts.
+
+    Attributes:
+        caption_id: Unique caption identifier.
+        caption_text: The actual caption text.
+        content_type: Content type name (e.g., "sextape", "solo").
+        performance_score: Historical performance score (0-100).
+        freshness_score: Current freshness score (0-100).
+        pattern_tone: Pattern-detected tone (may be inaccurate).
+        pattern_boost: Pattern-calculated boost (preliminary).
+        needs_analysis: Whether Claude should analyze this caption.
+        analysis_reason: Why this caption needs analysis.
+    """
+
+    caption_id: int
+    caption_text: str
+    content_type: str | None
+    performance_score: float
+    freshness_score: float
+    pattern_tone: str | None
+    pattern_boost: float
+    needs_analysis: bool
+    analysis_reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,16 +309,22 @@ def get_volume_level(active_fans: int) -> tuple[str, int]:
     Determine volume level and PPV count based on fan count.
 
     DEPRECATED: Use prepare_volume_context() for multi-factor optimization.
+
+    Volume Tiers (from CLAUDE.md):
+        - Low (<1,000 fans): 3 PPV/day = 21/week (target: 14-21)
+        - Mid (1,000-5,000): 4 PPV/day = 28/week (target: 21-28)
+        - High (5,000-15,000): 5 PPV/day = 35/week (target: 28-35)
+        - Ultra (15,000+): 6 PPV/day = 42/week (target: 35-42)
     """
     # Legacy fallback for simple fan-count based volume
     if active_fans < 1000:
-        return ("Low", 2)
+        return ("Low", 3)
     elif active_fans < 5000:
-        return ("Mid", 3)
+        return ("Mid", 4)
     elif active_fans < 15000:
-        return ("High", 4)
+        return ("High", 5)
     else:
-        return ("Ultra", 5)
+        return ("Ultra", 6)
 
 
 def prepare_volume_context(creator_id: str, conn: sqlite3.Connection) -> dict[str, Any]:
@@ -1203,6 +1266,54 @@ def format_context_for_claude(context: ScheduleContext, week_arg: str | None = N
                 "- Secondary Tone Matches: X",
                 "```",
                 "",
+                "---",
+                "",
+                "## SAVE YOUR SEMANTIC ANALYSIS (CRITICAL)",
+                "",
+                "After analyzing the captions above, **you MUST save your semantic analysis**.",
+                "Without saving, your analysis will be lost and persona boost coverage will be 0%.",
+                "",
+                f"**Save to**: `~/.eros/schedules/semantic/{c.page_name}/{week_arg or context.week_start}_semantic.json`",
+                "",
+                "**Option 1: Use the Write tool to create the JSON file directly:**",
+                "",
+                "```json",
+                "{",
+                f'  "creator_name": "{c.page_name}",',
+                f'  "week": "{week_arg or context.week_start}",',
+                '  "generated_at": "' + datetime.now().isoformat() + '",',
+                '  "semantic_results": [',
+                '    {',
+                '      "caption_id": 12345,',
+                '      "detected_tone": "bratty",',
+                '      "persona_boost": 1.25,',
+                '      "quality_score": 0.80,',
+                '      "reasoning": "Strong bratty undertones with playful hook"',
+                '    }',
+                '  ]',
+                "}",
+                "```",
+                "",
+                "**Option 2: Use Python to save via SemanticBoostCache:**",
+                "",
+                "```python",
+                "from semantic_boost_cache import SemanticBoostCache",
+                "",
+                "cache = SemanticBoostCache()",
+                "results = [",
+                '    {"caption_id": 12345, "detected_tone": "bratty", "persona_boost": 1.25, "quality_score": 0.80, "reasoning": "..."},',
+                "    # ... more results",
+                "]",
+                f'cache.save("{c.page_name}", "{week_arg or context.week_start}", results)',
+                "```",
+                "",
+                "**After saving, the pipeline will auto-load your analysis when you run:**",
+                f"```bash",
+                f"python3 scripts/generate_schedule.py --creator {c.page_name} --week {week_arg or context.week_start}",
+                "```",
+                "",
+                "Your persona boost scores will be applied automatically in Step 3 (MATCH PERSONA).",
+                "",
             ]
         )
 
@@ -1270,6 +1381,122 @@ def format_context_for_claude(context: ScheduleContext, week_arg: str | None = N
     return "\n".join(lines)
 
 
+def save_semantic_template(
+    context: ScheduleContext,
+    output_path: Path,
+    week: str,
+) -> dict[str, Any]:
+    """
+    Save a semantic analysis template as JSON for Claude to fill in.
+
+    This function generates a structured JSON template containing captions
+    that need semantic analysis. Claude reads this template, performs
+    semantic analysis on each caption, and saves the results to the
+    specified output path.
+
+    The template includes:
+    - Creator persona context for tone matching
+    - Captions with pattern-based preliminary scores
+    - Clear instructions for the expected output format
+    - Path where Claude should save the completed analysis
+
+    Args:
+        context: The ScheduleContext containing creator and caption data.
+        output_path: Path where the template should be saved.
+        week: Week string in ISO format (YYYY-Www).
+
+    Returns:
+        Dictionary representation of the saved template.
+
+    Example:
+        >>> template = save_semantic_template(context, Path("template.json"), "2025-W50")
+        >>> print(template["output_path"])
+        ~/.eros/schedules/semantic/grace_bennett/2025-W50_semantic.json
+    """
+    c = context.creator
+
+    # Build caption entries for template
+    captions_for_template = []
+    for cap in context.captions_for_analysis:
+        captions_for_template.append({
+            "caption_id": cap.caption_id,
+            "caption_text": cap.caption_text,
+            "content_type": cap.content_type,
+            "performance_score": cap.performance_score,
+            "freshness_score": cap.freshness_score,
+            "pattern_tone": cap.pattern_tone,
+            "pattern_boost": cap.pattern_boost,
+            "needs_analysis": cap.needs_semantic_analysis,
+            "analysis_reason": cap.analysis_reason,
+        })
+
+    # Build expected output path for semantic results
+    results_dir = HOME_DIR / ".eros" / "schedules" / "semantic" / c.page_name
+    results_path = results_dir / f"{week}_semantic.json"
+
+    template: dict[str, Any] = {
+        "creator_id": c.creator_id,
+        "creator_name": c.page_name,
+        "display_name": c.display_name,
+        "week": week,
+        "week_start": context.week_start,
+        "week_end": context.week_end,
+        "semantic_template": captions_for_template,
+        "output_path": str(results_path),
+        "persona_context": {
+            "primary_tone": c.primary_tone,
+            "secondary_tone": c.secondary_tone,
+            "emoji_frequency": c.emoji_frequency,
+            "slang_level": c.slang_level,
+            "avg_sentiment": c.avg_sentiment,
+        },
+        "instructions": {
+            "task": "Analyze captions where needs_analysis=true and fill in semantic_results array",
+            "output_format": {
+                "caption_id": "int - must match source caption_id",
+                "detected_tone": "str - your detected tone (e.g., bratty, playful, seductive, direct)",
+                "persona_boost": "float - 1.0 to 1.4 based on persona match",
+                "quality_score": "float - 0.0 to 1.0 based on hook strength, CTA, urgency",
+                "reasoning": "str - brief explanation of your analysis",
+            },
+            "persona_matching_guide": {
+                "primary_tone_match": "+0.20 boost if caption matches primary_tone",
+                "secondary_tone_match": "+0.10 boost if caption matches secondary_tone",
+                "emoji_match": "+0.05 boost if emoji usage matches emoji_frequency",
+                "slang_match": "+0.05 boost if slang level matches slang_level",
+                "base_boost": "1.0 (no penalties, only additions up to 1.4 max)",
+            },
+            "save_to": str(results_path),
+            "expected_output_structure": {
+                "creator_name": c.page_name,
+                "week": week,
+                "analyzed_at": "ISO timestamp",
+                "semantic_results": [
+                    {
+                        "caption_id": "int",
+                        "detected_tone": "str",
+                        "persona_boost": "float",
+                        "quality_score": "float",
+                        "reasoning": "str",
+                    }
+                ],
+            },
+        },
+        "statistics": {
+            "total_captions": len(captions_for_template),
+            "needs_analysis_count": sum(1 for c in captions_for_template if c["needs_analysis"]),
+            "high_confidence_count": sum(1 for c in captions_for_template if not c["needs_analysis"]),
+        },
+        "generated_at": datetime.now().isoformat(),
+    }
+
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(template, indent=2))
+
+    return template
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -1333,6 +1560,17 @@ Examples:
         action="store_true",
         help="After outputting context, automatically run generate_schedule.py with same args",
     )
+    parser.add_argument(
+        "--output-semantic-template",
+        action="store_true",
+        help="Output a JSON template for semantic analysis that Claude can fill in",
+    )
+    parser.add_argument(
+        "--semantic-output-dir",
+        type=str,
+        default=None,
+        help="Directory for semantic analysis output (default: ~/.eros/schedules/semantic/{creator})",
+    )
 
     args = parser.parse_args()
 
@@ -1348,6 +1586,14 @@ Examples:
         week_start, week_end = parse_iso_week(args.week)
     except Exception as e:
         parser.error(f"Invalid week format: {e}")
+
+    # Check for old schedules directory and show migration notice
+    if OLD_SCHEDULES_DIR.exists():
+        logger.info(
+            f"Note: Old schedules directory found at {OLD_SCHEDULES_DIR}. "
+            f"New schedules will be saved to {DEFAULT_SCHEDULES_DIR}. "
+            f"Set EROS_SCHEDULES_PATH to customize."
+        )
 
     # Connect to database
     db_path = Path(args.db)
@@ -1416,6 +1662,42 @@ Examples:
             performance_summary=stats,
             mode=args.mode,
         )
+
+        # Handle semantic template output
+        if args.output_semantic_template:
+            # Determine output directory
+            if args.semantic_output_dir:
+                semantic_dir = Path(args.semantic_output_dir).expanduser()
+            else:
+                semantic_dir = HOME_DIR / ".eros" / "schedules" / "semantic" / creator.page_name
+
+            semantic_dir.mkdir(parents=True, exist_ok=True)
+            template_path = semantic_dir / f"{args.week}_template.json"
+            results_path = semantic_dir / f"{args.week}_semantic.json"
+
+            # Save the template
+            template = save_semantic_template(context, template_path, args.week)
+
+            # Print summary to stderr
+            print(f"Semantic template saved to: {template_path}", file=sys.stderr)
+            print(f"  Creator: {creator.display_name}", file=sys.stderr)
+            print(f"  Week: {args.week}", file=sys.stderr)
+            print(
+                f"  Captions needing analysis: {template['statistics']['needs_analysis_count']}",
+                file=sys.stderr,
+            )
+            print(f"  Total captions: {template['statistics']['total_captions']}", file=sys.stderr)
+            print("", file=sys.stderr)
+            print(f"Claude should save results to: {results_path}", file=sys.stderr)
+
+            # If stdout mode, also print the template JSON
+            if args.stdout:
+                print(json.dumps(template, indent=2))
+
+            # If chain mode, continue to generate_schedule.py
+            # Otherwise exit here
+            if not args.chain:
+                sys.exit(0)
 
         # Format output
         if args.format == "json":

@@ -155,6 +155,18 @@ engagement:
   weekly_limit: 10
 
 # -----------------------------------------------------
+# Performance Score Filtering
+# -----------------------------------------------------
+performance:
+  # Minimum performance score required for caption selection
+  # Captions below this threshold are filtered out by default
+  minimum_score: 20.0
+  # Performance score that triggers a warning (but still allows selection)
+  warning_threshold: 30.0
+  # Allow low-performance captions if pool would be exhausted
+  allow_below_minimum_on_exhaustion: true
+
+# -----------------------------------------------------
 # Performance Weight Configuration
 # -----------------------------------------------------
 weights:
@@ -162,3 +174,18 @@ weights:
   performance_weight: 0.6
   # Weight factor for freshness in selection algorithm
   freshness_weight: 0.4
+
+# -----------------------------------------------------
+# Caption Selection Pool Configuration
+# -----------------------------------------------------
+selection:
+  # Hard exclusion window in days - captions sent within this period are excluded
+  exclusion_days: 60
+  # Maximum captions to load in unified pool (for performance)
+  pool_limit: 500
+  # Minimum performance score required for caption selection
+  min_performance_score: 20.0
+  # Performance score that triggers a warning (but still allows selection)
+  performance_warning_threshold: 30.0
+  # Allow low-performance captions if pool would be exhausted
+  allow_low_performance_on_exhaustion: true

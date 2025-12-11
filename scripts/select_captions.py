@@ -99,7 +99,36 @@ from database import DB_PATH  # noqa: E402
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# CONSTANTS
+# CONFIGURATION LOADING
+# =============================================================================
+
+# Import config loader for centralized configuration
+try:
+    from config_loader import get_selection_config, SelectionConfig
+    _SELECTION_CONFIG: SelectionConfig | None = None
+
+    def _get_selection_config() -> SelectionConfig:
+        """Lazy-load selection config with caching."""
+        global _SELECTION_CONFIG
+        if _SELECTION_CONFIG is None:
+            try:
+                _SELECTION_CONFIG = get_selection_config()
+            except Exception as e:
+                logger.warning(f"Failed to load selection config: {e}, using defaults")
+                _SELECTION_CONFIG = SelectionConfig()
+        return _SELECTION_CONFIG
+
+except ImportError:
+    logger.warning("config_loader not available, using hardcoded defaults")
+    _SELECTION_CONFIG = None
+
+    def _get_selection_config() -> None:
+        """Fallback when config_loader is unavailable."""
+        return None
+
+
+# =============================================================================
+# CONSTANTS (Fallback defaults, overridden by config when available)
 # =============================================================================
 
 # Pool classification thresholds
@@ -122,11 +151,67 @@ SAME_HOOK_PENALTY: float = 0.7
 """Penalty applied when caption has same hook type as previous selection (30% reduction)."""
 
 # Hard exclusion window for unified pool (Phase 4)
+# NOTE: These are fallback defaults. Actual values loaded from config/business_rules.yaml
 DEFAULT_EXCLUSION_DAYS: int = 60
-"""Default days for hard caption exclusion based on mass_messages history."""
+"""Default days for hard caption exclusion based on mass_messages history.
+Override via EROS_SELECTION_EXCLUSION_DAYS or config/business_rules.yaml."""
 
 DEFAULT_POOL_LIMIT: int = 500
-"""Default maximum captions to load in unified pool."""
+"""Default maximum captions to load in unified pool.
+Override via EROS_SELECTION_POOL_LIMIT or config/business_rules.yaml."""
+
+# Performance score filtering (Phase 5)
+MIN_PERFORMANCE_SCORE: float = 20.0
+"""Minimum performance score required for caption selection by default.
+Override via EROS_SELECTION_MIN_PERFORMANCE_SCORE or config/business_rules.yaml."""
+
+PERFORMANCE_WARNING_THRESHOLD: float = 30.0
+"""Performance score that triggers a warning (but still allows selection).
+Override via EROS_SELECTION_PERFORMANCE_WARNING_THRESHOLD or config/business_rules.yaml."""
+
+ALLOW_LOW_PERFORMANCE_ON_EXHAUSTION: bool = True
+"""Allow low-performance captions if pool would be exhausted.
+Override via EROS_SELECTION_ALLOW_LOW_PERFORMANCE_ON_EXHAUSTION or config/business_rules.yaml."""
+
+
+def get_exclusion_days() -> int:
+    """Get exclusion days from config or fallback to default."""
+    config = _get_selection_config()
+    if config is not None:
+        return config.exclusion_days
+    return DEFAULT_EXCLUSION_DAYS
+
+
+def get_pool_limit() -> int:
+    """Get pool limit from config or fallback to default."""
+    config = _get_selection_config()
+    if config is not None:
+        return config.pool_limit
+    return DEFAULT_POOL_LIMIT
+
+
+def get_min_performance_score() -> float:
+    """Get min performance score from config or fallback to default."""
+    config = _get_selection_config()
+    if config is not None:
+        return config.min_performance_score
+    return MIN_PERFORMANCE_SCORE
+
+
+def get_performance_warning_threshold() -> float:
+    """Get performance warning threshold from config or fallback to default."""
+    config = _get_selection_config()
+    if config is not None:
+        return config.performance_warning_threshold
+    return PERFORMANCE_WARNING_THRESHOLD
+
+
+def get_allow_low_performance_on_exhaustion() -> bool:
+    """Get allow_low_performance_on_exhaustion from config or fallback to default."""
+    config = _get_selection_config()
+    if config is not None:
+        return config.allow_low_performance_on_exhaustion
+    return ALLOW_LOW_PERFORMANCE_ON_EXHAUSTION
 
 # =============================================================================
 # SQL QUERY FOR UNIFIED POOL LOADING
@@ -757,6 +842,7 @@ def log_pool_statistics(pool: SelectionPool) -> None:
     Example output:
         [INFO] Loaded 245 captions: 45 never_used, 200 fresh
         [INFO] Content types: sextape, solo, b/g
+        [INFO] Performance filtering: 12 filtered, 0 included due to exhaustion
     """
     logger.info(
         f"Loaded {len(pool.captions)} captions: "
@@ -764,14 +850,21 @@ def log_pool_statistics(pool: SelectionPool) -> None:
     )
     if pool.content_types:
         logger.info(f"Content types: {', '.join(pool.content_types)}")
+    if pool.low_performance_filtered_count > 0 or pool.low_performance_included_count > 0:
+        logger.info(
+            f"Performance filtering: {pool.low_performance_filtered_count} filtered, "
+            f"{pool.low_performance_included_count} included due to exhaustion"
+        )
 
 
 def load_unified_pool(
     conn: sqlite3.Connection,
     creator_id: str,
     content_types: list[int],
-    exclusion_days: int = DEFAULT_EXCLUSION_DAYS,
-    limit: int = DEFAULT_POOL_LIMIT,
+    exclusion_days: int | None = None,
+    limit: int | None = None,
+    min_performance_score: float | None = None,
+    allow_low_performance_on_exhaustion: bool | None = None,
 ) -> SelectionPool:
     """
     Load caption pool with hard exclusion filtering based on mass_messages history.
@@ -782,18 +875,28 @@ def load_unified_pool(
 
     Replaces load_stratified_pools() with a unified approach:
     - Hard exclude captions used within exclusion_days (based on mass_messages)
+    - Filter captions with performance_score below min_performance_score threshold
     - Assign freshness_tier to each caption ('never_used' or 'fresh')
     - Return SelectionPool with scored captions ready for weighted selection
+
+    Configuration values are loaded from config/business_rules.yaml with environment
+    variable overrides (EROS_SELECTION_*). Falls back to hardcoded defaults if
+    config is unavailable.
 
     Args:
         conn: Database connection with row_factory set to sqlite3.Row.
         creator_id: Creator page UUID from the creators table.
         content_types: List of content_type_ids to include in the pool.
             Use get_content_type_ids() to convert names to IDs.
-        exclusion_days: Days for hard exclusion window (default 60).
-            Captions sent within this window are excluded entirely.
-        limit: Maximum captions to load (default 500).
-            Captions are ordered by priority before limiting.
+        exclusion_days: Days for hard exclusion window. Defaults to config value
+            (60) or EROS_SELECTION_EXCLUSION_DAYS env var.
+        limit: Maximum captions to load. Defaults to config value (500)
+            or EROS_SELECTION_POOL_LIMIT env var.
+        min_performance_score: Minimum performance score threshold. Defaults to
+            config value (20.0) or EROS_SELECTION_MIN_PERFORMANCE_SCORE env var.
+        allow_low_performance_on_exhaustion: If True, include low-performance
+            captions when the pool would otherwise be empty. Defaults to config
+            value (True) or EROS_SELECTION_ALLOW_LOW_PERFORMANCE_ON_EXHAUSTION.
 
     Returns:
         SelectionPool: Unified pool with freshness tiers assigned and
@@ -810,18 +913,31 @@ def load_unified_pool(
         ...     conn,
         ...     creator_id="abc123",
         ...     content_types=[1, 2, 3],
-        ...     exclusion_days=60
+        ...     exclusion_days=60,
+        ...     min_performance_score=20.0
         ... )
         >>> len(pool.captions)
         245
         >>> pool.never_used_count
         45
+        >>> pool.low_performance_filtered_count
+        12
 
     Note:
         The exclusion is based on the mass_messages table, not the static
         freshness_score field in caption_bank. This provides more accurate
         freshness tracking based on actual send history.
     """
+    # Resolve defaults from config (supports env overrides and YAML config)
+    if exclusion_days is None:
+        exclusion_days = get_exclusion_days()
+    if limit is None:
+        limit = get_pool_limit()
+    if min_performance_score is None:
+        min_performance_score = get_min_performance_score()
+    if allow_low_performance_on_exhaustion is None:
+        allow_low_performance_on_exhaustion = get_allow_low_performance_on_exhaustion()
+
     if not content_types:
         raise CaptionExhaustionError(
             creator_id=creator_id,
@@ -863,16 +979,19 @@ def load_unified_pool(
             content_type=f"content_types={content_types}",
         )
 
-    # Convert to ScoredCaption objects
+    # Convert to ScoredCaption objects with performance score filtering
     captions: list[ScoredCaption] = []
+    low_performance_captions: list[ScoredCaption] = []
     never_used_count = 0
     fresh_count = 0
     content_type_names_seen: set[str] = set()
+    low_performance_filtered_count = 0
 
     for row in rows:
         freshness_tier = row["freshness_tier"]
         content_type_name = row["content_type_name"] or "unknown"
         content_type_names_seen.add(content_type_name)
+        performance_score = row["performance_score"] or 50.0
 
         # Parse last_used_date if present
         last_used_date = None
@@ -900,6 +1019,7 @@ def load_unified_pool(
             tone=row["tone"],
             hook_type=row["hook_type"],
             freshness_score=row["bank_freshness_score"] or 100.0,
+            performance_score=performance_score,
             times_used_on_page=row["times_used_on_page"] or 0,
             last_used_date=last_used_date,
             pattern_score=0.0,  # Will be calculated during selection
@@ -907,12 +1027,46 @@ def load_unified_pool(
             never_used_on_page=bool(row["never_used_on_page"]),
             selection_weight=0.0,  # Will be calculated during selection
         )
+
+        # Apply minimum performance score filter
+        if performance_score < min_performance_score:
+            low_performance_filtered_count += 1
+            low_performance_captions.append(caption)
+            logger.debug(
+                f"Filtered low-performance caption {row['caption_id']} "
+                f"(score={performance_score} < {min_performance_score})"
+            )
+            continue  # Skip this caption for now
+
         captions.append(caption)
 
         if freshness_tier == "never_used":
             never_used_count += 1
         elif freshness_tier == "fresh":
             fresh_count += 1
+
+    # Handle pool exhaustion: include low-performance captions if pool would be empty
+    low_performance_included_count = 0
+    if not captions and low_performance_captions and allow_low_performance_on_exhaustion:
+        logger.warning(
+            f"Pool exhaustion fallback: including {len(low_performance_captions)} "
+            f"low-performance captions (all {low_performance_filtered_count} captions "
+            f"had performance_score < {min_performance_score})"
+        )
+        captions = low_performance_captions
+        low_performance_included_count = len(low_performance_captions)
+
+        # Recalculate tier counts
+        for caption in captions:
+            if caption.freshness_tier == "never_used":
+                never_used_count += 1
+            elif caption.freshness_tier == "fresh":
+                fresh_count += 1
+    elif low_performance_filtered_count > 0:
+        logger.info(
+            f"Filtered {low_performance_filtered_count} captions with "
+            f"performance_score < {min_performance_score}"
+        )
 
     pool = SelectionPool(
         captions=captions,
@@ -921,6 +1075,8 @@ def load_unified_pool(
         total_weight=0.0,  # Will be calculated during selection
         creator_id=creator_id,
         content_types=sorted(content_type_names_seen),
+        low_performance_filtered_count=low_performance_filtered_count,
+        low_performance_included_count=low_performance_included_count,
     )
 
     # Log statistics for monitoring
@@ -1076,6 +1232,7 @@ def select_from_unified_pool(
             tone=caption.tone,
             hook_type=caption.hook_type,
             freshness_score=caption.freshness_score,
+            performance_score=caption.performance_score,
             times_used_on_page=caption.times_used_on_page,
             last_used_date=caption.last_used_date,
             pattern_score=pattern_score_value,
@@ -1222,7 +1379,7 @@ def select_captions_fresh(
     slot_count: int,
     persona: PersonaProfile | None = None,
     exploration_ratio: float = 0.15,
-    exclusion_days: int = DEFAULT_EXCLUSION_DAYS,
+    exclusion_days: int | None = None,
     pattern_cache: PatternProfileCache | None = None,
 ) -> list[tuple[ScoredCaption, bool]]:
     """
@@ -1231,6 +1388,10 @@ def select_captions_fresh(
     This is the primary entry point for the new selection algorithm.
     It combines pattern-based scoring with freshness prioritization
     and exploration slots.
+
+    Configuration values are loaded from config/business_rules.yaml with environment
+    variable overrides (EROS_SELECTION_*). Falls back to hardcoded defaults if
+    config is unavailable.
 
     Process:
     1. Load unified pool with exclusion filter
@@ -1247,7 +1408,8 @@ def select_captions_fresh(
         slot_count: Total number of captions needed.
         persona: Optional PersonaProfile for persona matching.
         exploration_ratio: Fraction of slots for exploration (default 0.15).
-        exclusion_days: Days for hard exclusion (default 60).
+        exclusion_days: Days for hard exclusion. Defaults to config value (60)
+            or EROS_SELECTION_EXCLUSION_DAYS env var.
         pattern_cache: Optional PatternProfileCache for reuse.
 
     Returns:
@@ -1268,6 +1430,10 @@ def select_captions_fresh(
         ...     slot_type = "exploration" if is_exploration else "standard"
         ...     print(f"{caption.caption_id}: {slot_type}")
     """
+    # Resolve defaults from config (supports env overrides and YAML config)
+    if exclusion_days is None:
+        exclusion_days = get_exclusion_days()
+
     # Load pool
     pool = load_unified_pool(conn, creator_id, content_types, exclusion_days)
 

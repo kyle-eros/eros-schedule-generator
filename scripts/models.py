@@ -192,6 +192,7 @@ class CreatorProfile:
         active_fans: Current number of active fans.
         volume_level: Current volume tier setting.
         primary_tone: Primary voice tone for persona matching.
+        secondary_tone: Secondary voice tone for persona matching (optional).
         emoji_frequency: Emoji usage level.
         slang_level: Slang usage level.
         avg_sentiment: Average sentiment score (0.0-1.0).
@@ -212,6 +213,7 @@ class CreatorProfile:
     emoji_frequency: str
     slang_level: str
     avg_sentiment: float
+    secondary_tone: str | None = None
     best_hours: list[int] = field(default_factory=list)
     vault_types: list[int] = field(default_factory=list)
     content_notes: dict = field(default_factory=dict)
@@ -578,6 +580,56 @@ class SlotConfig:
 
 
 # =============================================================================
+# SEMANTIC BOOST DATACLASS (LLM Analysis Override)
+# =============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticBoostResult:
+    """
+    Claude's semantic analysis result for a caption.
+
+    This represents the LLM's deep analysis of caption tone, persona match,
+    and authenticity. When provided via --semantic-file, these results
+    override the pattern-based persona matching in Step 3.
+
+    Attributes:
+        caption_id: The caption ID this analysis applies to.
+        persona_boost: The calculated persona boost (1.0-1.4).
+        detected_tone: The LLM-detected tone (playful, seductive, sweet, direct, etc.).
+        tone_confidence: Confidence in tone detection (0.0-1.0).
+        matches_creator_voice: Whether caption matches creator's voice profile.
+        emoji_alignment: Alignment level (perfect, good, moderate, poor).
+        slang_alignment: Alignment level (perfect, good, moderate, poor).
+        authenticity_score: Overall authenticity score (0.0-1.0).
+        reasoning: LLM's reasoning for the scores.
+
+    Example:
+        >>> result = SemanticBoostResult(
+        ...     caption_id=4521,
+        ...     persona_boost=1.32,
+        ...     detected_tone="playful",
+        ...     tone_confidence=0.91,
+        ...     matches_creator_voice=True,
+        ...     emoji_alignment="good",
+        ...     slang_alignment="perfect",
+        ...     authenticity_score=0.89,
+        ...     reasoning="Strong playful energy with teasing build-up..."
+        ... )
+    """
+
+    caption_id: int
+    persona_boost: float
+    detected_tone: str
+    tone_confidence: float = 0.0
+    matches_creator_voice: bool = True
+    emoji_alignment: str = "good"
+    slang_alignment: str = "good"
+    authenticity_score: float = 0.0
+    reasoning: str = ""
+
+
+# =============================================================================
 # PATTERN-BASED CAPTION SELECTION DATACLASSES
 # =============================================================================
 
@@ -689,6 +741,7 @@ class ScoredCaption:
         tone: Detected tone for persona matching (e.g., "playful", "seductive").
         hook_type: Detected hook type (e.g., "question", "urgency", "curiosity").
         freshness_score: Current freshness score (0-100, higher = fresher).
+        performance_score: Historical performance score (0-100, from caption_bank).
         times_used_on_page: Number of times used on this specific page.
         last_used_date: Date caption was last used (None if never used).
         pattern_score: Predicted performance score (0-100) based on pattern matching.
@@ -712,6 +765,7 @@ class ScoredCaption:
         ...     tone="playful",
         ...     hook_type="question",
         ...     freshness_score=85.0,
+        ...     performance_score=75.0,
         ...     times_used_on_page=0,
         ...     last_used_date=None,
         ...     pattern_score=78.5,
@@ -729,6 +783,7 @@ class ScoredCaption:
     tone: str | None
     hook_type: str | None
     freshness_score: float
+    performance_score: float  # Historical performance score (0-100)
     times_used_on_page: int
     last_used_date: date | None
     pattern_score: float
@@ -761,6 +816,10 @@ class SelectionPool:
         creator_id: Creator this pool was built for.
         content_types: List of content types represented in the pool.
             Useful for debugging content type coverage.
+        low_performance_filtered_count: Count of captions filtered due to
+            performance_score below minimum threshold.
+        low_performance_included_count: Count of low-performance captions
+            included due to pool exhaustion fallback.
 
     Example:
         >>> pool = SelectionPool(
@@ -787,6 +846,8 @@ class SelectionPool:
     total_weight: float = 0.0
     creator_id: str = ""
     content_types: list[str] = field(default_factory=list)
+    low_performance_filtered_count: int = 0
+    low_performance_included_count: int = 0
 
 
 # =============================================================================
@@ -1453,6 +1514,8 @@ __all__ = [
     "Poll",
     "GameWheelConfig",
     "SlotConfig",
+    # Semantic Boost (LLM Analysis Override)
+    "SemanticBoostResult",
     # Pattern-Based Caption Selection
     "PatternStats",
     "PatternProfile",

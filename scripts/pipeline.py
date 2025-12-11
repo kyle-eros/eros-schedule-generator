@@ -6,11 +6,57 @@ This module provides the SchedulePipeline class that orchestrates the 9-step
 schedule generation pipeline. It delegates to focused modules for each step
 group while maintaining the overall flow and error handling.
 
-Two pipeline modes are available:
-    1. Legacy mode (run): Uses stratified pools with earnings-based selection
-    2. Fresh mode (run_fresh): Uses unified pool with pattern-based fresh selection
+Pipeline Modes
+==============
 
-9-Step Pipeline (Fresh Mode):
+Two pipeline modes are available:
+
+1. **Fresh Mode (RECOMMENDED)** - ``run_fresh()``
+   Uses unified pool with pattern-based fresh selection.
+   This is the default and recommended approach.
+
+2. **Legacy Mode (DEPRECATED)** - ``run()``
+   Uses stratified pools with earnings-based selection.
+   Maintained for backward compatibility only.
+
+Persona Matching: Legacy vs Fresh
+=================================
+
+The key difference between modes is how Step 3 (MATCH PERSONA) works:
+
+**Legacy Mode** (deprecated):
+    - Uses ``step_3_match_persona(captions)``
+    - Mutates Caption objects directly to set ``persona_boost`` attribute
+    - Pre-computes boosts before selection
+    - Works with stratified pools (proven/global_earner/discovery)
+
+**Fresh Mode** (recommended):
+    - Uses ``step_3_get_persona_profile()``
+    - Returns a PersonaProfile object (no mutation)
+    - Persona matching is done dynamically during selection
+    - Works with unified SelectionPool and pattern-based scoring
+
+Code Path Comparison::
+
+    # LEGACY (deprecated) - uses mutation-based persona matching
+    pipeline = SchedulePipeline(config, conn)
+    result = pipeline.run()
+    # Internally calls:
+    #   - step_2_match_content() -> returns (captions, stratified_pools)
+    #   - step_3_match_persona(captions) -> mutates captions with persona_boost
+    #   - assign_captions() -> uses mutated captions
+
+    # FRESH (recommended) - uses profile-based persona matching
+    pipeline = SchedulePipeline(config, conn)
+    result = pipeline.run_fresh()
+    # Internally calls:
+    #   - step_2_match_content_unified() -> returns SelectionPool
+    #   - step_3_get_persona_profile() -> returns PersonaProfile
+    #   - step_5_assign_captions_fresh() -> uses pool + profile together
+
+9-Step Pipeline (Fresh Mode)
+============================
+
     1. ANALYZE - Load creator profile, metrics, and pattern profile
     2. MATCH CONTENT - Load unified caption pool with freshness tiers
     3. MATCH PERSONA - Load persona profile for voice matching
@@ -21,7 +67,11 @@ Two pipeline modes are available:
     8. APPLY PAGE TYPE RULES - Filter paid-only content for free pages
     9. VALIDATE - Check 30 business rules with auto-correction
 
-Usage:
+Usage
+=====
+
+Fresh mode (recommended)::
+
     from pipeline import SchedulePipeline, run_pipeline_fresh
     from models import ScheduleConfig
 
@@ -59,6 +109,7 @@ from models import (
     ScheduleItem,
     ScheduleResult,
     SelectionPool,
+    SemanticBoostResult,
     ValidationIssue,
 )
 
@@ -103,6 +154,7 @@ class SchedulePipeline:
         conn: sqlite3.Connection,
         mode: str = "full",
         pattern_cache: PatternProfileCache | None = None,
+        semantic_boosts: dict[int, SemanticBoostResult] | None = None,
     ):
         """
         Initialize the pipeline.
@@ -112,6 +164,8 @@ class SchedulePipeline:
             conn: Database connection with row_factory set
             mode: Pipeline mode - "quick" (no LLM) or "full" (with LLM)
             pattern_cache: Optional shared cache for pattern profiles
+            semantic_boosts: Optional dict mapping caption_id to SemanticBoostResult
+                for overriding pattern-based persona matching in Step 3
         """
         self.config = config
         self.conn = conn
@@ -133,6 +187,11 @@ class SchedulePipeline:
         self.selection_pool: SelectionPool | None = None
         self.persona_profile: PersonaProfile | None = None
 
+        # Semantic boost overrides (from Claude's analysis)
+        self.semantic_boosts: dict[int, SemanticBoostResult] = semantic_boosts or {}
+        self.semantic_boosts_applied: int = 0
+        self.pattern_boosts_applied: int = 0
+
         # Agent integration (Phase 3)
         self.agent_invoker = None
         self.agent_context = None
@@ -142,7 +201,25 @@ class SchedulePipeline:
 
     def run(self) -> ScheduleResult:
         """
-        Execute the full 9-step pipeline.
+        Execute the full 9-step pipeline (LEGACY MODE).
+
+        .. deprecated::
+            This method uses the legacy stratified pools approach and is
+            deprecated in favor of :meth:`run_fresh`. The legacy mode will
+            be maintained for backward compatibility but is no longer the
+            recommended approach.
+
+        Key Differences from run_fresh():
+            - Uses stratified pools (proven/global_earner/discovery)
+            - Calls step_3_match_persona() which mutates Caption objects
+            - Uses earnings-based selection rather than pattern-based scoring
+
+        Migration:
+            # Legacy (this method - deprecated)
+            result = pipeline.run()
+
+            # Fresh (recommended)
+            result = pipeline.run_fresh()
 
         Returns:
             ScheduleResult with items, validation, and metadata
@@ -151,7 +228,17 @@ class SchedulePipeline:
             VaultEmptyError: If creator has no content types in vault
             CaptionExhaustionError: If no captions meet freshness threshold
         """
+        import warnings
+        warnings.warn(
+            "SchedulePipeline.run() is deprecated. Use run_fresh() for pattern-based "
+            "fresh-focused caption selection. The legacy mode will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         schedule_id = str(uuid.uuid4())[:8]
+
+        # Try to auto-load semantic boosts from cache
+        self._try_load_semantic_cache()
 
         # Initialize result
         self.result = ScheduleResult(
@@ -272,6 +359,10 @@ class SchedulePipeline:
         # Step 3: MATCH PERSONA
         self.captions = builder.step_3_match_persona(self.captions)
 
+        # Apply semantic boost overrides if provided
+        if self.semantic_boosts:
+            self._apply_semantic_overrides(self.captions)
+
         # Step 4: BUILD STRUCTURE
         self.slots, self.content_type_allocation = builder.step_4_build_structure()
 
@@ -280,6 +371,117 @@ class SchedulePipeline:
             self.result.agents_used.extend(builder.agents_used)
         if builder.agents_fallback:
             self.result.agents_fallback.extend(builder.agents_fallback)
+
+    def _apply_semantic_overrides(self, captions: list[Caption]) -> None:
+        """
+        Apply semantic boost overrides to captions.
+
+        When a caption has a semantic boost result from Claude's analysis,
+        override the pattern-based persona_boost with the semantic value.
+
+        Args:
+            captions: List of Caption objects to potentially override
+        """
+        for caption in captions:
+            if caption.caption_id in self.semantic_boosts:
+                semantic_result = self.semantic_boosts[caption.caption_id]
+                original_boost = caption.persona_boost
+                caption.persona_boost = semantic_result.persona_boost
+                self.semantic_boosts_applied += 1
+
+                logger.debug(
+                    f"[Step 3] Semantic override for caption {caption.caption_id}: "
+                    f"{original_boost:.2f}x -> {semantic_result.persona_boost:.2f}x "
+                    f"(tone={semantic_result.detected_tone}, "
+                    f"confidence={semantic_result.tone_confidence:.2f})"
+                )
+            else:
+                self.pattern_boosts_applied += 1
+
+        if self.semantic_boosts_applied > 0:
+            logger.info(
+                f"[Step 3] Applied {self.semantic_boosts_applied} semantic overrides, "
+                f"{self.pattern_boosts_applied} pattern-based boosts"
+            )
+
+    def _apply_semantic_overrides_to_pool(self) -> None:
+        """
+        Apply semantic boost overrides to ScoredCaption objects in selection pool.
+
+        Since ScoredCaption is frozen, we create new instances with updated
+        selection_weight values that incorporate the semantic boost.
+
+        The selection_weight is recalculated as:
+            new_weight = pattern_score * semantic_persona_boost
+
+        This replaces the original weight that was calculated with pattern-based
+        persona matching.
+        """
+        from models import ScoredCaption
+
+        if not self.selection_pool:
+            return
+
+        updated_captions: list[ScoredCaption] = []
+        total_weight = 0.0
+
+        for caption in self.selection_pool.captions:
+            if caption.caption_id in self.semantic_boosts:
+                semantic_result = self.semantic_boosts[caption.caption_id]
+
+                # Recalculate selection weight with semantic boost
+                # Base weight uses pattern_score, apply semantic persona_boost
+                new_weight = caption.pattern_score * semantic_result.persona_boost
+                total_weight += new_weight
+                self.semantic_boosts_applied += 1
+
+                # Create new ScoredCaption with updated weight
+                updated_caption = ScoredCaption(
+                    caption_id=caption.caption_id,
+                    caption_text=caption.caption_text,
+                    caption_type=caption.caption_type,
+                    content_type_id=caption.content_type_id,
+                    content_type_name=caption.content_type_name,
+                    tone=semantic_result.detected_tone,  # Use detected tone
+                    hook_type=caption.hook_type,
+                    freshness_score=caption.freshness_score,
+                    performance_score=caption.performance_score,
+                    times_used_on_page=caption.times_used_on_page,
+                    last_used_date=caption.last_used_date,
+                    pattern_score=caption.pattern_score,
+                    freshness_tier=caption.freshness_tier,
+                    never_used_on_page=caption.never_used_on_page,
+                    selection_weight=new_weight,
+                )
+                updated_captions.append(updated_caption)
+
+                logger.debug(
+                    f"[Step 3] Semantic pool override for caption {caption.caption_id}: "
+                    f"weight {caption.selection_weight:.2f} -> {new_weight:.2f} "
+                    f"(boost={semantic_result.persona_boost:.2f}x)"
+                )
+            else:
+                updated_captions.append(caption)
+                total_weight += caption.selection_weight
+                self.pattern_boosts_applied += 1
+
+        # Update selection pool with new captions
+        self.selection_pool = SelectionPool(
+            captions=updated_captions,
+            never_used_count=self.selection_pool.never_used_count,
+            fresh_count=self.selection_pool.fresh_count,
+            total_weight=total_weight,
+            creator_id=self.selection_pool.creator_id,
+            content_types=self.selection_pool.content_types,
+            low_performance_filtered_count=self.selection_pool.low_performance_filtered_count,
+            low_performance_included_count=self.selection_pool.low_performance_included_count,
+        )
+
+        if self.semantic_boosts_applied > 0:
+            logger.info(
+                f"[Step 3] Applied {self.semantic_boosts_applied} semantic pool overrides, "
+                f"{self.pattern_boosts_applied} pattern-based weights"
+            )
 
     def _execute_assignment_step(self) -> None:
         """Execute step 5: Caption Assignment."""
@@ -391,9 +593,71 @@ class SchedulePipeline:
             elif successful > 0:
                 self.result.agent_mode = "enabled"
 
+        # Add semantic boost metadata to pipeline_context
+        self.result.pipeline_context["semantic_boosts"] = {
+            "semantic_overrides_applied": self.semantic_boosts_applied,
+            "pattern_boosts_applied": self.pattern_boosts_applied,
+            "semantic_file_used": len(self.semantic_boosts) > 0,
+            "total_semantic_entries": len(self.semantic_boosts),
+        }
+
     # =========================================================================
     # FRESH MODE PIPELINE
     # =========================================================================
+
+    def _try_load_semantic_cache(self) -> None:
+        """
+        Try to auto-load semantic boosts from cache if none were provided.
+
+        Checks the semantic cache for the creator/week combination and loads
+        any previously saved Claude analysis results. This allows semantic
+        analysis to persist between sessions.
+
+        The cache location is:
+            ~/.eros/schedules/semantic/{creator_name}/{week}_semantic.json
+        """
+        if self.semantic_boosts:
+            # Already have semantic boosts (provided via --semantic-file)
+            logger.info(
+                f"[Pipeline] Using provided semantic boosts ({len(self.semantic_boosts)} entries)"
+            )
+            return
+
+        try:
+            from semantic_boost_cache import SemanticBoostCache
+
+            cache = SemanticBoostCache()
+            week_str = self.config.week_start.strftime("%G-W%V")
+
+            # Try to load from cache
+            cached_boosts = cache.load(self.config.creator_name, week_str)
+
+            if cached_boosts:
+                self.semantic_boosts = cached_boosts
+                logger.info(
+                    f"[Pipeline] Auto-loaded {len(cached_boosts)} semantic boosts from cache "
+                    f"for {self.config.creator_name}/{week_str}"
+                )
+            else:
+                # Try loading latest available cache (within 4 weeks)
+                cached_boosts, cached_week = cache.load_latest(
+                    self.config.creator_name, max_age_weeks=4
+                )
+                if cached_boosts:
+                    self.semantic_boosts = cached_boosts
+                    logger.info(
+                        f"[Pipeline] Auto-loaded {len(cached_boosts)} semantic boosts "
+                        f"from recent cache ({cached_week}) for {self.config.creator_name}"
+                    )
+                else:
+                    logger.debug(
+                        f"[Pipeline] No semantic cache found for {self.config.creator_name}"
+                    )
+
+        except ImportError:
+            logger.debug("[Pipeline] Semantic boost cache module not available")
+        except Exception as e:
+            logger.warning(f"[Pipeline] Failed to load semantic cache: {e}")
 
     def run_fresh(self) -> ScheduleResult:
         """
@@ -415,6 +679,9 @@ class SchedulePipeline:
 
         self.use_fresh_selection = True
         schedule_id = str(uuid.uuid4())[:8]
+
+        # Try to auto-load semantic boosts from cache
+        self._try_load_semantic_cache()
 
         # Load selection config
         try:
@@ -527,6 +794,10 @@ class SchedulePipeline:
 
         # Step 3: MATCH PERSONA (get persona profile)
         self.persona_profile = builder.step_3_get_persona_profile()
+
+        # Apply semantic boost overrides to selection pool if provided
+        if self.semantic_boosts and self.selection_pool:
+            self._apply_semantic_overrides_to_pool()
 
         # Step 4: BUILD STRUCTURE
         self.slots, self.content_type_allocation = builder.step_4_build_structure()
@@ -645,19 +916,32 @@ def run_pipeline(
     config: ScheduleConfig,
     conn: sqlite3.Connection,
     mode: str = "full",
+    semantic_boosts: dict[int, SemanticBoostResult] | None = None,
 ) -> ScheduleResult:
     """
     Convenience function to run the legacy pipeline.
+
+    .. deprecated::
+        This function uses the deprecated legacy pipeline. Use :func:`run_pipeline_fresh`
+        instead for pattern-based fresh-focused caption selection.
 
     Args:
         config: Schedule generation configuration
         conn: Database connection with row_factory
         mode: Pipeline mode ("quick" or "full")
+        semantic_boosts: Optional dict mapping caption_id to SemanticBoostResult
+            for overriding pattern-based persona matching in Step 3
 
     Returns:
         ScheduleResult with items, validation, and metadata
     """
-    pipeline = SchedulePipeline(config, conn, mode)
+    import warnings
+    warnings.warn(
+        "run_pipeline() is deprecated. Use run_pipeline_fresh() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    pipeline = SchedulePipeline(config, conn, mode, semantic_boosts=semantic_boosts)
     return pipeline.run()
 
 
@@ -666,6 +950,7 @@ def run_pipeline_fresh(
     conn: sqlite3.Connection,
     mode: str = "full",
     pattern_cache: PatternProfileCache | None = None,
+    semantic_boosts: dict[int, SemanticBoostResult] | None = None,
 ) -> ScheduleResult:
     """
     Convenience function to run the fresh-focused pipeline.
@@ -678,11 +963,13 @@ def run_pipeline_fresh(
         conn: Database connection with row_factory
         mode: Pipeline mode ("quick" or "full")
         pattern_cache: Optional shared cache for batch processing
+        semantic_boosts: Optional dict mapping caption_id to SemanticBoostResult
+            for overriding pattern-based persona matching in Step 3
 
     Returns:
         ScheduleResult with items, validation, and metadata
     """
-    pipeline = SchedulePipeline(config, conn, mode, pattern_cache)
+    pipeline = SchedulePipeline(config, conn, mode, pattern_cache, semantic_boosts)
     return pipeline.run_fresh()
 
 

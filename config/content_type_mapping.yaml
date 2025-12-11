@@ -1,0 +1,229 @@
+# EROS Content Type Mapping Configuration
+# =========================================
+# Maps database content type names to SKILL.md registry types for consistent
+# output display and pricing lookup.
+#
+# This file centralizes all content type normalization logic that was previously
+# scattered across enrichment.py and other modules.
+#
+# Usage:
+#   from content_type_registry import normalize_content_type, get_display_name
+#
+#   registry_type = normalize_content_type("bundle_offer")  # Returns "bundle"
+#   display_name = get_display_name("ppv")  # Returns "PPV"
+
+# -----------------------------------------------------
+# Database to Registry Type Mapping
+# -----------------------------------------------------
+# Maps raw database content_type values to normalized registry type IDs.
+# Registry types match SKILL.md definitions and ContentTypeRegistry entries.
+
+content_type_mapping:
+  # ===========================================
+  # Bundle/Package Variants -> bundle
+  # ===========================================
+  bundle_offer: bundle
+  bundle: bundle
+  flash_sale: flash_bundle
+  photo_set: bundle
+  photoset: bundle
+  gallery: bundle
+
+  # ===========================================
+  # Solo/Single Performer -> solo
+  # ===========================================
+  solo: solo
+  shower_bath: solo
+  shower: solo
+  bath: solo
+  selfie: solo
+  lingerie: solo
+  nude: solo
+  topless: solo
+  tits_play: solo
+  implied_tits_play: solo
+  pussy_play: solo
+  implied_pussy_play: solo
+  toy_play: solo
+  implied_toy_play: solo
+  implied_solo: solo
+  teasing: solo
+  pool_outdoor: solo
+
+  # ===========================================
+  # Blowjob/Oral Content -> solo (dildo) or bg (real)
+  # ===========================================
+  blowjob_dildo: solo
+  deepthroat_dildo: solo
+  blowjob: bg
+  deepthroat: bg
+
+  # ===========================================
+  # Video/Sextape Content -> sextape
+  # ===========================================
+  sextape: sextape
+  video: sextape
+  full_video: sextape
+  sex_tape: sextape
+  masturbation: sextape
+  squirt: sextape
+  creampie: sextape
+  anal: sextape
+
+  # ===========================================
+  # B/G and Multi-Partner Content -> bg
+  # ===========================================
+  bg: bg
+  boy_girl: bg
+  b/g: bg
+  couples: bg
+  couple: bg
+  boy_girl_girl: bg
+  girl_girl: bg
+  girl_girl_girl: bg
+
+  # ===========================================
+  # Interactive/Custom Content -> custom
+  # ===========================================
+  custom: custom
+  custom_content: custom
+  personalized: custom
+  joi: custom
+  gfe: custom
+  dom_sub: custom
+  story_roleplay: custom
+
+  # ===========================================
+  # Dick Rating Content -> dick_rating
+  # ===========================================
+  dick_rating: dick_rating
+  dickrating: dick_rating
+  rating: dick_rating
+
+  # ===========================================
+  # Specialty/Niche Content
+  # ===========================================
+  feet: solo
+  pov: solo
+  behind_scenes: solo
+  live_stream: ppv
+
+  # ===========================================
+  # PPV/Exclusive Content -> ppv
+  # ===========================================
+  exclusive_content: ppv
+  ppv: ppv
+  ppv_solo: ppv
+
+  # ===========================================
+  # Engagement/Non-Revenue Types
+  # ===========================================
+  tip_request: first_to_tip
+  renewal_retention: renew_on_mm
+
+  # ===========================================
+  # Caption Types (from caption_bank.caption_type)
+  # ===========================================
+  bump_short: ppv_follow_up
+  engagement: dm_farm
+  general: normal_post_bump
+  promo: ppv
+  teaser: ppv
+
+  # ===========================================
+  # Default Fallback
+  # ===========================================
+  # Used when content type is not found in mapping
+  default: ppv
+
+# -----------------------------------------------------
+# Display Names for Human-Readable Output
+# -----------------------------------------------------
+# Maps registry type IDs to formatted display names for schedules and reports.
+
+display_names:
+  ppv: "PPV"
+  ppv_follow_up: "PPV Follow-up"
+  bundle: "Bundle"
+  flash_bundle: "Flash Bundle"
+  snapchat_bundle: "Snapchat Bundle"
+  solo: "Solo"
+  sextape: "Sextape"
+  bg: "B/G"
+  custom: "Custom"
+  dick_rating: "Dick Rating"
+  vip_post: "VIP Post"
+  first_to_tip: "First to Tip"
+  link_drop: "Link Drop"
+  normal_post_bump: "Post Bump"
+  renew_on_post: "Renew On Post"
+  renew_on_mm: "Renew On MM"
+  game_post: "Game Post"
+  flyer_gif_bump: "Flyer/GIF Bump"
+  descriptive_bump: "Descriptive Bump"
+  wall_link_drop: "Wall Link Drop"
+  live_promo: "Live Promo"
+  dm_farm: "DM Farm"
+  like_farm: "Like Farm"
+  text_only_bump: "Text Bump"
+  expired_subscriber: "Expired Sub"
+
+# -----------------------------------------------------
+# Category Groups for Filtering
+# -----------------------------------------------------
+# Groups registry types into categories for filtering and reporting.
+
+category_groups:
+  # Direct revenue content types
+  revenue:
+    - ppv
+    - ppv_follow_up
+    - bundle
+    - flash_bundle
+    - snapchat_bundle
+    - dick_rating
+    - custom
+
+  # Content media types (what's in the media)
+  media_types:
+    - solo
+    - sextape
+    - bg
+
+  # Engagement/feed content types
+  engagement:
+    - vip_post
+    - first_to_tip
+    - link_drop
+    - normal_post_bump
+    - game_post
+    - flyer_gif_bump
+    - descriptive_bump
+    - wall_link_drop
+    - live_promo
+    - dm_farm
+    - like_farm
+    - text_only_bump
+
+  # Retention content types
+  retention:
+    - renew_on_post
+    - renew_on_mm
+    - expired_subscriber
+
+# -----------------------------------------------------
+# Pricing Category Mapping
+# -----------------------------------------------------
+# Maps registry types to pricing categories for price calculation.
+# These categories align with CLAUDE.md 2025 Market Rates.
+
+pricing_categories:
+  solo: solo
+  bundle: bundle
+  flash_bundle: bundle
+  sextape: sextape
+  bg: bg
+  custom: custom
+  dick_rating: dick_rating
+  ppv: solo  # Default PPV uses solo pricing
+  ppv_follow_up: null  # No pricing (follow-ups are text only)

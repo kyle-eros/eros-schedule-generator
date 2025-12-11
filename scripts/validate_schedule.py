@@ -78,6 +78,210 @@ class ValidationRule(Enum):
     BUMP_VARIANT_ROTATION = "V029"
     CONTENT_TYPE_ROTATION = "V030"
     PLACEHOLDER_WARNING = "V031"
+    PERFORMANCE_MINIMUM = "V032"  # Performance score below threshold
+
+
+# =============================================================================
+# VALIDATION RULE DESCRIPTIONS (for verbose output)
+# =============================================================================
+
+VALIDATION_RULE_DESCRIPTIONS: dict[str, dict[str, str]] = {
+    # Core validation rules (V001-V018)
+    "V001": {
+        "name": "PPV Spacing",
+        "description": "PPVs must be >= 3 hours apart",
+        "category": "core",
+    },
+    "V002": {
+        "name": "Freshness Minimum",
+        "description": "All captions must have freshness >= 30",
+        "category": "core",
+    },
+    "V003": {
+        "name": "Follow-up Timing",
+        "description": "Follow-ups must be 15-45 min after parent",
+        "category": "core",
+    },
+    "V004": {
+        "name": "Duplicate Captions",
+        "description": "No duplicate captions in same week",
+        "category": "core",
+    },
+    "V005": {
+        "name": "Vault Availability",
+        "description": "Content types must be in vault",
+        "category": "core",
+    },
+    "V006": {
+        "name": "Volume Compliance",
+        "description": "Daily PPV count matches target",
+        "category": "core",
+    },
+    "V007": {
+        "name": "Price Bounds",
+        "description": "Prices within acceptable range",
+        "category": "core",
+    },
+    "V008": {
+        "name": "Wall Post Spacing",
+        "description": "Wall posts >= 2 hours apart",
+        "category": "core",
+    },
+    "V009": {
+        "name": "Preview-PPV Linkage",
+        "description": "Previews 1-3h before linked PPV",
+        "category": "core",
+    },
+    "V010": {
+        "name": "Poll Spacing",
+        "description": "Polls >= 2 days apart",
+        "category": "core",
+    },
+    "V011": {
+        "name": "Poll Duration",
+        "description": "Poll duration 24/48/72 hours",
+        "category": "core",
+    },
+    "V012": {
+        "name": "Game Wheel Validity",
+        "description": "Valid wheel config, max 1/week",
+        "category": "core",
+    },
+    "V013": {
+        "name": "Wall Post Volume",
+        "description": "Max 4 wall posts per day",
+        "category": "core",
+    },
+    "V014": {
+        "name": "Poll Volume",
+        "description": "Max 3 polls per week",
+        "category": "core",
+    },
+    "V015": {
+        "name": "Hook Rotation",
+        "description": "No consecutive same hook types",
+        "category": "core",
+    },
+    "V016": {
+        "name": "Hook Diversity",
+        "description": "Use 4+ hook types per week",
+        "category": "core",
+    },
+    "V017": {
+        "name": "Content Rotation",
+        "description": "No 3x consecutive same type",
+        "category": "core",
+    },
+    "V018": {
+        "name": "Empty Schedule",
+        "description": "Schedule has items",
+        "category": "core",
+    },
+    # Extended validation rules (V020-V032)
+    "V020": {
+        "name": "Page Type Compliance",
+        "description": "Paid-only content not on free pages",
+        "category": "extended",
+    },
+    "V021": {
+        "name": "VIP Post Spacing",
+        "description": "VIP posts >= 24 hours apart",
+        "category": "extended",
+    },
+    "V022": {
+        "name": "Link Drop Spacing",
+        "description": "Link drops >= 4 hours apart",
+        "category": "extended",
+    },
+    "V023": {
+        "name": "Engagement Daily Limit",
+        "description": "Max 2 engagement posts per day",
+        "category": "extended",
+    },
+    "V024": {
+        "name": "Engagement Weekly Limit",
+        "description": "Max 10 engagement posts per week",
+        "category": "extended",
+    },
+    "V025": {
+        "name": "Retention Timing",
+        "description": "Retention content on days 5-7",
+        "category": "extended",
+    },
+    "V026": {
+        "name": "Bundle Spacing",
+        "description": "Bundles >= 24 hours apart",
+        "category": "extended",
+    },
+    "V027": {
+        "name": "Flash Bundle Spacing",
+        "description": "Flash bundles >= 48 hours apart",
+        "category": "extended",
+    },
+    "V028": {
+        "name": "Game Post Weekly",
+        "description": "Max 1 game post per week",
+        "category": "extended",
+    },
+    "V029": {
+        "name": "Bump Variant Rotation",
+        "description": "No 3x consecutive same bump type",
+        "category": "extended",
+    },
+    "V030": {
+        "name": "Content Type Rotation",
+        "description": "No 3x consecutive same content type",
+        "category": "extended",
+    },
+    "V031": {
+        "name": "Placeholder Warning",
+        "description": "Slot has caption assigned",
+        "category": "extended",
+    },
+    "V032": {
+        "name": "Performance Minimum",
+        "description": "Performance score >= threshold",
+        "category": "extended",
+    },
+}
+
+# Mapping from rule_name strings to rule codes
+RULE_NAME_TO_CODE: dict[str, str] = {
+    "ppv_spacing": "V001",
+    "freshness_threshold": "V002",
+    "freshness_minimum": "V002",
+    "followup_timing": "V003",
+    "duplicate_captions": "V004",
+    "vault_availability": "V005",
+    "volume_compliance": "V006",
+    "price_bounds": "V007",
+    "wall_post_spacing": "V008",
+    "preview_ppv_linkage": "V009",
+    "poll_spacing": "V010",
+    "poll_duration": "V011",
+    "game_wheel_validity": "V012",
+    "wall_post_volume": "V013",
+    "poll_volume": "V014",
+    "hook_rotation": "V015",
+    "hook_diversity": "V016",
+    "content_rotation": "V017",
+    "empty_schedule": "V018",
+    "V020": "V020",
+    "V021": "V021",
+    "V022": "V022",
+    "V023": "V023",
+    "V024": "V024",
+    "V025": "V025",
+    "V026": "V026",
+    "V027": "V027",
+    "V028": "V028",
+    "V029": "V029",
+    "V030": "V030",
+    "V031": "V031",
+    "V032": "V032",
+    # Auto-corrections info
+    "auto_corrections": "INFO",
+}
 
 
 # =============================================================================
@@ -124,6 +328,8 @@ class ScheduleValidator:
         min_ppv_spacing_hours: float = 4.0,
         min_freshness: float = 30.0,
         max_consecutive_same_type: int = 3,
+        min_performance_score: float = 20.0,
+        performance_warning_threshold: float = 30.0,
     ):
         """
         Initialize validator with thresholds.
@@ -132,10 +338,14 @@ class ScheduleValidator:
             min_ppv_spacing_hours: Recommended minimum hours between PPVs
             min_freshness: Minimum freshness score for captions
             max_consecutive_same_type: Max consecutive items of same content type
+            min_performance_score: Minimum performance score for captions
+            performance_warning_threshold: Performance score that triggers warning
         """
         self.min_ppv_spacing_hours = min_ppv_spacing_hours
         self.min_freshness = min_freshness
         self.max_consecutive_same_type = max_consecutive_same_type
+        self.min_performance_score = min_performance_score
+        self.performance_warning_threshold = performance_warning_threshold
 
     def validate(
         self,
@@ -226,6 +436,9 @@ class ScheduleValidator:
 
         # V031: Placeholder content warnings
         self._check_placeholder_content(items, result)
+
+        # V032: Performance score minimum check
+        self._check_performance_minimum(items, result)
 
         return result
 
@@ -1365,6 +1578,52 @@ class ScheduleValidator:
                     [item.get("item_id")],
                 )
 
+    def _check_performance_minimum(
+        self, items: list[dict[str, Any]], result: ValidationResult
+    ) -> None:
+        """
+        V032: Check for captions with performance score below minimum threshold.
+
+        Captions with low performance scores may indicate poor historical engagement.
+        Items below the minimum threshold are flagged for potential caption swap.
+        Items below the warning threshold get an info-level notice.
+
+        Args:
+            items: List of schedule item dicts
+            result: ValidationResult to add issues to
+        """
+        for item in items:
+            performance_score = item.get("performance_score")
+
+            # Skip if no performance score available
+            if performance_score is None:
+                continue
+
+            item_id = item.get("item_id")
+            caption_id = item.get("caption_id")
+
+            if performance_score < self.min_performance_score:
+                # Below minimum threshold - warning with auto-correction
+                result.add_warning(
+                    ValidationRule.PERFORMANCE_MINIMUM.value,
+                    f"Caption {caption_id} in item {item_id} has low performance score "
+                    f"({performance_score:.1f} < {self.min_performance_score}). "
+                    f"Consider swapping with a higher-performing caption.",
+                    [item_id] if item_id else [],
+                    auto_correctable=True,
+                    correction_action="swap_caption",
+                    correction_value="",  # Caption pool required from caller
+                )
+            elif performance_score < self.performance_warning_threshold:
+                # Between minimum and warning threshold - info notice
+                result.add_info(
+                    ValidationRule.PERFORMANCE_MINIMUM.value,
+                    f"Caption {caption_id} in item {item_id} has moderate performance score "
+                    f"({performance_score:.1f} < {self.performance_warning_threshold}). "
+                    f"Monitor engagement closely.",
+                    [item_id] if item_id else [],
+                )
+
     # =========================================================================
     # AUTO-CORRECTION METHODS (Phase 2 - Self-Healing Validation)
     # =========================================================================
@@ -1742,8 +2001,401 @@ class ScheduleValidator:
         return final_result
 
 
-def format_markdown(result: ValidationResult, items: list[dict[str, Any]]) -> str:
-    """Format validation result as Markdown."""
+# =============================================================================
+# VERBOSE VALIDATION SUMMARY
+# =============================================================================
+
+
+def get_validation_summary(
+    issues: list[ValidationIssue],
+    items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Generate comprehensive validation summary for all 30 rules.
+
+    This function analyzes a validation result and generates a complete
+    summary showing the status of ALL validation rules, not just the ones
+    that failed. This is useful for verbose output mode.
+
+    Args:
+        issues: List of ValidationIssue objects from validation result
+        items: List of schedule item dicts for calculating quality metrics
+
+    Returns:
+        Dict with:
+        - core_rules: List of (rule_code, name, description, status, details)
+        - extended_rules: List of (rule_code, name, description, status, details)
+        - quality_metrics: Dict of metric_name -> (value, target, passed)
+        - summary: Dict with passed, failed, warnings, skipped, info counts
+    """
+    # Build lookup of issues by rule code
+    issues_by_rule: dict[str, list[ValidationIssue]] = defaultdict(list)
+    for issue in issues:
+        # Map rule_name to rule code
+        rule_code = RULE_NAME_TO_CODE.get(issue.rule_name, issue.rule_name)
+        issues_by_rule[rule_code].append(issue)
+
+    # Determine status for each rule
+    def get_rule_status(rule_code: str) -> tuple[str, str]:
+        """
+        Get status and details for a rule.
+
+        Returns:
+            Tuple of (status, details)
+            Status is one of: PASSED, FAILED, WARNING, INFO, SKIPPED
+        """
+        rule_issues = issues_by_rule.get(rule_code, [])
+
+        if not rule_issues:
+            # Check if rule was applicable (has relevant items)
+            applicable = _is_rule_applicable(rule_code, items)
+            if applicable:
+                return ("PASSED", "All checks passed")
+            else:
+                return ("SKIPPED", "N/A - no applicable items")
+
+        # Check severity of issues
+        has_error = any(i.severity == "error" for i in rule_issues)
+        has_warning = any(i.severity == "warning" for i in rule_issues)
+        has_info = any(i.severity == "info" for i in rule_issues)
+
+        if has_error:
+            error_count = sum(1 for i in rule_issues if i.severity == "error")
+            return ("FAILED", f"{error_count} error(s)")
+        elif has_warning:
+            warn_count = sum(1 for i in rule_issues if i.severity == "warning")
+            return ("WARNING", f"{warn_count} warning(s)")
+        elif has_info:
+            info_count = len(rule_issues)
+            return ("INFO", f"{info_count} info message(s)")
+
+        return ("PASSED", "All checks passed")
+
+    # Build core rules list (V001-V018)
+    core_rules: list[tuple[str, str, str, str, str]] = []
+    for rule_code in ["V001", "V002", "V003", "V004", "V005", "V006", "V007", "V008",
+                      "V009", "V010", "V011", "V012", "V013", "V014", "V015", "V016",
+                      "V017", "V018"]:
+        rule_info = VALIDATION_RULE_DESCRIPTIONS.get(rule_code, {})
+        name = rule_info.get("name", rule_code)
+        description = rule_info.get("description", "")
+        status, details = get_rule_status(rule_code)
+        core_rules.append((rule_code, name, description, status, details))
+
+    # Build extended rules list (V020-V032)
+    extended_rules: list[tuple[str, str, str, str, str]] = []
+    for rule_code in ["V020", "V021", "V022", "V023", "V024", "V025", "V026", "V027",
+                      "V028", "V029", "V030", "V031", "V032"]:
+        rule_info = VALIDATION_RULE_DESCRIPTIONS.get(rule_code, {})
+        name = rule_info.get("name", rule_code)
+        description = rule_info.get("description", "")
+        status, details = get_rule_status(rule_code)
+        extended_rules.append((rule_code, name, description, status, details))
+
+    # Calculate quality metrics
+    quality_metrics = _calculate_quality_metrics(items)
+
+    # Calculate summary counts
+    all_rules = core_rules + extended_rules
+    passed_count = sum(1 for r in all_rules if r[3] == "PASSED")
+    failed_count = sum(1 for r in all_rules if r[3] == "FAILED")
+    warning_count = sum(1 for r in all_rules if r[3] == "WARNING")
+    info_count = sum(1 for r in all_rules if r[3] == "INFO")
+    skipped_count = sum(1 for r in all_rules if r[3] == "SKIPPED")
+
+    return {
+        "core_rules": core_rules,
+        "extended_rules": extended_rules,
+        "quality_metrics": quality_metrics,
+        "summary": {
+            "total_rules": len(all_rules),
+            "passed": passed_count,
+            "failed": failed_count,
+            "warnings": warning_count,
+            "info": info_count,
+            "skipped": skipped_count,
+        },
+    }
+
+
+def _is_rule_applicable(rule_code: str, items: list[dict[str, Any]]) -> bool:
+    """
+    Determine if a validation rule is applicable to the schedule.
+
+    Some rules only apply when certain content types are present.
+
+    Args:
+        rule_code: The validation rule code
+        items: List of schedule item dicts
+
+    Returns:
+        True if the rule is applicable, False if it should be skipped
+    """
+    # Rules that always apply
+    always_applicable = {
+        "V001",  # PPV Spacing - always applies
+        "V002",  # Freshness - always applies
+        "V004",  # Duplicate Captions - always applies
+        "V017",  # Content Rotation - always applies
+        "V018",  # Empty Schedule - always applies
+    }
+
+    if rule_code in always_applicable:
+        return True
+
+    # Rules that require follow-ups
+    if rule_code == "V003":  # Follow-up Timing
+        return any(item.get("is_follow_up") for item in items)
+
+    # Rules that require vault info (skip if not provided)
+    if rule_code == "V005":  # Vault Availability
+        return any(item.get("content_type_id") for item in items)
+
+    # Rules that require wall posts
+    if rule_code in ["V008", "V013"]:  # Wall Post Spacing/Volume
+        return any(item.get("item_type") == "wall_post" for item in items)
+
+    # Rules that require free previews
+    if rule_code == "V009":  # Preview-PPV Linkage
+        return any(item.get("item_type") == "free_preview" for item in items)
+
+    # Rules that require polls
+    if rule_code in ["V010", "V011", "V014"]:  # Poll Spacing/Duration/Volume
+        return any(item.get("item_type") == "poll" for item in items)
+
+    # Rules that require game wheels
+    if rule_code == "V012":  # Game Wheel Validity
+        return any(item.get("item_type") == "game_wheel" for item in items)
+
+    # Hook rules - require PPV items with captions
+    if rule_code in ["V015", "V016"]:  # Hook Rotation/Diversity
+        return any(
+            item.get("item_type") == "ppv" and item.get("caption_text")
+            for item in items
+        )
+
+    # Extended rules requiring specific content types
+    if rule_code == "V020":  # Page Type Violation
+        return True  # Always check
+
+    if rule_code == "V021":  # VIP Post Spacing
+        return any(
+            (item.get("content_type_name") or item.get("content_type")) == "vip_post"
+            for item in items
+        )
+
+    if rule_code == "V022":  # Link Drop Spacing
+        return any(
+            (item.get("content_type_name") or item.get("content_type"))
+            in {"link_drop", "wall_link_drop"}
+            for item in items
+        )
+
+    if rule_code in ["V023", "V024"]:  # Engagement Limits
+        return any(
+            (item.get("content_type_name") or item.get("content_type"))
+            in ENGAGEMENT_TYPES
+            for item in items
+        )
+
+    if rule_code == "V025":  # Retention Timing
+        return any(
+            (item.get("content_type_name") or item.get("content_type"))
+            in RETENTION_TYPES
+            for item in items
+        )
+
+    if rule_code == "V026":  # Bundle Spacing
+        return any(
+            (item.get("content_type_name") or item.get("content_type")) == "bundle"
+            for item in items
+        )
+
+    if rule_code == "V027":  # Flash Bundle Spacing
+        return any(
+            (item.get("content_type_name") or item.get("content_type")) == "flash_bundle"
+            for item in items
+        )
+
+    if rule_code == "V028":  # Game Post Weekly
+        return any(
+            (item.get("content_type_name") or item.get("content_type")) == "game_post"
+            for item in items
+        )
+
+    if rule_code == "V029":  # Bump Variant Rotation
+        return any(
+            (item.get("content_type_name") or item.get("content_type"))
+            in BUMP_TYPES
+            for item in items
+        )
+
+    if rule_code == "V030":  # Content Type Rotation
+        return len(items) >= 3
+
+    if rule_code == "V031":  # Placeholder Warning
+        return True  # Always check
+
+    if rule_code == "V032":  # Performance Minimum
+        return any(item.get("performance_score") is not None for item in items)
+
+    # Default: assume applicable
+    return True
+
+
+def _calculate_quality_metrics(items: list[dict[str, Any]]) -> dict[str, tuple[Any, Any, bool]]:
+    """
+    Calculate additional quality metrics for the schedule.
+
+    Args:
+        items: List of schedule item dicts
+
+    Returns:
+        Dict mapping metric_name to (value, target, passed)
+    """
+    metrics: dict[str, tuple[Any, Any, bool]] = {}
+
+    # Hook diversity score (count of unique hook types used)
+    hook_types: set[str] = set()
+    ppv_items = [
+        item for item in items
+        if item.get("item_type") == "ppv" and item.get("caption_text")
+    ]
+    for item in ppv_items:
+        caption_text = item.get("caption_text", "")
+        if caption_text:
+            hook_type, _ = detect_hook_type(caption_text)
+            hook_types.add(hook_type.value)
+
+    hook_diversity = len(hook_types)
+    hook_target = 4 if len(ppv_items) >= 7 else 2
+    metrics["Hook Diversity"] = (
+        f"{hook_diversity} type(s)",
+        f">= {hook_target}",
+        hook_diversity >= hook_target,
+    )
+
+    # Content rotation compliance (max consecutive same type)
+    max_consecutive = _get_max_consecutive_content_type(items)
+    metrics["Content Rotation"] = (
+        f"Max {max_consecutive}x consecutive",
+        "< 3",
+        max_consecutive < 3,
+    )
+
+    # Pool utilization (unique captions / total PPV items)
+    unique_captions = len({item.get("caption_id") for item in items if item.get("caption_id")})
+    total_items_with_captions = sum(1 for item in items if item.get("caption_id"))
+    if total_items_with_captions > 0:
+        utilization = unique_captions / total_items_with_captions * 100
+        metrics["Caption Uniqueness"] = (
+            f"{utilization:.0f}%",
+            "100%",
+            utilization >= 100,
+        )
+    else:
+        metrics["Caption Uniqueness"] = ("N/A", "100%", True)
+
+    # Average performance score
+    performance_scores = [
+        item.get("performance_score", 0)
+        for item in items
+        if item.get("performance_score") is not None
+    ]
+    if performance_scores:
+        avg_performance = sum(performance_scores) / len(performance_scores)
+        metrics["Avg Performance"] = (
+            f"{avg_performance:.1f}",
+            ">= 20",
+            avg_performance >= 20,
+        )
+    else:
+        metrics["Avg Performance"] = ("N/A", ">= 20", True)
+
+    # Average freshness score
+    freshness_scores = [
+        item.get("freshness_score", 100)
+        for item in items
+        if item.get("freshness_score") is not None
+    ]
+    if freshness_scores:
+        avg_freshness = sum(freshness_scores) / len(freshness_scores)
+        metrics["Avg Freshness"] = (
+            f"{avg_freshness:.1f}",
+            ">= 30",
+            avg_freshness >= 30,
+        )
+    else:
+        metrics["Avg Freshness"] = ("N/A", ">= 30", True)
+
+    # Persona boost coverage (% of items with persona_boost > 1.0)
+    # Note: persona_boost not always in items, skip if not present
+    boosted_items = [
+        item for item in items
+        if item.get("persona_boost", 1.0) > 1.0
+    ]
+    if items:
+        boost_coverage = len(boosted_items) / len(items) * 100
+        metrics["Persona Boost Coverage"] = (
+            f"{boost_coverage:.0f}%",
+            ">= 50%",
+            boost_coverage >= 50,
+        )
+
+    return metrics
+
+
+def _get_max_consecutive_content_type(items: list[dict[str, Any]]) -> int:
+    """
+    Calculate maximum consecutive items of same content type.
+
+    Args:
+        items: List of schedule item dicts
+
+    Returns:
+        Maximum number of consecutive same content types
+    """
+    if len(items) < 2:
+        return 1 if items else 0
+
+    # Sort by datetime
+    items_with_dt = []
+    for item in items:
+        try:
+            date_str = item.get("scheduled_date", "")
+            time_str = item.get("scheduled_time", "00:00")
+            dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            items_with_dt.append((dt, item))
+        except (ValueError, TypeError):
+            continue
+
+    items_with_dt.sort(key=lambda x: x[0])
+
+    max_consecutive = 1
+    current_consecutive = 1
+    last_type = None
+
+    for _dt, item in items_with_dt:
+        content_type = item.get("content_type_name") or item.get("content_type")
+
+        if content_type and content_type == last_type:
+            current_consecutive += 1
+            max_consecutive = max(max_consecutive, current_consecutive)
+        else:
+            current_consecutive = 1
+            last_type = content_type
+
+    return max_consecutive
+
+
+def format_markdown(result: ValidationResult, items: list[dict[str, Any]], verbose: bool = False) -> str:
+    """Format validation result as Markdown.
+
+    Args:
+        result: ValidationResult object with validation issues
+        items: List of schedule item dicts
+        verbose: If True, show all 30 rules with detailed reporting
+    """
     status = "PASSED" if result.is_valid else "FAILED"
 
     lines = [
@@ -1762,38 +2414,132 @@ def format_markdown(result: ValidationResult, items: list[dict[str, Any]]) -> st
         "",
     ]
 
-    if result.issues:
-        # Group issues by severity
-        errors = [i for i in result.issues if i.severity == "error"]
-        warnings = [i for i in result.issues if i.severity == "warning"]
-        infos = [i for i in result.issues if i.severity == "info"]
+    # Verbose mode: show all 30 rules with detailed reporting
+    if verbose:
+        summary = get_validation_summary(result.issues, items)
 
-        if errors:
-            lines.append("## Errors")
-            lines.append("")
-            for issue in errors:
-                items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
-                lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
-            lines.append("")
-
-        if warnings:
-            lines.append("## Warnings")
-            lines.append("")
-            for issue in warnings:
-                items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
-                lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
-            lines.append("")
-
-        if infos:
-            lines.append("## Info")
-            lines.append("")
-            for issue in infos:
-                items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
-                lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
-            lines.append("")
-    else:
-        lines.append("No issues found.")
+        # Rule counts
+        lines.append(f"**Rules:** {summary['summary']['passed']} passed, "
+                     f"{summary['summary']['failed']} failed, "
+                     f"{summary['summary']['warnings']} warnings, "
+                     f"{summary['summary']['skipped']} skipped")
         lines.append("")
+
+        # Core Rules section (V001-V018)
+        lines.append("## Validation Status (31 Rules)")
+        lines.append("")
+        lines.append("### Core Rules (V001-V018)")
+        lines.append("")
+        lines.append("| Rule | Name | Description | Status | Details |")
+        lines.append("|------|------|-------------|--------|---------|")
+
+        for rule_code, name, description, rule_status, details in summary["core_rules"]:
+            # Format status with indicator
+            if rule_status == "PASSED":
+                status_indicator = "PASSED"
+            elif rule_status == "FAILED":
+                status_indicator = "**FAILED**"
+            elif rule_status == "WARNING":
+                status_indicator = "WARNING"
+            elif rule_status == "INFO":
+                status_indicator = "INFO"
+            else:
+                status_indicator = "SKIPPED"
+
+            lines.append(f"| {rule_code} | {name} | {description} | {status_indicator} | {details} |")
+
+        lines.append("")
+
+        # Extended Rules section (V020-V032)
+        lines.append("### Extended Rules (V020-V032)")
+        lines.append("")
+        lines.append("| Rule | Name | Description | Status | Details |")
+        lines.append("|------|------|-------------|--------|---------|")
+
+        for rule_code, name, description, rule_status, details in summary["extended_rules"]:
+            # Format status with indicator
+            if rule_status == "PASSED":
+                status_indicator = "PASSED"
+            elif rule_status == "FAILED":
+                status_indicator = "**FAILED**"
+            elif rule_status == "WARNING":
+                status_indicator = "WARNING"
+            elif rule_status == "INFO":
+                status_indicator = "INFO"
+            else:
+                status_indicator = "SKIPPED"
+
+            lines.append(f"| {rule_code} | {name} | {description} | {status_indicator} | {details} |")
+
+        lines.append("")
+
+        # Quality Metrics section
+        lines.append("### Quality Metrics")
+        lines.append("")
+        lines.append("| Metric | Value | Target | Status |")
+        lines.append("|--------|-------|--------|--------|")
+
+        for metric_name, (value, target, passed) in summary["quality_metrics"].items():
+            status_indicator = "OK" if passed else "WARN"
+            lines.append(f"| {metric_name} | {value} | {target} | {status_indicator} |")
+
+        lines.append("")
+
+        # Still include any issues with full details
+        if result.issues:
+            errors = [i for i in result.issues if i.severity == "error"]
+            warnings = [i for i in result.issues if i.severity == "warning"]
+
+            if errors or warnings:
+                lines.append("### Issue Details")
+                lines.append("")
+
+                if errors:
+                    for issue in errors:
+                        items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
+                        lines.append(f"- **[ERROR] {issue.rule_name}**: {issue.message}{items_str}")
+
+                if warnings:
+                    for issue in warnings:
+                        items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
+                        lines.append(f"- **[WARN] {issue.rule_name}**: {issue.message}{items_str}")
+
+                lines.append("")
+
+    else:
+        # Brief mode: only show issues (original behavior)
+        if result.issues:
+            # Group issues by severity
+            errors = [i for i in result.issues if i.severity == "error"]
+            warnings = [i for i in result.issues if i.severity == "warning"]
+            infos = [i for i in result.issues if i.severity == "info"]
+
+            if errors:
+                lines.append("## Errors")
+                lines.append("")
+                for issue in errors:
+                    items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
+                    lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
+                lines.append("")
+
+            if warnings:
+                lines.append("## Warnings")
+                lines.append("")
+                for issue in warnings:
+                    items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
+                    lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
+                lines.append("")
+
+            if infos:
+                lines.append("## Info")
+                lines.append("")
+                for issue in infos:
+                    items_str = f" (items: {issue.item_ids})" if issue.item_ids else ""
+                    lines.append(f"- **{issue.rule_name}**: {issue.message}{items_str}")
+                lines.append("")
+        else:
+            lines.append("No issues found.")
+            lines.append("")
 
     return "\n".join(lines)
 
@@ -1845,7 +2591,7 @@ Validation Rules (V001-V019 Core):
     V016 hook_diversity     - Info if < 4 hook types used in week
     V017 content_rotation   - Warn on 3+ consecutive same content type
 
-Extended Content Type Rules (V020-V031):
+Extended Content Type Rules (V020-V032):
     V020 page_type_violation   - Paid-only content on free page (ERROR)
     V021 vip_post_spacing      - Min 24h between VIP posts (ERROR)
     V022 link_drop_spacing     - Min 4h between link drops (WARNING)
@@ -1858,6 +2604,7 @@ Extended Content Type Rules (V020-V031):
     V029 bump_variant_rotation - No 3x consecutive same bump type (WARNING)
     V030 content_type_rotation - No 3x consecutive same type (INFO)
     V031 placeholder_warning   - Slot has no caption (INFO)
+    V032 performance_minimum   - Performance score below threshold (WARNING)
 
 Examples:
     python validate_schedule.py --input schedule.json
@@ -1897,6 +2644,25 @@ Examples:
     parser.add_argument(
         "--min-freshness", type=float, default=30.0, help="Minimum freshness score (default: 30)"
     )
+    parser.add_argument(
+        "--min-performance",
+        type=float,
+        default=20.0,
+        help="Minimum performance score (default: 20)",
+    )
+    parser.add_argument(
+        "--performance-warning",
+        type=float,
+        default=30.0,
+        help="Performance score warning threshold (default: 30)",
+    )
+    parser.add_argument(
+        "--verbose-validation",
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show all 31 validation rules in output (not just failures)",
+    )
 
     args = parser.parse_args()
 
@@ -1932,7 +2698,10 @@ Examples:
 
     # Create validator
     validator = ScheduleValidator(
-        min_ppv_spacing_hours=args.min_ppv_spacing, min_freshness=args.min_freshness
+        min_ppv_spacing_hours=args.min_ppv_spacing,
+        min_freshness=args.min_freshness,
+        min_performance_score=args.min_performance,
+        performance_warning_threshold=args.performance_warning,
     )
 
     # Validate with extended parameters
@@ -1951,7 +2720,7 @@ Examples:
     if args.format == "json":
         output = format_json(result)
     else:
-        output = format_markdown(result, items)
+        output = format_markdown(result, items, verbose=args.verbose_validation)
 
     if args.output:
         Path(args.output).write_text(output)

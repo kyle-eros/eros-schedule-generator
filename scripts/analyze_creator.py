@@ -157,18 +157,24 @@ def get_volume_level(active_fans: int) -> tuple[str, int, int]:
 
     DEPRECATED: Use analyze_volume_recommendation() for multi-factor optimization.
 
+    Volume Tiers (from CLAUDE.md):
+        - Low (<1,000 fans): 3 PPV/day = 21/week (target: 14-21)
+        - Mid (1,000-5,000): 4 PPV/day = 28/week (target: 21-28)
+        - High (5,000-15,000): 5 PPV/day = 35/week (target: 28-35)
+        - Ultra (15,000+): 6 PPV/day = 42/week (target: 35-42)
+
     Returns:
         Tuple of (level_name, ppv_per_day, bump_per_day)
     """
     # Legacy fallback for simple fan-count based volume
     if active_fans < 1000:
-        return ("Low", 2, 2)
+        return ("Low", 3, 3)
     elif active_fans < 5000:
         return ("Mid", 4, 4)
     elif active_fans < 15000:
-        return ("High", 7, 7)
+        return ("High", 5, 5)
     else:
-        return ("Ultra", 9, 9)
+        return ("Ultra", 6, 6)
 
 
 def analyze_volume_recommendation(creator_id: str, conn: sqlite3.Connection) -> VolumeStrategy:

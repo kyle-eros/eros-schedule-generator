@@ -256,6 +256,10 @@ class SelectionConfig:
 
     Attributes:
         exclusion_days: Hard exclusion window in days (30-120)
+        pool_limit: Maximum captions to load in unified pool
+        min_performance_score: Minimum performance score for caption selection
+        performance_warning_threshold: Score that triggers warning but allows selection
+        allow_low_performance_on_exhaustion: Allow low-performance if pool exhausted
         exploration_ratio: Percentage of selections for random picks (0.05-0.25)
         min_pattern_samples: Minimum samples to establish a pattern
         pattern_lookback_days: Days to look back for pattern extraction
@@ -279,6 +283,10 @@ class SelectionConfig:
 
     # Core selection settings
     exclusion_days: int = 60
+    pool_limit: int = 500
+    min_performance_score: float = 20.0
+    performance_warning_threshold: float = 30.0
+    allow_low_performance_on_exhaustion: bool = True
     exploration_ratio: float = 0.15
     min_pattern_samples: int = 3
     pattern_lookback_days: int = 90
@@ -660,6 +668,11 @@ def _get_selection_env_override(key: str, default: Any) -> Any:
 def _build_selection_config(yaml_data: dict[str, Any]) -> SelectionConfig:
     """Build SelectionConfig from YAML data with environment overrides.
 
+    Supports loading from both selection.yaml (pattern-based config) and
+    business_rules.yaml (pool-based config). Values from business_rules.yaml
+    selection section take precedence for pool_limit, min_performance_score,
+    performance_warning_threshold, and allow_low_performance_on_exhaustion.
+
     Args:
         yaml_data: Parsed YAML configuration dictionary from selection.yaml
 
@@ -674,6 +687,20 @@ def _build_selection_config(yaml_data: dict[str, Any]) -> SelectionConfig:
         # Core selection settings
         exclusion_days=_get_selection_env_override(
             "exclusion_days", selection.get("exclusion_days", 60)
+        ),
+        pool_limit=_get_selection_env_override(
+            "pool_limit", selection.get("pool_limit", 500)
+        ),
+        min_performance_score=_get_selection_env_override(
+            "min_performance_score", selection.get("min_performance_score", 20.0)
+        ),
+        performance_warning_threshold=_get_selection_env_override(
+            "performance_warning_threshold",
+            selection.get("performance_warning_threshold", 30.0),
+        ),
+        allow_low_performance_on_exhaustion=_get_selection_env_override(
+            "allow_low_performance_on_exhaustion",
+            selection.get("allow_low_performance_on_exhaustion", True),
         ),
         exploration_ratio=_get_selection_env_override(
             "exploration_ratio", selection.get("exploration_ratio", 0.15)
@@ -730,6 +757,9 @@ def validate_selection_config(config: SelectionConfig) -> list[str]:
 
     Validates:
     - exclusion_days: Must be 30-120
+    - pool_limit: Must be >= 50
+    - min_performance_score: Must be >= 0
+    - performance_warning_threshold: Must be >= min_performance_score
     - exploration_ratio: Must be 0.05-0.25
     - global_fallback_discount: Must be 0.5-1.0
     - Weight components: Must sum to 1.0 (+/- 0.01 tolerance)
@@ -753,6 +783,25 @@ def validate_selection_config(config: SelectionConfig) -> list[str]:
     if not 30 <= config.exclusion_days <= 120:
         errors.append(
             f"exclusion_days must be between 30 and 120 (got {config.exclusion_days})"
+        )
+
+    # Validate pool_limit (>= 50)
+    if config.pool_limit < 50:
+        errors.append(
+            f"pool_limit must be at least 50 (got {config.pool_limit})"
+        )
+
+    # Validate min_performance_score (>= 0)
+    if config.min_performance_score < 0:
+        errors.append(
+            f"min_performance_score must be non-negative (got {config.min_performance_score})"
+        )
+
+    # Validate performance_warning_threshold (>= min_performance_score)
+    if config.performance_warning_threshold < config.min_performance_score:
+        errors.append(
+            f"performance_warning_threshold ({config.performance_warning_threshold}) "
+            f"must be >= min_performance_score ({config.min_performance_score})"
         )
 
     # Validate exploration_ratio (0.05-0.25)

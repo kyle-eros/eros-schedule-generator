@@ -2,22 +2,58 @@
 """
 EROS Schedule Generator - Schedule Builder
 
-This module handles Steps 1-4 of the 9-step pipeline plus caption assignment:
+This module handles Steps 1-5 of the 9-step pipeline:
     1. ANALYZE - Load creator profile, metrics, and pattern profile
-    2. MATCH CONTENT - Load unified caption pool with freshness scoring
-    3. MATCH PERSONA - Score captions by voice profile (1.0-1.4x boost)
+    2. MATCH CONTENT - Load caption pool (unified or stratified)
+    3. MATCH PERSONA - Score captions by voice profile
     4. BUILD STRUCTURE - Create weekly time slots with payday optimization
-    5. ASSIGN CAPTIONS - Fresh-focused selection with exploration slots
+    5. ASSIGN CAPTIONS - Select and assign captions to slots
 
-Usage:
-    from schedule_builder import ScheduleBuilder, assign_captions
+Step 3 (MATCH PERSONA) - Two Code Paths
+=======================================
+
+This module contains two persona matching methods:
+
+**step_3_match_persona(captions)** - DEPRECATED (Legacy):
+    - Mutates Caption objects directly to set ``persona_boost`` attribute
+    - Used with legacy ``step_2_match_content()`` which returns stratified pools
+    - Called by ``SchedulePipeline.run()`` (deprecated)
+    - Will emit DeprecationWarning when called
+
+**step_3_get_persona_profile()** - RECOMMENDED (Fresh):
+    - Returns a PersonaProfile object (no mutation)
+    - Used with ``step_2_match_content_unified()`` which returns SelectionPool
+    - Called by ``SchedulePipeline.run_fresh()`` (recommended)
+    - Persona matching done dynamically during ``step_5_assign_captions_fresh()``
+
+Migration Guide
+===============
+
+If you're calling these methods directly, migrate as follows::
+
+    # OLD (deprecated)
+    captions, pools = builder.step_2_match_content()
+    captions = builder.step_3_match_persona(captions)
+    items = assign_captions(slots, captions, config, pools, ...)
+
+    # NEW (recommended)
+    pool = builder.step_2_match_content_unified()
+    persona = builder.step_3_get_persona_profile()
+    items = builder.step_5_assign_captions_fresh(slots, pool, persona, ...)
+
+Usage (Fresh Mode - Recommended)
+================================
+
+::
+
+    from schedule_builder import ScheduleBuilder
 
     builder = ScheduleBuilder(config, conn)
     profile = builder.step_1_analyze()
-    pool = builder.step_2_match_content()  # Now returns SelectionPool
-    persona = builder.step_3_match_persona()  # Returns PersonaProfile
+    pool = builder.step_2_match_content_unified()  # Returns SelectionPool
+    persona = builder.step_3_get_persona_profile()  # Returns PersonaProfile
     slots, allocation = builder.step_4_build_structure()
-    items = builder.step_5_assign_captions(slots, pool, persona)  # New method
+    items = builder.step_5_assign_captions_fresh(slots, pool, persona, allocation)
 """
 
 from __future__ import annotations
@@ -51,6 +87,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 from config_loader import get_config
+from content_type_registry import get_item_type_for_content_type
 
 _config = get_config()
 
@@ -183,7 +220,8 @@ class ScheduleBuilder:
             query = """
                 SELECT c.creator_id, c.page_name, c.display_name, c.page_type,
                        c.current_active_fans, c.notes,
-                       cp.primary_tone, cp.emoji_frequency, cp.slang_level, cp.avg_sentiment
+                       cp.primary_tone, cp.secondary_tone, cp.emoji_frequency,
+                       cp.slang_level, cp.avg_sentiment
                 FROM creators c
                 LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
                 WHERE c.page_name = ? OR c.display_name = ?
@@ -196,7 +234,8 @@ class ScheduleBuilder:
             query = """
                 SELECT c.creator_id, c.page_name, c.display_name, c.page_type,
                        c.current_active_fans, c.notes,
-                       cp.primary_tone, cp.emoji_frequency, cp.slang_level, cp.avg_sentiment
+                       cp.primary_tone, cp.secondary_tone, cp.emoji_frequency,
+                       cp.slang_level, cp.avg_sentiment
                 FROM creators c
                 LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
                 WHERE c.creator_id = ?
@@ -239,6 +278,7 @@ class ScheduleBuilder:
             emoji_frequency=row["emoji_frequency"] or "moderate",
             slang_level=row["slang_level"] or "light",
             avg_sentiment=row["avg_sentiment"] or 0.5,
+            secondary_tone=row["secondary_tone"],
             best_hours=best_hours,
             vault_types=vault_types,
             content_notes=content_notes,
@@ -359,7 +399,21 @@ class ScheduleBuilder:
         return [row["content_type_id"] for row in cursor.fetchall()]
 
     def _get_volume_level(self, active_fans: int) -> str:
-        """Determine volume level from fan count."""
+        """
+        Determine volume level from fan count.
+
+        Volume Tiers (from CLAUDE.md):
+            - Low: <1,000 fans (14-21 PPV/week)
+            - Mid: 1,000-5,000 fans (21-28 PPV/week)
+            - High: 5,000-15,000 fans (28-35 PPV/week)
+            - Ultra: 15,000+ fans (35-42 PPV/week)
+
+        Args:
+            active_fans: Current active fan count
+
+        Returns:
+            Volume tier string (Low, Mid, High, Ultra)
+        """
         if active_fans < 1000:
             return "Low"
         elif active_fans < 5000:
@@ -424,11 +478,22 @@ class ScheduleBuilder:
         """
         Filter captions by vault availability and load stratified pools.
 
-        Step 2 of pipeline: MATCH CONTENT
+        Step 2 of pipeline: MATCH CONTENT (LEGACY)
+
+        .. deprecated::
+            This method is deprecated. Use :meth:`step_2_match_content_unified`
+            instead, which returns a SelectionPool for use with the fresh pipeline.
 
         Returns:
             Tuple of (captions list, stratified pools dict)
         """
+        import warnings
+        warnings.warn(
+            "step_2_match_content() is deprecated. Use step_2_match_content_unified() "
+            "with the fresh pipeline (run_fresh) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         from content_type_strategy import ContentTypeStrategy, get_content_type_earnings
         from select_captions import StratifiedPools
         from weights import POOL_DISCOVERY, POOL_GLOBAL_EARNER, POOL_PROVEN, determine_pool_type
@@ -701,14 +766,37 @@ class ScheduleBuilder:
         """
         Apply persona boost scores to all captions.
 
-        Step 3 of pipeline: MATCH PERSONA
+        Step 3 of pipeline: MATCH PERSONA (LEGACY)
+
+        .. deprecated::
+            This method is deprecated and will be removed in a future version.
+            Use :meth:`step_3_get_persona_profile` instead for fresh-focused
+            selection. The legacy method mutates Caption objects directly,
+            while the fresh method returns a PersonaProfile for use with
+            pattern-based scoring in the unified pool.
+
+        Migration Path:
+            Legacy (this method):
+                captions = builder.step_3_match_persona(captions)
+                # Captions now have persona_boost set
+
+            Fresh (preferred):
+                persona_profile = builder.step_3_get_persona_profile()
+                # Use persona_profile with step_5_assign_captions_fresh()
 
         Args:
             captions: List of Caption objects to score
 
         Returns:
-            List of captions with persona_boost set
+            List of captions with persona_boost set (mutated in place)
         """
+        import warnings
+        warnings.warn(
+            "step_3_match_persona() is deprecated. Use step_3_get_persona_profile() "
+            "with the fresh pipeline (run_fresh) instead. See docstring for migration path.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not self.profile:
             return captions
 
@@ -754,10 +842,25 @@ class ScheduleBuilder:
         """
         Load and cache persona profile for the creator.
 
-        Step 3 of pipeline: MATCH PERSONA (new unified approach)
+        Step 3 of pipeline: MATCH PERSONA (FRESH - PREFERRED)
 
-        This method creates a PersonaProfile object that can be used
-        with the new fresh-focused selection algorithm.
+        This is the preferred method for persona matching in the fresh pipeline.
+        Unlike the deprecated :meth:`step_3_match_persona`, this method:
+
+        1. Returns a PersonaProfile object instead of mutating captions
+        2. Works with the unified SelectionPool and pattern-based scoring
+        3. Is used by :meth:`step_5_assign_captions_fresh` for fresh-focused selection
+
+        The PersonaProfile is used during caption selection to calculate
+        persona match scores dynamically, rather than pre-computing boosts
+        on Caption objects.
+
+        Usage:
+            builder = ScheduleBuilder(config, conn)
+            profile = builder.step_1_analyze()
+            pool = builder.step_2_match_content_unified()
+            persona = builder.step_3_get_persona_profile()  # Returns PersonaProfile
+            items = builder.step_5_assign_captions_fresh(slots, pool, persona)
 
         Returns:
             PersonaProfile for use in caption selection, or None if not available
@@ -1181,12 +1284,14 @@ class ScheduleBuilder:
                     )
 
                 # Calculate price based on slot context
+                # NOTE: This is a placeholder price - Step 8 will recalculate using
+                # the full page-type-aware pricing matrix from CLAUDE.md 2025 rates
                 base_price = 14.99 if self.config.page_type == "paid" else 9.99
                 payday_mult = slot.get("payday_multiplier", 1.0)
                 is_payday_optimal = slot.get("is_payday_optimal", False)
                 is_mid_cycle = slot.get("is_mid_cycle", False)
 
-                # Price adjustments
+                # Payday adjustments (Step 8 will apply final content-type pricing)
                 if is_payday_optimal:
                     base_price *= 1.15
                 elif is_mid_cycle:
@@ -1213,7 +1318,7 @@ class ScheduleBuilder:
                         creator_id=self.config.creator_id,
                         scheduled_date=slot["date"],
                         scheduled_time=slot["time"],
-                        item_type="ppv",
+                        item_type=get_item_type_for_content_type(caption.content_type_name),
                         caption_id=caption.caption_id,
                         caption_text=caption.caption_text,
                         content_type_id=caption.content_type_id,
@@ -1332,7 +1437,12 @@ def assign_captions(
     """
     Assign captions to time slots using pool-based selection.
 
-    Step 5 of pipeline: ASSIGN CAPTIONS
+    Step 5 of pipeline: ASSIGN CAPTIONS (LEGACY)
+
+    .. deprecated::
+        This function is deprecated. Use
+        :meth:`ScheduleBuilder.step_5_assign_captions_fresh` instead for
+        fresh-focused selection with pattern-based scoring.
 
     Args:
         slots: List of slot dicts with date, time, hour, type keys
@@ -1345,6 +1455,13 @@ def assign_captions(
     Returns:
         List of ScheduleItem objects
     """
+    import warnings
+    warnings.warn(
+        "assign_captions() is deprecated. Use ScheduleBuilder.step_5_assign_captions_fresh() "
+        "with the fresh pipeline (run_fresh) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from content_type_strategy import PREMIUM_HOURS
     from weights import POOL_DISCOVERY, POOL_GLOBAL_EARNER, POOL_PROVEN, calculate_weight, get_max_earnings
 
@@ -1433,7 +1550,8 @@ def _assign_captions_pooled(
             ct_name = selected_caption.content_type_name or "unknown"
             content_type_used[ct_name] = content_type_used.get(ct_name, 0) + 1
 
-            # Calculate price
+            # Calculate placeholder price
+            # NOTE: Step 8 will recalculate using full page-type-aware pricing matrix
             base_price = 14.99 if config.page_type == "paid" else 9.99
             if selected_caption.performance_score >= 80:
                 base_price *= 1.2
@@ -1459,7 +1577,7 @@ def _assign_captions_pooled(
                     creator_id=config.creator_id,
                     scheduled_date=slot["date"],
                     scheduled_time=slot["time"],
-                    item_type="ppv",
+                    item_type=get_item_type_for_content_type(selected_caption.content_type_name),
                     caption_id=selected_caption.caption_id,
                     caption_text=selected_caption.caption_text,
                     content_type_id=selected_caption.content_type_id,
@@ -1541,6 +1659,8 @@ def _assign_captions_legacy(
             used_caption_ids.add(selected_caption.caption_id)
             previous_content_type = selected_caption.content_type_name
 
+            # Calculate placeholder price
+            # NOTE: Step 8 will recalculate using full page-type-aware pricing matrix
             base_price = 14.99 if config.page_type == "paid" else 9.99
             if selected_caption.performance_score >= 80:
                 base_price *= 1.2
@@ -1553,7 +1673,7 @@ def _assign_captions_legacy(
                     creator_id=config.creator_id,
                     scheduled_date=slot["date"],
                     scheduled_time=slot["time"],
-                    item_type="ppv",
+                    item_type=get_item_type_for_content_type(selected_caption.content_type_name),
                     caption_id=selected_caption.caption_id,
                     caption_text=selected_caption.caption_text,
                     content_type_id=selected_caption.content_type_id,

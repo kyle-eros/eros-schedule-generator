@@ -1,6 +1,6 @@
 ---
 name: eros-schedule-generator
-version: 3.1.0
+version: 3.2.0
 category: Business Automation
 tags:
   - onlyfans
@@ -48,7 +48,7 @@ allowed-tools:
   - Task
 ---
 
-# EROS Schedule Generator v3.1.0
+# EROS Schedule Generator v3.2.0
 
 Generates optimized weekly content schedules for OnlyFans creators using Claude's native intelligence.
 
@@ -58,11 +58,13 @@ The EROS Schedule Generator is a production-grade scheduling system that generat
 
 **Key Features:**
 - **20 Schedulable Content Types** across 4 priority tiers (Tier 1-4)
-- **30 Validation Rules** (V001-V018 core + V020-V031 extended)
+- **31 Validation Rules** (V001-V018 core + V020-V032 extended)
 - **Pool-Based Caption Selection** with PROVEN/GLOBAL_EARNER/DISCOVERY stratification
 - **Schedule Uniqueness Engine** with timing variance and fingerprinting
 - **Self-Healing Validation** with auto-correction for 10 issue types
 - **Hook Rotation & Anti-Detection** preventing platform pattern detection
+- **SemanticBoostCache** for persisting Claude's semantic analysis between sessions
+- **Schema Validation** on startup ensuring database compatibility
 
 ## 9-Step Schedule Generation Pipeline
 
@@ -145,7 +147,7 @@ Paid vs free page adjustments:
 - Generate placeholders with theme_guidance for slots without captions
 
 ### Step 9: VALIDATE
-Check all 30 business rules with auto-correction:
+Check all 31 business rules with auto-correction:
 - Run core validation (V001-V018):
   - PPV spacing >= 3 hours (ERROR if < 3, WARNING if < 4)
   - Freshness >= 30.0 (ERROR if < 25, WARNING if < 30)
@@ -153,12 +155,14 @@ Check all 30 business rules with auto-correction:
   - No duplicate captions in same week
   - Content type rotation (no 3x consecutive same)
   - Hook rotation and diversity (V015, V016)
-- Run extended validation (V020-V031):
+- Run extended validation (V020-V032):
   - Page type compliance (V020)
   - Content type spacing rules (V021, V022, V026, V027)
   - Engagement and retention limits (V023, V024, V025, V028)
   - Bump variant rotation (V029)
+  - Content type rotation (V030)
   - Placeholder warnings (V031)
+  - Performance score minimum (V032)
 - Apply auto-corrections (max 2 passes):
   - Move slots to resolve spacing violations
   - Swap captions for freshness/duplicates
@@ -196,6 +200,19 @@ python scripts/prepare_llm_context.py --creator CREATOR_NAME --week YYYY-Www --q
 
 # Print to console instead of saving
 python scripts/prepare_llm_context.py --creator CREATOR_NAME --week YYYY-Www --stdout
+
+# Specify output directory for semantic cache
+python scripts/prepare_llm_context.py --creator CREATOR_NAME --week YYYY-Www --semantic-output-dir /path/to/dir
+```
+
+### Semantic Cache Operations
+```bash
+# Load semantic boosts from a file
+python scripts/generate_schedule.py --creator CREATOR_NAME --week YYYY-Www \
+    --semantic-file ~/.eros/schedules/semantic/{creator}/{week}_semantic.json
+
+# Check if semantic cache exists before generation
+python scripts/generate_schedule.py --creator CREATOR_NAME --week YYYY-Www --check-semantic-cache
 ```
 
 After running, Claude will:
@@ -485,6 +502,8 @@ The schedule generator outputs structured data in this format:
 | week | ISO week format | 2025-W02 | Must match YYYY-Www pattern | Yes |
 | mode | string | quick, full | Optional, defaults to "full" | No |
 | --quick | flag | --quick | Shorthand for --mode quick | No |
+| --semantic-file | path | path/to/file.json | Load pre-computed semantic boosts | No |
+| --check-semantic-cache | flag | --check-semantic-cache | Check if semantic cache exists | No |
 | use_agents | boolean | true | Enables sub-agent delegation | No |
 | min_freshness | float | 30.0 | 0-100, default 30.0 | No |
 
@@ -578,9 +597,9 @@ When processing context, apply these guidelines for tone detection:
 - Delay: 15-45 minutes after PPV
 - Maximum 1 follow-up per PPV
 
-## Validation Rules (30 Total)
+## Validation Rules (31 Total)
 
-The schedule generator validates against 30 business rules organized in two categories:
+The schedule generator validates against 31 business rules organized in two categories:
 
 ### Core Validation Rules (V001-V018)
 - **V001 PPV_SPACING**: PPVs must be 3+ hours apart (4 recommended)
@@ -602,7 +621,7 @@ The schedule generator validates against 30 business rules organized in two cate
 - **V017 CONTENT_ROTATION**: Warn on 3+ consecutive same content type
 - **V018 EMPTY_SCHEDULE**: Check for empty schedules
 
-### Extended Content Type Rules (V020-V031)
+### Extended Content Type Rules (V020-V032)
 
 Note: V019 is intentionally skipped for compatibility.
 
@@ -618,6 +637,7 @@ Note: V019 is intentionally skipped for compatibility.
 - **V029 BUMP_VARIANT_ROTATION**: No 3x consecutive same bump type (WARNING, auto-correctable: swap_content_type)
 - **V030 CONTENT_TYPE_ROTATION**: No 3x consecutive same type (INFO)
 - **V031 PLACEHOLDER_WARNING**: Slot has no caption (INFO)
+- **V032 PERFORMANCE_MINIMUM**: Performance score below minimum threshold (WARNING)
 
 ### Auto-Correction Capabilities
 
@@ -814,14 +834,172 @@ O(1) selection time after O(n) preprocessing:
 3. Select caption in constant time regardless of pool size
 4. Ensures proper statistical distribution over many selections
 
-## Error Handling
+## Configuration Files
+
+The system uses externalized configuration for all business rules and settings.
+
+### Primary Configuration Files
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `business_rules.yaml` | Selection config, volume tiers, spacing rules | `config/business_rules.yaml` |
+| `content_type_mapping.yaml` | Content type definitions and constraints | `config/content_type_mapping.yaml` |
+
+### Key Configuration Parameters
+
+**Selection Settings** (`config/business_rules.yaml`):
+```yaml
+selection:
+  exclusion_days: 60        # Hard exclusion window for recently used captions
+  pool_limit: 500           # Maximum captions to load in unified pool
+  min_performance_score: 20.0
+  performance_warning_threshold: 30.0
+  allow_low_performance_on_exhaustion: true
+```
+
+**Volume Tiers** (from `config/business_rules.yaml`):
+| Tier | Fan Range | PPV/Day | Bump/Day |
+|------|-----------|---------|----------|
+| Low | <1,000 | 2-3 | 2-3 |
+| Mid | 1,000-4,999 | 3-4 | 2-3 |
+| High | 5,000-14,999 | 4-5 | 3-4 |
+| Ultra | 15,000+ | 5-6 | 4-5 |
+
+### Semantic Boost Cache
+
+Claude's semantic analysis results are persisted to enable reuse across sessions:
+
+**Cache Location:**
+```
+~/.eros/schedules/semantic/{creator_name}/{week}_semantic.json
+```
+
+**Environment Variable Override:**
+```bash
+export EROS_SEMANTIC_CACHE_PATH="/custom/path/to/cache"
+```
+
+**Cache Format:**
+```json
+{
+  "creator_name": "grace_bennett",
+  "week": "2025-W50",
+  "generated_at": "2025-12-10T14:30:00",
+  "semantic_results": [
+    {
+      "caption_id": 12345,
+      "detected_tone": "bratty",
+      "persona_boost": 1.25,
+      "quality_score": 0.80,
+      "reasoning": "Strong bratty undertones with playful hook"
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+### Common Errors and Resolutions
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| `CreatorNotFoundError` | Invalid creator_id | Check creators table |
-| `CaptionExhaustionError` | All captions < freshness 30 | Wait for freshness recovery |
-| `VaultEmptyError` | No content in vault | Update vault_matrix |
-| `ValidationError` | Business rule violation | Check validation issues |
+| `CreatorNotFoundError` | Invalid creator_id | Check creators table for valid page_name |
+| `CaptionExhaustionError` | All captions below freshness threshold | Wait 7-14 days for recovery, or add new captions |
+| `VaultEmptyError` | No content in vault for content type | Update vault_matrix table |
+| `ValidationError` | Business rule violation | Check error message, adjust schedule parameters |
+| `SchemaValidationError` | Database missing required columns | Run schema migration or update database |
+
+### CaptionExhaustionError
+
+**Symptoms:** Schedule generation fails with "All captions below freshness threshold"
+
+**Causes:**
+- All captions have been used within the freshness decay window (14 days default)
+- Creator has very limited caption pool
+- High-volume scheduling depleted fresh captions
+
+**Solutions:**
+1. Wait 7-14 days for freshness scores to recover naturally
+2. Add new captions to the caption_bank table
+3. Temporarily lower minimum freshness (use `--min-freshness 25`)
+4. Check if creator should be on a lower volume tier
+
+### Schema Validation Failures
+
+**Symptoms:** Script fails on startup with "Database schema validation failed"
+
+**Causes:**
+- Database was created with older schema version
+- Required columns missing (e.g., `secondary_tone`)
+- Database file corrupted or inaccessible
+
+**Solutions:**
+1. Check missing columns reported in error message
+2. Run schema migration: `python scripts/database.py --migrate`
+3. Verify database path: `echo $EROS_DATABASE_PATH`
+4. Test database access: `sqlite3 "$EROS_DATABASE_PATH" ".tables"`
+
+### Low Persona Boost Coverage
+
+**Symptoms:** Most captions getting 1.0x boost instead of 1.1-1.4x
+
+**Causes:**
+- Creator persona not set in `creator_personas` table
+- Captions lack tone metadata
+- Semantic analysis not run (quick mode)
+
+**Solutions:**
+1. Verify persona exists: `SELECT * FROM creator_personas WHERE creator_id = ?`
+2. Run full mode instead of quick: remove `--quick` flag
+3. Run `prepare_llm_context.py` and save semantic results
+4. Load semantic cache: `--semantic-file path/to/cache.json`
+
+### PPV Spacing Violations
+
+**Symptoms:** Validation errors about PPV spacing < 3 hours
+
+**Causes:**
+- Too many PPVs scheduled for available time slots
+- Volume tier too high for creator's content availability
+- Manual slot overrides conflicting with spacing rules
+
+**Solutions:**
+1. Reduce volume tier: `--volume Low` or `--volume Mid`
+2. Reduce PPV count per day in business_rules.yaml
+3. Check auto-correction attempted (should move slots automatically)
+4. Review validation output for specific slot conflicts
+
+### Database Connection Issues
+
+```bash
+# Verify database path
+echo $EROS_DATABASE_PATH
+
+# Test connection
+sqlite3 "$EROS_DATABASE_PATH" "SELECT COUNT(*) FROM creators WHERE is_active=1;"
+
+# Check file permissions
+ls -la "$EROS_DATABASE_PATH"
+
+# Verify schema
+python scripts/database.py --validate-schema
+```
+
+### Debug Commands
+
+```bash
+# Run with verbose logging
+python scripts/generate_schedule.py --creator NAME --week YYYY-Www --verbose
+
+# Check semantic cache existence
+python scripts/generate_schedule.py --creator NAME --week YYYY-Www --check-semantic-cache
+
+# List available content types
+python scripts/generate_schedule.py --list-content-types --page-type paid
+
+# Validate existing schedule file
+python scripts/validate_schedule.py --input schedule.json --verbose
+```
 
 ## Model Selection Matrix
 
@@ -864,6 +1042,8 @@ By default, schedules auto-save to organized directories:
 |--------|------------------------|
 | `generate_schedule.py` | `~/Developer/EROS-SD-MAIN-PROJECT/schedules/{creator}/{YYYY-Www}.md` |
 | `prepare_llm_context.py` | `~/Developer/EROS-SD-MAIN-PROJECT/schedules/context/{creator}/{YYYY-Www}_context.md` |
+
+**Note**: Previous versions saved to `~/.eros/schedules/`. Set `EROS_SCHEDULES_PATH` environment variable to customize the output location.
 
 ### CLI Flags
 
@@ -992,18 +1172,119 @@ The system supports 20 schedulable content types organized in 4 priority tiers:
 | `EROS_FRESHNESS_HALF_LIFE_DAYS` | 14.0 | Freshness decay rate |
 | `EROS_FRESHNESS_MINIMUM_SCORE` | 30.0 | Minimum for scheduling |
 
-## Key Database Tables
+## Database Reference
 
-| Table | Records | Purpose |
-|-------|---------|---------|
-| creators | 36 | Creator profiles |
-| caption_bank | 19,590 | Caption library |
-| mass_messages | 66,826 | Historical performance |
-| creator_personas | 35 | Voice profiles |
-| vault_matrix | 1,188 | Content inventory |
-| content_types | 33 | Content categories |
+### Quick Schema Lookup
+
+The skill includes a helper function to get key table schemas:
+
+```python
+from database import get_schema_info
+
+schema = get_schema_info()
+print(schema["creators"])  # ['creator_id', 'page_name', 'display_name', ...]
+```
+
+### Key Database Tables
+
+| Table | Records | Purpose | Key Columns |
+|-------|---------|---------|-------------|
+| creators | 36 | Creator profiles | creator_id, page_name, display_name, page_type, current_active_fans |
+| creator_personas | 35 | Voice profiles | creator_id, primary_tone, secondary_tone, emoji_frequency, slang_level |
+| caption_bank | 19,590 | Caption library | caption_id, caption_text, performance_score, freshness_score, tone |
+| vault_matrix | 1,188 | Content inventory | creator_id, content_type_id, has_content |
+| content_types | 33 | Content categories | content_type_id, type_name, priority_tier |
+| mass_messages | 66,826 | Historical performance | creator_id, sending_time, sending_hour, earnings |
+| volume_assignments | 36 | Volume levels | creator_id, volume_level, ppv_per_day, bump_per_day |
+
+### Common Query Patterns
+
+**Get creator by name:**
+```sql
+SELECT * FROM creators
+WHERE page_name = 'grace_bennett' OR display_name = 'Grace Bennett';
+```
+
+**Get persona for matching:**
+```sql
+SELECT primary_tone, secondary_tone, emoji_frequency, slang_level
+FROM creator_personas
+WHERE creator_id = ?;
+```
+
+**Get vault content types:**
+```sql
+SELECT vm.content_type_id, ct.type_name
+FROM vault_matrix vm
+JOIN content_types ct ON vm.content_type_id = ct.content_type_id
+WHERE vm.creator_id = ? AND vm.has_content = 1;
+```
+
+**Get schedulable captions:**
+```sql
+SELECT cb.caption_id, cb.caption_text, cb.performance_score, cb.freshness_score
+FROM caption_bank cb
+WHERE cb.is_active = 1
+  AND cb.freshness_score >= 30
+  AND (cb.creator_id = ? OR cb.is_universal = 1)
+ORDER BY cb.performance_score DESC, cb.freshness_score DESC
+LIMIT 500;
+```
+
+**Get best performing hours (90-day lookback):**
+```sql
+SELECT sending_hour, COUNT(*) as count, AVG(earnings) as avg_earnings
+FROM mass_messages
+WHERE creator_id = ? AND message_type = 'ppv'
+  AND sending_time >= datetime('now', '-90 days')
+GROUP BY sending_hour
+HAVING COUNT(*) >= 3
+ORDER BY avg_earnings DESC
+LIMIT 10;
+```
+
+### Full Schema Documentation
+
+For complete schema documentation including:
+- All 36+ tables with full column descriptions
+- Constraints, indexes, and triggers
+- Data quality notes and warnings
+- Views and common queries
+- Pipeline-to-table mapping
+
+See: [references/database-schema.md](./references/database-schema.md)
 
 ## Version History
+
+### v3.2.0 (2025-12-10)
+**Comprehensive Fixes + Semantic Cache + Schema Validation**
+
+**Validation System:**
+- FIXED: Now enforces full 31 validation rules (V001-V018 core + V020-V032 extended)
+- NEW: V032 PERFORMANCE_MINIMUM rule for low-scoring captions
+- Accurate rule documentation reflecting actual implementation
+
+**Configuration:**
+- NEW: Externalized selection config to `config/business_rules.yaml`
+- NEW: Volume tier thresholds corrected: Low <1K, Mid 1-5K, High 5-15K, Ultra 15K+
+- PPV counts: Low=2-3/day, Mid=3-4/day, High=4-5/day, Ultra=5-6/day
+
+**Semantic Analysis:**
+- NEW: `SemanticBoostCache` for persisting Claude's analysis between sessions
+- NEW: `--semantic-file` CLI option to load pre-computed semantic boosts
+- NEW: `--check-semantic-cache` to verify cache existence before generation
+- Cache location: `~/.eros/schedules/semantic/{creator}/{week}_semantic.json`
+
+**Schema & Database:**
+- NEW: Schema validation on startup via `validate_schema()`
+- NEW: `SchemaValidationError` for missing required columns
+- NEW: `secondary_tone` field support in creator personas
+- 2025 pricing rates applied via content type normalization
+
+**Troubleshooting:**
+- NEW: Comprehensive troubleshooting section with common errors
+- Documented solutions for CaptionExhaustionError, schema validation failures
+- Debug commands for database connectivity and semantic cache
 
 ### v3.1.0 (2025-12-09)
 **Unified Entry Point & 20 Content Types (Phase 5B)**
@@ -1043,9 +1324,9 @@ The system supports 20 schedulable content types organized in 4 priority tiers:
 - SAME_HOOK_PENALTY: 0.7x weight for consecutive same hooks
 - Validation rules V015/V016 for hook rotation and diversity
 
-**Extended Validation (30 Rules Total):**
+**Extended Validation (31 Rules Total):**
 - V001-V018: Core validation rules (existing)
-- V020-V031: Extended content type rules (V019 intentionally skipped)
+- V020-V032: Extended content type rules (V019 intentionally skipped)
 - Auto-correction for 10 issue types including spacing, duplicates, page type violations
 - Self-healing validation with max 2 passes
 
@@ -1067,6 +1348,14 @@ The system supports 20 schedulable content types organized in 4 priority tiers:
 - 9-step schedule generation pipeline
 - Basic validation and business rules
 - Volume optimization by fan count
+
+### Breaking Changes in v3.2
+
+| Change | Impact | Migration |
+|--------|--------|-----------|
+| Schema validation | Scripts may fail if DB missing `secondary_tone` column | Add column or use `--skip-schema-validation` |
+| 31 validation rules | V032 now enforced for performance scores | Review performance_warning_threshold in config |
+| Config externalization | Some hardcoded values now in YAML | Use env vars or config file overrides |
 
 ### Breaking Changes in v3.1
 

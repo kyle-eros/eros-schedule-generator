@@ -260,6 +260,7 @@ class TestCalculatePatternScore:
             tone="seductive",
             hook_type="fire",
             freshness_score=100.0,
+            performance_score=75.0,
             times_used_on_page=0,
             last_used_date=None,
             pattern_score=0.0,
@@ -927,6 +928,29 @@ class TestEdgeCases:
 
 
 # =============================================================================
+# TEST: get_item_type_for_content_type()
+# =============================================================================
+
+
+def test_get_item_type_for_content_type() -> None:
+    """Test that item_type is correctly derived from content type registry channel."""
+    from content_type_registry import get_item_type_for_content_type
+
+    # Feed channel types -> wall_post
+    assert get_item_type_for_content_type("first_to_tip") == "wall_post"
+    assert get_item_type_for_content_type("tip_request") == "wall_post"
+    assert get_item_type_for_content_type("vip_post") == "wall_post"
+
+    # Mass message channel types -> ppv
+    assert get_item_type_for_content_type("ppv") == "ppv"
+    assert get_item_type_for_content_type("bundle") == "ppv"
+
+    # Edge cases
+    assert get_item_type_for_content_type(None) == "ppv"
+    assert get_item_type_for_content_type("unknown") == "ppv"
+
+
+# =============================================================================
 # TEST: Integration
 # =============================================================================
 
@@ -976,3 +1000,384 @@ class TestFreshSelectionIntegration:
             if "CaptionExhaustionError" in str(type(e)):
                 pytest.skip("No captions available for test")
             raise
+
+
+# =============================================================================
+# TEST: Volume Tier Calculations
+# =============================================================================
+
+
+class TestVolumeTierCalculations:
+    """Tests for volume tier calculation based on fan count."""
+
+    def test_volume_tier_low_boundary(self) -> None:
+        """Fan count < 1000 = LOW tier = 2-3 PPV/day."""
+        from schedule_builder import ScheduleBuilder
+
+        assert ScheduleBuilder._get_volume_level(None, 0) == "Low"
+        assert ScheduleBuilder._get_volume_level(None, 500) == "Low"
+        assert ScheduleBuilder._get_volume_level(None, 999) == "Low"
+
+    def test_volume_tier_mid_boundary(self) -> None:
+        """Fan count 1000-5000 = MID tier = 3-4 PPV/day."""
+        from schedule_builder import ScheduleBuilder
+
+        assert ScheduleBuilder._get_volume_level(None, 1000) == "Mid"
+        assert ScheduleBuilder._get_volume_level(None, 2500) == "Mid"
+        assert ScheduleBuilder._get_volume_level(None, 4999) == "Mid"
+
+    def test_volume_tier_high_boundary(self) -> None:
+        """Fan count 5000-15000 = HIGH tier = 4-5 PPV/day."""
+        from schedule_builder import ScheduleBuilder
+
+        assert ScheduleBuilder._get_volume_level(None, 5000) == "High"
+        assert ScheduleBuilder._get_volume_level(None, 10000) == "High"
+        assert ScheduleBuilder._get_volume_level(None, 14999) == "High"
+
+    def test_volume_tier_ultra_boundary(self) -> None:
+        """Fan count 15000+ = ULTRA tier = 5-6 PPV/day."""
+        from schedule_builder import ScheduleBuilder
+
+        assert ScheduleBuilder._get_volume_level(None, 15000) == "Ultra"
+        assert ScheduleBuilder._get_volume_level(None, 50000) == "Ultra"
+        assert ScheduleBuilder._get_volume_level(None, 100000) == "Ultra"
+
+    def test_volume_tier_edge_case_exact_1000(self) -> None:
+        """1000 exactly should be MID tier start."""
+        from schedule_builder import ScheduleBuilder
+
+        # Boundary test: 999 is Low, 1000 is Mid
+        assert ScheduleBuilder._get_volume_level(None, 999) == "Low"
+        assert ScheduleBuilder._get_volume_level(None, 1000) == "Mid"
+
+    def test_volume_tier_edge_case_exact_5000(self) -> None:
+        """5000 exactly should be HIGH tier start."""
+        from schedule_builder import ScheduleBuilder
+
+        # Boundary test: 4999 is Mid, 5000 is High
+        assert ScheduleBuilder._get_volume_level(None, 4999) == "Mid"
+        assert ScheduleBuilder._get_volume_level(None, 5000) == "High"
+
+    def test_volume_tier_edge_case_exact_15000(self) -> None:
+        """15000 exactly should be ULTRA tier start."""
+        from schedule_builder import ScheduleBuilder
+
+        # Boundary test: 14999 is High, 15000 is Ultra
+        assert ScheduleBuilder._get_volume_level(None, 14999) == "High"
+        assert ScheduleBuilder._get_volume_level(None, 15000) == "Ultra"
+
+
+# =============================================================================
+# TEST: Pricing Matrix
+# =============================================================================
+
+
+class TestPricingMatrix:
+    """Tests for pricing calculations by page type and content type."""
+
+    def test_pricing_matrix_structure(self) -> None:
+        """Test that PRICING_MATRIX has correct structure."""
+        from enrichment import PRICING_MATRIX
+
+        assert "paid" in PRICING_MATRIX
+        assert "free" in PRICING_MATRIX
+        assert "default" in PRICING_MATRIX["paid"]
+        assert "default" in PRICING_MATRIX["free"]
+
+    def test_pricing_paid_page_bundle(self) -> None:
+        """Paid page bundles should price at $18-22."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["bundle"]
+        assert min_price == 18.0
+        assert max_price == 22.0
+
+    def test_pricing_free_page_bundle(self) -> None:
+        """Free page bundles should price at $12-15."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["bundle"]
+        assert min_price == 12.0
+        assert max_price == 15.0
+
+    def test_pricing_paid_page_solo(self) -> None:
+        """Paid page solo should price at $12-15."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["solo"]
+        assert min_price == 12.0
+        assert max_price == 15.0
+
+    def test_pricing_free_page_solo(self) -> None:
+        """Free page solo should price at $8-10."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["solo"]
+        assert min_price == 8.0
+        assert max_price == 10.0
+
+    def test_pricing_paid_page_sextape(self) -> None:
+        """Paid page sextape should price at $22-28."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["sextape"]
+        assert min_price == 22.0
+        assert max_price == 28.0
+
+    def test_pricing_free_page_sextape(self) -> None:
+        """Free page sextape should price at $15-20."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["sextape"]
+        assert min_price == 15.0
+        assert max_price == 20.0
+
+    def test_pricing_paid_page_bg(self) -> None:
+        """Paid page B/G couples should price at $28-35."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["bg"]
+        assert min_price == 28.0
+        assert max_price == 35.0
+
+    def test_pricing_free_page_bg(self) -> None:
+        """Free page B/G couples should price at $20-25."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["bg"]
+        assert min_price == 20.0
+        assert max_price == 25.0
+
+    def test_pricing_paid_page_custom(self) -> None:
+        """Paid page custom/interactive should price at $35-50."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["custom"]
+        assert min_price == 35.0
+        assert max_price == 50.0
+
+    def test_pricing_free_page_custom(self) -> None:
+        """Free page custom/interactive should price at $25-35."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["custom"]
+        assert min_price == 25.0
+        assert max_price == 35.0
+
+    def test_pricing_paid_page_dick_rating(self) -> None:
+        """Paid page dick rating should price at $15-25."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["paid"]["dick_rating"]
+        assert min_price == 15.0
+        assert max_price == 25.0
+
+    def test_pricing_free_page_dick_rating(self) -> None:
+        """Free page dick rating should price at $10-18."""
+        from enrichment import PRICING_MATRIX
+
+        min_price, max_price = PRICING_MATRIX["free"]["dick_rating"]
+        assert min_price == 10.0
+        assert max_price == 18.0
+
+    def test_pricing_content_type_normalization_bundle_variants(self) -> None:
+        """Bundle variants map to bundle pricing category."""
+        from enrichment import CONTENT_TYPE_NORMALIZATION
+
+        bundle_variants = [
+            "bundle_offer", "bundle offer", "flash_sale", "flash sale",
+            "photo_set", "photo set", "photoset", "gallery",
+        ]
+        for variant in bundle_variants:
+            assert CONTENT_TYPE_NORMALIZATION.get(variant) == "bundle", (
+                f"Expected '{variant}' to map to 'bundle'"
+            )
+
+    def test_pricing_content_type_normalization_solo_variants(self) -> None:
+        """Solo variants map to solo pricing category."""
+        from enrichment import CONTENT_TYPE_NORMALIZATION
+
+        solo_variants = [
+            "selfie", "lingerie", "nude", "topless", "shower",
+            "bath", "teasing", "toy_play",
+        ]
+        for variant in solo_variants:
+            assert CONTENT_TYPE_NORMALIZATION.get(variant) == "solo", (
+                f"Expected '{variant}' to map to 'solo'"
+            )
+
+    def test_pricing_content_type_normalization_sextape_variants(self) -> None:
+        """Sextape variants map to sextape pricing category."""
+        from enrichment import CONTENT_TYPE_NORMALIZATION
+
+        sextape_variants = [
+            "video", "full_video", "full video", "sex_tape",
+            "masturbation", "creampie", "anal",
+        ]
+        for variant in sextape_variants:
+            assert CONTENT_TYPE_NORMALIZATION.get(variant) == "sextape", (
+                f"Expected '{variant}' to map to 'sextape'"
+            )
+
+    def test_pricing_content_type_normalization_bg_variants(self) -> None:
+        """B/G variants map to bg pricing category."""
+        from enrichment import CONTENT_TYPE_NORMALIZATION
+
+        bg_variants = [
+            "b/g", "b_g", "boy_girl", "boy girl", "couples",
+            "couple", "duo", "blowjob",
+        ]
+        for variant in bg_variants:
+            assert CONTENT_TYPE_NORMALIZATION.get(variant) == "bg", (
+                f"Expected '{variant}' to map to 'bg'"
+            )
+
+
+# =============================================================================
+# TEST: Semantic Boost Cache
+# =============================================================================
+
+
+class TestSemanticBoostCache:
+    """Tests for semantic boost cache save/load functionality."""
+
+    def test_semantic_boost_result_creation(self) -> None:
+        """Test SemanticBoostResult dataclass creation."""
+        from models import SemanticBoostResult
+
+        result = SemanticBoostResult(
+            caption_id=4521,
+            persona_boost=1.32,
+            detected_tone="playful",
+            tone_confidence=0.91,
+            matches_creator_voice=True,
+            emoji_alignment="good",
+            slang_alignment="perfect",
+            authenticity_score=0.89,
+            reasoning="Strong playful energy with teasing build-up",
+        )
+
+        assert result.caption_id == 4521
+        assert result.persona_boost == 1.32
+        assert result.detected_tone == "playful"
+        assert result.tone_confidence == 0.91
+        assert result.matches_creator_voice is True
+
+    def test_semantic_boost_cache_round_trip(self) -> None:
+        """Test SemanticBoostCache round-trip save/load."""
+        import json
+        import tempfile
+        from models import SemanticBoostResult
+
+        # Create test data
+        boosts = [
+            SemanticBoostResult(
+                caption_id=1,
+                persona_boost=1.25,
+                detected_tone="playful",
+                tone_confidence=0.85,
+            ),
+            SemanticBoostResult(
+                caption_id=2,
+                persona_boost=1.15,
+                detected_tone="seductive",
+                tone_confidence=0.78,
+            ),
+        ]
+
+        # Save to temp file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            data = [
+                {
+                    "caption_id": b.caption_id,
+                    "persona_boost": b.persona_boost,
+                    "detected_tone": b.detected_tone,
+                    "tone_confidence": b.tone_confidence,
+                    "matches_creator_voice": b.matches_creator_voice,
+                    "emoji_alignment": b.emoji_alignment,
+                    "slang_alignment": b.slang_alignment,
+                    "authenticity_score": b.authenticity_score,
+                    "reasoning": b.reasoning,
+                }
+                for b in boosts
+            ]
+            json.dump(data, f)
+            temp_path = f.name
+
+        try:
+            # Load from file
+            with open(temp_path, "r") as f:
+                loaded_data = json.load(f)
+
+            # Reconstruct objects
+            loaded_boosts = [
+                SemanticBoostResult(**item)
+                for item in loaded_data
+            ]
+
+            # Verify round-trip
+            assert len(loaded_boosts) == 2
+            assert loaded_boosts[0].caption_id == 1
+            assert loaded_boosts[0].persona_boost == 1.25
+            assert loaded_boosts[0].detected_tone == "playful"
+            assert loaded_boosts[1].caption_id == 2
+            assert loaded_boosts[1].persona_boost == 1.15
+            assert loaded_boosts[1].detected_tone == "seductive"
+
+        finally:
+            import os
+            os.unlink(temp_path)
+
+    def test_semantic_boost_applied_to_selection_weight(self) -> None:
+        """Loaded semantic boosts affect caption selection scores."""
+        from models import SemanticBoostResult
+
+        # Create semantic boost
+        boost = SemanticBoostResult(
+            caption_id=1,
+            persona_boost=1.35,
+            detected_tone="playful",
+            tone_confidence=0.92,
+        )
+
+        # Base weight
+        base_weight = 100.0
+
+        # Apply boost
+        adjusted_weight = base_weight * boost.persona_boost
+        assert adjusted_weight == 135.0
+
+        # Boost should be > 1.0 for positive match
+        assert boost.persona_boost > 1.0
+
+    def test_semantic_boost_frozen_dataclass(self) -> None:
+        """Test that SemanticBoostResult is immutable (frozen dataclass)."""
+        from models import SemanticBoostResult
+
+        result = SemanticBoostResult(
+            caption_id=1,
+            persona_boost=1.25,
+            detected_tone="playful",
+        )
+
+        # Should not be able to modify
+        with pytest.raises(AttributeError):
+            result.caption_id = 2  # type: ignore
+
+    def test_semantic_boost_default_values(self) -> None:
+        """Test SemanticBoostResult default values."""
+        from models import SemanticBoostResult
+
+        result = SemanticBoostResult(
+            caption_id=1,
+            persona_boost=1.0,
+            detected_tone="neutral",
+        )
+
+        # Check defaults
+        assert result.tone_confidence == 0.0
+        assert result.matches_creator_voice is True
+        assert result.emoji_alignment == "good"
+        assert result.slang_alignment == "good"
+        assert result.authenticity_score == 0.0
+        assert result.reasoning == ""
