@@ -13,6 +13,8 @@
 # Python Cache & Compiled Files
 # -----------------------------------------------------------------------------
 __pycache__/
+.mypy_cache/
+.ruff_cache/
 *.py[cod]
 *$py.class
 *.so
