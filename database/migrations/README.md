@@ -2,7 +2,7 @@
 
 > Migration system documentation for the EROS Schedule Generator database schema. All migrations are designed to be idempotent and can be safely run multiple times.
 
-**Version:** 2.2.0 | **Updated:** 2025-12-16
+**Version:** 2.3.0 | **Updated:** 2025-12-18
 
 ---
 
@@ -521,4 +521,4 @@ VALUES ('XXX', 'Migration description');
 
 ---
 
-*Version 2.2.0 | Last Updated: 2025-12-16*
+*Version 2.3.0 | Last Updated: 2025-12-18*

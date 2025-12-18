@@ -1,11 +1,11 @@
 # EROS Schedule Generator
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue)
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![Claude Code](https://img.shields.io/badge/claude--code-2025-purple)
 ![Status](https://img.shields.io/badge/status-production-brightgreen)
 
-AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 8 specialized agents to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
+AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 9 specialized agents across 9 phases to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
 
 ## Overview
 
@@ -13,9 +13,9 @@ EROS (Engagement and Revenue Optimization System) is an intelligent scheduling p
 
 ## Key Features
 
-- **8 Specialized AI Agents Working in Concert** - Multi-agent pipeline with performance analysis, content curation, timing optimization, and quality validation
+- **9 Specialized AI Agents Working in Concert** - Multi-agent pipeline with performance analysis, content curation, timing optimization, authenticity engine, and quality validation
 - **22 Distinct Send Types Across 3 Categories** - Revenue (9 types), Engagement (9 types), Retention (4 types)
-- **Intelligent Audience Targeting** - Segment-based targeting with filter criteria for paid/free pages and targeting options
+- **Anti-AI Humanization** - Authenticity engine ensures captions pass platform AI detection while maintaining persona consistency
 - **ML-Optimized Timing Recommendations** - Historical analysis of 71,998+ messages to identify peak engagement windows
 - **Performance-Driven Content Selection** - TOP/MID/LOW/AVOID rankings with freshness scoring to prevent caption fatigue
 - **Automated PPV Followup Generation** - Smart followup sequences with configurable delays
@@ -66,28 +66,31 @@ Generate schedule for alexia using only revenue types
 
 ## System Architecture
 
-### 7-Phase Pipeline
+### 9-Phase Pipeline
 
 1. **Performance Analysis** - Saturation/opportunity scoring from volume performance tracking
 2. **Send Type Allocation** - Category-based distribution with constraint validation
 3. **Content Curation** - Caption selection with freshness and performance scoring
-4. **Audience Targeting** - Segment assignment based on send type and page type
-5. **Timing Optimization** - Historical analysis for optimal posting windows
-6. **Followup Generation** - Auto-generate PPV followups with delay rules
-7. **Quality Validation** - Final approval with comprehensive checks
+4. **Timing Optimization** - Historical analysis for optimal posting windows
+5. **Followup Generation** - Auto-generate PPV followups with delay rules
+6. **Authenticity Engine** - Anti-AI humanization and persona consistency
+7. **Schedule Assembly** - Final schedule structure creation
+8. **Revenue Optimization** - Pricing and positioning optimization
+9. **Quality Validation** - Final approval with comprehensive checks
 
-### 8 Specialized Agents
+### 9 Specialized Agents
 
-| Agent | Model | Responsibility |
-|-------|-------|----------------|
-| performance-analyst | Sonnet | Volume calibration and saturation detection |
-| send-type-allocator | Sonnet | Daily send type distribution |
-| content-curator | Sonnet | Caption selection with freshness scoring |
-| audience-targeter | Sonnet | Audience segment assignment |
-| timing-optimizer | Sonnet | Optimal posting time calculation |
-| followup-generator | Sonnet | PPV followup automation |
-| schedule-assembler | Sonnet | Final schedule assembly |
-| quality-validator | Sonnet | Requirements validation |
+| Agent | Model | Phase | Responsibility |
+|-------|-------|-------|----------------|
+| performance-analyst | Sonnet | 1 | Volume calibration and saturation detection |
+| send-type-allocator | Sonnet | 2 | Daily send type distribution |
+| content-curator | Sonnet | 3 | Caption selection with freshness scoring |
+| timing-optimizer | Sonnet | 4 | Optimal posting time calculation |
+| followup-generator | Sonnet | 5 | PPV followup automation |
+| authenticity-engine | Opus | 6 | Anti-AI humanization [NEW] |
+| schedule-assembler | Sonnet | 7 | Final schedule assembly |
+| revenue-optimizer | Sonnet | 8 | Pricing optimization [NEW] |
+| quality-validator | Sonnet | 9 | Requirements validation |
 
 ## Documentation
 
@@ -95,8 +98,8 @@ Generate schedule for alexia using only revenue types
 |----------|-------------|
 | [Getting Started](docs/GETTING_STARTED.md) | Step-by-step onboarding guide |
 | [User Guide](docs/USER_GUIDE.md) | Comprehensive user documentation |
-| [API Reference](docs/API_REFERENCE.md) | Complete MCP tool documentation (17 tools) |
-| [Send Type Reference](docs/SEND_TYPE_REFERENCE.md) | All 21 send types with examples |
+| [API Reference](docs/API_REFERENCE.md) | Complete MCP tool documentation (16 tools) |
+| [Send Type Reference](docs/SEND_TYPE_REFERENCE.md) | All 22 send types with examples |
 | [Architecture Blueprint](docs/SCHEDULE_GENERATOR_BLUEPRINT.md) | System design and technical details |
 | [Enhanced Send Type System](docs/ENHANCED_SEND_TYPE_ARCHITECTURE.md) | v2.0 send type implementation |
 
@@ -106,9 +109,9 @@ Generate schedule for alexia using only revenue types
 EROS-SD-MAIN-PROJECT/
 ├── .claude/
 │   ├── skills/eros-schedule-generator/    # Main skill entry point
-│   └── agents/                             # 8 specialized agent definitions
+│   └── agents/                             # 9 specialized agent definitions
 ├── mcp/
-│   └── eros_db_server.py                   # MCP server (17 database tools)
+│   └── eros_db_server.py                   # MCP server (16 database tools)
 ├── python/
 │   ├── analytics/                          # Performance scoring algorithms
 │   ├── caption/                            # Caption selection logic
@@ -132,7 +135,7 @@ EROS-SD-MAIN-PROJECT/
 
 - `creators` - Creator profiles with performance tiers
 - `caption_bank` - 58,763 captions with performance scores
-- `send_types` - 21 send type configurations
+- `send_types` - 22 send type configurations
 - `mass_messages` - Historical performance data
 - `volume_performance_tracking` - Saturation/opportunity metrics
 - `top_content_types` - Content rankings (TOP/MID/LOW/AVOID)
@@ -162,7 +165,15 @@ EROS-SD-MAIN-PROJECT/
 
 ## Version History
 
-### v2.2.0 (Current)
+### v2.3.0 (Current)
+- Removed audience targeting system (manual in OnlyFans platform)
+- Added authenticity-engine agent (Phase 6) for anti-AI humanization
+- Added revenue-optimizer agent (Phase 8) for pricing optimization
+- Expanded pipeline from 7 to 9 phases
+- Consolidated from 17 to 16 MCP tools
+- Documentation sync and version alignment
+
+### v2.2.0
 - Version consistency standardization across all files
 - Enhanced send type system with 22 types
 - Comprehensive API documentation
@@ -172,7 +183,7 @@ EROS-SD-MAIN-PROJECT/
 ### v2.0.0
 - Multi-agent architecture
 - MCP database integration
-- 17 database tools
+- 16 database tools
 - Performance-driven content selection
 
 ## License
@@ -194,4 +205,4 @@ This is a proprietary system. Contributions are managed internally by the EROS D
 
 ---
 
-**Built with Claude Code MAX** | **Powered by Anthropic Sonnet 4.5** | **Version 2.2.0**
+**Built with Claude Code MAX** | **Powered by Anthropic Sonnet 4.5** | **Version 2.3.0**

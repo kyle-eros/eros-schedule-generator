@@ -4427,10 +4427,10 @@ save_schedule(creator_id, week_start, items)
 ✓ Performance & Analytics: 3 tools
 ✓ Content & Captions: 3 tools
 ✓ Send Type Configuration: 3 tools
-✓ Targeting & Channels: 2 tools
+✓ Channels: 1 tool
 ✓ Schedule Operations: 2 tools
 ✓ Deprecated: 1 tool
-**Total: 17 tools**
+**Total: 16 tools**
 
 ---
 
