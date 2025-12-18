@@ -52,6 +52,11 @@ build/
 .pytest_cache/
 *.egg-info/
 
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+
 # Generated outputs (local only)
 generated/
 output/
