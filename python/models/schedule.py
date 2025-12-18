@@ -16,7 +16,7 @@ class ScheduleItem:
     for execution and tracking.
 
     Attributes:
-        send_type_key: Send type identifier (e.g., 'ppv_video')
+        send_type_key: Send type identifier (e.g., 'ppv_unlock')
         scheduled_date: Date for send (YYYY-MM-DD)
         scheduled_time: Time for send (HH:MM)
         category: 'revenue', 'engagement', or 'retention'

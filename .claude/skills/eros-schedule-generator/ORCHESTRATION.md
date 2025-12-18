@@ -6,34 +6,44 @@ Complete technical reference for the EROS Schedule Generator pipeline orchestrat
 
 ## Pipeline Overview
 
-The EROS schedule generation pipeline executes in **7 sequential phases**, transforming creator data and configuration into an optimized weekly schedule with **authentic daily variation**. Each phase has defined inputs, outputs, and validation checkpoints.
+The EROS schedule generation pipeline executes in **9 sequential phases**, transforming creator data and configuration into an optimized weekly schedule with **authentic daily variation**. Each phase has defined inputs, outputs, and validation checkpoints.
 
-**Daily Variation System**: Phases 2 and 5 incorporate strategy rotation, time offsets, and jitter to create natural schedule variation that prevents repetitive patterns. This mimics human scheduling behavior and sustains audience engagement.
+**Daily Variation System**: Phases 2 and 4 incorporate strategy rotation, time offsets, and jitter to create natural schedule variation that prevents repetitive patterns. This mimics human scheduling behavior and sustains audience engagement.
+
+**New in v2.3**: Phase 6 (authenticity-engine) and Phase 8 (revenue-optimizer) have been added to enhance humanization and pricing optimization.
 
 ```
-+--------------------------------------------------------------------+
-|                     EROS SCHEDULE GENERATION PIPELINE              |
-+--------------------------------------------------------------------+
-|                                                                    |
-|  PHASE 1          PHASE 2          PHASE 3          PHASE 4       |
-|  +---------+      +---------+      +---------+      +---------+   |
-|  | INIT    |----->| SEND    |----->| CONTENT |----->| AUDIENCE|   |
-|  |         |      | TYPE    |      | MATCHING|      | TARGET  |   |
-|  +---------+      | ALLOC   |      +---------+      +---------+   |
-|                   +---------+                             |       |
-|                                                           v       |
-|  PHASE 7          PHASE 6          PHASE 5          +---------+   |
-|  +---------+      +---------+      +---------+      |         |   |
-|  | ASSEMBLY|<-----| FOLLOWUP|<-----| TIMING  |<-----|         |   |
-|  | & VALID |      | GEN     |      | OPTIM   |      +---------+   |
-|  +---------+      +---------+      +---------+                    |
-|       |                                                           |
-|       v                                                           |
-|  +---------+                                                      |
-|  | DATABASE|  save_schedule()                                     |
-|  +---------+                                                      |
-|                                                                    |
-+--------------------------------------------------------------------+
++------------------------------------------------------------------------------+
+|                        EROS SCHEDULE GENERATION PIPELINE (9 PHASES)          |
++------------------------------------------------------------------------------+
+|                                                                              |
+|  PHASE 1          PHASE 2          PHASE 3          PHASE 4          PHASE 5 |
+|  +---------+      +---------+      +---------+      +---------+      +------+ |
+|  | INIT    |----->| SEND    |----->| CONTENT |----->| TIMING  |----->|FOLLOW| |
+|  | perf-   |      | TYPE    |      | MATCHING|      | OPTIM   |      |UP GEN| |
+|  | analyst |      | ALLOC   |      | curator |      | timing  |      |      | |
+|  +---------+      +---------+      +---------+      +---------+      +------+ |
+|                                                                          |    |
+|                                                                          v    |
+|  PHASE 9          PHASE 8          PHASE 7          PHASE 6         +------+ |
+|  +---------+      +---------+      +---------+      +---------+     |      | |
+|  | QUALITY |<-----| REVENUE |<-----| SCHEDULE|<-----| AUTHENT |<----+      | |
+|  | VALID   |      | OPTIM   |      | ASSEMBLY|      | ENGINE  |            | |
+|  +---------+      +---------+      +---------+      +---------+            | |
+|       |                                                                      |
+|       v                                                                      |
+|  +---------+                                                                 |
+|  | DATABASE|  save_schedule()                                                |
+|  +---------+                                                                 |
+|                                                                              |
++------------------------------------------------------------------------------+
+
+Pipeline Flow:
+  Phase 1 (performance-analyst) --> Phase 2 (send-type-allocator)
+       --> Phase 3 (content-curator) --> Phase 4 (timing-optimizer)
+       --> Phase 5 (followup-generator) --> Phase 6 (authenticity-engine) [NEW]
+       --> Phase 7 (schedule-assembler) --> Phase 8 (revenue-optimizer) [NEW]
+       --> Phase 9 (quality-validator) --> save_schedule()
 ```
 
 ---
@@ -132,7 +142,7 @@ class OptimizedVolumeResult:
     elasticity_capped: bool          # True if diminishing returns applied
     adjustments_applied: list[str]   # Full audit trail
 
-    # Warnings (MUST be surfaced to Phase 7)
+    # Warnings (MUST be surfaced to Phase 9)
     caption_warnings: list[str]      # e.g., ["Low captions for ppv_followup: <3 usable"]
 
     # Tracking
@@ -197,27 +207,27 @@ Before proceeding to Phase 2, verify these fields are populated:
 - [ ] `confidence_score` is between 0.0 and 1.0
 - [ ] `adjustments_applied` contains at least `["base_tier_calculation"]`
 
-#### OptimizedVolumeResult Consumption Matrix (NEW v2.3)
+#### OptimizedVolumeResult Consumption Matrix (v2.3)
 
 **CRITICAL**: This matrix shows which phases consume which OptimizedVolumeResult fields. Each phase MUST consume its designated fields.
 
-| Field | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 | Phase 7a | Phase 7b |
-|-------|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:--------:|:--------:|
-| `revenue_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | ✓ Validate |
-| `engagement_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | ✓ Validate |
-| `retention_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | ✓ Validate |
-| `weekly_distribution` | ✓ Load | ✓✓ **Primary** | - | - | - | - | - | ✓ Validate |
-| `dow_multipliers_used` | ✓ Load | ✓ Transparency | - | - | - | - | ✓ Output | - |
-| `content_allocations` | ✓ Load | ✓ Weighting | ✓ Select | - | - | - | - | - |
-| `confidence_score` | ✓ Load | ✓ Dampening | - | - | - | - | ✓ Pricing | ✓✓ **Critical** |
-| `message_count` | ✓ Load | - | - | - | - | - | - | ✓ Context |
-| `fused_saturation` | ✓ Load | - | - | - | - | - | ✓ Output | ✓ Context |
-| `fused_opportunity` | ✓ Load | - | - | - | - | - | ✓ Output | ✓ Context |
-| `divergence_detected` | ✓ Load | - | - | - | - | - | - | ✓ Warning |
-| `elasticity_capped` | ✓ Load | - | - | - | - | - | - | ✓ Warning |
-| `adjustments_applied` | ✓ Load | - | - | - | - | - | ✓ Output | ✓ Audit |
-| `caption_warnings` | ✓ Load | - | ✓ Alert | - | - | - | - | ✓✓ **Critical** |
-| `prediction_id` | ✓ Load | - | - | - | - | - | ✓ Output | ✓ Tracking |
+| Field | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 | Phase 7 | Phase 8 | Phase 9 |
+|-------|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
+| `revenue_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | ✓ Context | ✓ Validate |
+| `engagement_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | - | ✓ Validate |
+| `retention_per_day` | ✓ Load | ✓ Quotas | - | - | - | - | - | - | ✓ Validate |
+| `weekly_distribution` | ✓ Load | ✓✓ **Primary** | - | - | - | - | - | - | ✓ Validate |
+| `dow_multipliers_used` | ✓ Load | ✓ Transparency | - | - | - | - | ✓ Output | - | - |
+| `content_allocations` | ✓ Load | ✓ Weighting | ✓ Select | - | - | - | - | - | - |
+| `confidence_score` | ✓ Load | ✓ Dampening | - | - | - | ✓ Scoring | - | ✓✓ **Pricing** | ✓✓ **Critical** |
+| `message_count` | ✓ Load | - | - | - | - | - | - | - | ✓ Context |
+| `fused_saturation` | ✓ Load | - | - | - | - | - | ✓ Output | - | ✓ Context |
+| `fused_opportunity` | ✓ Load | - | - | - | - | - | ✓ Output | - | ✓ Context |
+| `divergence_detected` | ✓ Load | - | - | - | - | - | - | - | ✓ Warning |
+| `elasticity_capped` | ✓ Load | - | - | - | - | - | - | - | ✓ Warning |
+| `adjustments_applied` | ✓ Load | - | - | - | - | - | ✓ Output | - | ✓ Audit |
+| `caption_warnings` | ✓ Load | - | ✓ Alert | - | - | - | - | - | ✓✓ **Critical** |
+| `prediction_id` | ✓ Load | - | - | - | - | - | ✓ Output | - | ✓ Tracking |
 
 **Legend:**
 - `✓ Load` = Phase reads and stores the field
@@ -225,6 +235,8 @@ Before proceeding to Phase 2, verify these fields are populated:
 - `✓ Quotas` = Uses field for quota calculation
 - `✓ Dampening` = Uses for confidence adjustments
 - `✓ Weighting` = Uses for weighted selection
+- `✓ Scoring` = Uses for authenticity scoring adjustments
+- `✓✓ **Pricing**` = Critical for price optimization
 - `✓ Output` = Includes in final output
 - `✓ Validate` = Validates against expected ranges
 - `✓✓ **Critical**` = Validation failure causes schedule rejection
@@ -234,8 +246,9 @@ Before proceeding to Phase 2, verify these fields are populated:
 1. **Phase 2 MUST** use `weekly_distribution`, NOT legacy hardcoded DOW modifiers
 2. **Phase 2 MUST** apply dampening when `confidence_score < 0.6`
 3. **Phase 3 MUST** check `caption_warnings` and surface alerts
-4. **Phase 7a MUST** apply `confidence_score` to pricing calculations
-5. **Phase 7b MUST** fail validation if `confidence_score < 0.3` and no manual override
+4. **Phase 6 (authenticity-engine) MUST** factor `confidence_score` into authenticity scoring
+5. **Phase 8 (revenue-optimizer) MUST** apply `confidence_score` to pricing calculations
+6. **Phase 9 (quality-validator) MUST** fail validation if `confidence_score < 0.3` and no manual override
 
 #### Parallel Execution Opportunities (NEW v2.3)
 
@@ -266,7 +279,7 @@ FOR each day (7 days):
 ```
 **Latency Savings:** ~70% reduction for content matching
 
-**Phase 4 - Full Parallelization:**
+**Phase 4 (Timing) - Send Type Details Parallelization:**
 ```
 [PARALLEL - All send type details at once]
 FOR ALL unique send_type_keys in schedule:
@@ -276,10 +289,12 @@ FOR ALL unique send_type_keys in schedule:
 
 **Non-Parallelizable Operations:**
 - Phase 2 → Phase 3: Must complete allocation before content selection
-- Phase 5 → Phase 6: Must complete timing before followup generation
-- Phase 6 → Phase 7a: Must complete followups before assembly
-- Phase 7a → Phase 7b: Must complete assembly before validation
-- Phase 7b → save_schedule: Must pass validation before saving
+- Phase 4 → Phase 5: Must complete timing before followup generation
+- Phase 5 → Phase 6: Must complete followups before authenticity processing
+- Phase 6 → Phase 7: Must complete authenticity before assembly
+- Phase 7 → Phase 8: Must complete assembly before revenue optimization
+- Phase 8 → Phase 9: Must complete optimization before validation
+- Phase 9 → save_schedule: Must pass validation before saving
 
 ### 1.3 Load Performance Trends
 
@@ -1086,151 +1101,7 @@ IF no fresh captions available for send_type:
 
 ---
 
-## Phase 4: AUDIENCE TARGETING
-
-**Duration**: ~1 second
-**Objective**: Assign appropriate audience targets for each schedule item
-**Input**: Content assignments, page type, send type requirements
-
-### 4.1 Load Available Targets
-
-```
-MCP CALL: get_audience_targets(
-    page_type = creator.page_type,
-    channel_key = NULL  # Load all, filter per item
-)
-
-RETURNS: Array of applicable audience targets
-
-TARGET CATALOG:
-
-| Target Key         | Display Name          | Page Types  | Channels              |
-|--------------------|-----------------------|-------------|-----------------------|
-| all_active         | All Active Fans       | paid, free  | mass, wall, story     |
-| renew_off          | Renew Off             | paid only   | targeted, mass        |
-| renew_on           | Renew On              | paid only   | targeted, mass        |
-| expired_recent     | Recently Expired      | paid only   | targeted              |
-| expired_all        | All Expired           | paid only   | targeted              |
-| never_purchased    | Never Purchased       | paid, free  | targeted, mass        |
-| recent_purchasers  | Recent Purchasers     | paid, free  | targeted, mass        |
-| high_spenders      | High Spenders         | paid, free  | targeted, mass        |
-| inactive_7d        | Inactive 7 Days       | paid, free  | targeted, mass        |
-| ppv_non_purchasers | PPV Non-Purchasers    | paid, free  | targeted              |
-```
-
-### 4.2 Target Assignment Algorithm
-
-```
-FOR each slot in content_assignments:
-
-    # Get send type targeting requirements
-    details = MCP CALL: get_send_type_details(slot.send_type_key)
-
-    # Check for required target
-    IF details.required_target:
-        slot.target_key = details.required_target
-        # Examples:
-        # - renew_on_message REQUIRES renew_off
-        # - ppv_followup REQUIRES ppv_non_purchasers
-        # - expired_winback REQUIRES expired_recent OR expired_all
-
-    # Apply default target
-    ELSE IF details.default_target:
-        slot.target_key = details.default_target
-
-    # Use broad targeting
-    ELSE:
-        slot.target_key = "all_active"
-
-    # Validate target is applicable
-    target = find_target(slot.target_key)
-    IF creator.page_type NOT IN target.applicable_page_types:
-        # Fallback for incompatible target
-        slot.target_key = "all_active"
-        slot.target_warning = "Target not applicable for page type"
-```
-
-### 4.3 Send Type to Target Mapping
-
-```
-DEFAULT TARGET MAPPING:
-
-| Send Type          | Default Target     | Required Target      | Notes                    |
-|--------------------|--------------------|----------------------|--------------------------|
-| ppv_unlock         | all_active         | -                    | Broad reach for revenue  |
-| ppv_wall           | all_active         | -                    | FREE pages only          |
-| tip_goal           | all_active         | -                    | PAID pages only          |
-| vip_program        | high_spenders      | -                    | Premium targeting        |
-| game_post          | all_active         | -                    | Participation needed     |
-| bundle             | all_active         | -                    | Broad or targeted        |
-| flash_bundle       | all_active         | -                    | Urgency works broadly    |
-| snapchat_bundle    | all_active         | -                    | Nostalgia appeal         |
-| first_to_tip       | all_active         | -                    | Competition needs volume |
-| link_drop          | all_active         | -                    | Maximum reach            |
-| wall_link_drop     | all_active         | -                    | Wall post, no targeting  |
-| bump_normal        | all_active         | -                    | General engagement       |
-| bump_descriptive   | all_active         | -                    | Story content            |
-| bump_text_only     | all_active         | -                    | Light touch              |
-| bump_flyer         | all_active         | -                    | Visual impact            |
-| dm_farm            | all_active         | -                    | Re-engagement option     |
-| like_farm          | all_active         | -                    | Broad participation      |
-| live_promo         | all_active         | -                    | Maximum attendance       |
-| renew_on_post      | all_active         | -                    | Wall post visible to all |
-| renew_on_message   | -                  | renew_off            | MUST target renew_off    |
-| ppv_followup       | -                  | ppv_non_purchasers   | MUST target non-buyers   |
-| expired_winback    | expired_recent     | -                    | Win-back targeting       |
-```
-
-### 4.4 Determine Channel
-
-```
-FOR each slot in content_assignments:
-
-    details = get_send_type_details(slot.send_type_key)
-
-    # Channel is determined by send type platform_feature
-    IF details.platform_feature == "mass_message":
-        slot.channel_key = "mass_message"
-    ELSE IF details.platform_feature == "wall_post":
-        slot.channel_key = "wall_post"
-    ELSE IF details.platform_feature == "targeted_message":
-        slot.channel_key = "targeted_message"
-    ELSE:
-        slot.channel_key = "mass_message"  # Default
-
-    # Validate channel supports targeting
-    channel = get_channel(slot.channel_key)
-    IF slot.target_key != "all_active" AND NOT channel.supports_targeting:
-        slot.target_warning = "Channel does not support targeting"
-        slot.target_key = "all_active"
-```
-
-### Phase 4 Output State
-
-```json
-{
-  "targeted_items": [
-    {
-      "slot_id": "2025-01-20_1",
-      "send_type_key": "ppv_unlock",
-      "channel_key": "mass_message",
-      "target_key": "all_active",
-      "caption": {...}
-    },
-    {
-      "slot_id": "2025-01-20_5",
-      "send_type_key": "renew_on_message",
-      "channel_key": "targeted_message",
-      "target_key": "renew_off",
-      "caption": {...}
-    }
-  ]
-}
-```
-
----
-
-## Phase 5: TIMING OPTIMIZATION (with Daily Variation)
+## Phase 4: TIMING OPTIMIZATION (with Daily Variation)
 
 **Duration**: ~2 seconds
 **Objective**: Calculate optimal posting times with type-specific rules and daily variation
@@ -1553,7 +1424,7 @@ EXPIRATION DEFAULTS:
 
 ---
 
-## Phase 6: FOLLOW-UP GENERATION
+## Phase 5: FOLLOW-UP GENERATION
 
 **Duration**: ~1 second
 **Objective**: Create automatic follow-up items for PPV sends
@@ -1705,7 +1576,7 @@ COMPLETE FOLLOWUP STRUCTURE:
 }
 ```
 
-### Phase 6 Output State
+### Phase 5 Output State
 
 ```json
 {
@@ -1730,11 +1601,116 @@ COMPLETE FOLLOWUP STRUCTURE:
 
 ---
 
-## Phase 7: ASSEMBLY & VALIDATION
+## Phase 6: AUTHENTICITY ENGINE [NEW]
 
-**Duration**: ~2 seconds
-**Objective**: Combine all components, validate, and save to database
-**Input**: All phase outputs
+**Duration**: ~1 second
+**Objective**: Apply anti-AI humanization and persona consistency
+**Input**: Schedule items with captions from followup-generator
+
+### 6.1 Load Persona Profile
+
+```
+MCP CALL: get_persona_profile(creator_id)
+
+EXTRACT:
+  - tone: "playful" | "seductive" | "dominant" | etc.
+  - archetype: "girl_next_door" | "luxury" | "fetish" | etc.
+  - emoji_style: "heavy" | "moderate" | "minimal" | "none"
+  - slang_level: 1-5 scale
+  - voice_samples: [example captions]
+```
+
+### 6.2 Apply Timing Humanization
+
+```
+FOR each item in schedule_items:
+    # Apply timing jitter (+-5 minutes)
+    base_minute = parse_minute(item.scheduled_time)
+    jitter = random(-5, +5)  # But not landing on :00, :15, :30, :45
+
+    # Ensure jitter doesn't create round times
+    new_minute = base_minute + jitter
+    if new_minute % 5 == 0:
+        new_minute += random([-2, -1, 1, 2])
+
+    item.scheduled_time = apply_minute(item.scheduled_time, new_minute)
+    item.timing_humanized = True
+```
+
+### 6.3 Calculate Authenticity Score
+
+```
+FOR each item in schedule_items:
+    score = 100  # Start with perfect score
+
+    # Check for AI-detectable patterns
+    if caption_has_ai_patterns(item.caption_text):
+        score -= 20
+
+    # Check persona alignment
+    if not persona_aligned(item.caption_text, persona):
+        score -= 15
+
+    # Check emoji consistency
+    if emoji_style_mismatch(item.caption_text, persona.emoji_style):
+        score -= 10
+
+    # Check slang level
+    if slang_mismatch(item.caption_text, persona.slang_level):
+        score -= 10
+
+    item.authenticity_score = max(0, score)
+
+    # Flag for review if below threshold
+    if item.authenticity_score < 65:
+        item.needs_review = True
+        item.review_reason = "Low authenticity score"
+```
+
+### 6.4 Humanize Captions (Optional Enhancement)
+
+```
+FOR each item in schedule_items:
+    if item.authenticity_score < 75:
+        # Apply subtle humanization
+        item.caption_text = apply_persona_touches(
+            caption=item.caption_text,
+            persona=persona,
+            confidence_score=volume_config.confidence_score
+        )
+        item.caption_humanized = True
+```
+
+### Phase 6 Output State
+
+```json
+{
+  "humanized_items": [
+    {
+      "slot_id": "2025-01-20_1",
+      "scheduled_time": "19:47:00",  // Jitter applied
+      "timing_humanized": true,
+      "authenticity_score": 85,
+      "caption_text": "Hey babe...",
+      "caption_humanized": false
+    }
+  ],
+  "authenticity_summary": {
+    "items_processed": 48,
+    "average_score": 82.5,
+    "items_needing_review": 3,
+    "timing_jitter_applied": 48
+  }
+}
+```
+
+---
+
+## Phase 7: SCHEDULE ASSEMBLY
+
+**Duration**: ~1 second
+**Objective**: Combine all components into final schedule structure
+**Input**: Humanized items from Phase 6 (authenticity-engine)
 
 ### 7.1 Merge Components
 
@@ -2012,7 +1988,269 @@ RETURN {
 }
 ```
 
-### Phase 7 Output (Final Response)
+### Phase 7 Output State
+
+```json
+{
+  "assembled_schedule": {
+    "creator_id": "alexia",
+    "week_start": "2025-01-20",
+    "total_items": 48,
+    "items": [
+      {
+        "scheduled_date": "2025-01-20",
+        "scheduled_time": "09:03:00",
+        "send_type_key": "bump_normal",
+        "channel_key": "mass_message",
+        "target_key": "all_active",
+        "caption_text": "Good morning sunshine...",
+        "authenticity_score": 85
+      }
+    ]
+  },
+  "assembly_summary": {
+    "by_category": {
+      "revenue": 18,
+      "engagement": 21,
+      "retention": 9
+    },
+    "by_day": {
+      "2025-01-20": 7,
+      "2025-01-21": 7,
+      "2025-01-22": 6,
+      "2025-01-23": 7,
+      "2025-01-24": 7,
+      "2025-01-25": 7,
+      "2025-01-26": 7
+    },
+    "followups_generated": 6
+  }
+}
+```
+
+---
+
+## Phase 8: REVENUE OPTIMIZATION [NEW]
+
+**Duration**: ~1 second
+**Objective**: Optimize pricing and positioning for maximum revenue
+**Input**: Assembled schedule from Phase 7 (schedule-assembler)
+
+### 8.1 Load Revenue Context
+
+```
+MCP CALL: get_volume_config(creator_id)
+EXTRACT: confidence_score, fused_opportunity, fused_saturation
+
+MCP CALL: get_send_type_details(send_type_key) [for each revenue type]
+EXTRACT: requires_price, default_price_range, price_rules
+```
+
+### 8.2 Apply Dynamic Pricing
+
+```
+FOR each item in assembled_schedule where item.category == "revenue":
+    base_price = get_base_price(item.send_type_key, item.content_type)
+
+    # Apply confidence dampening
+    IF confidence_score < 0.8:
+        dampening_factor = 0.9  # HIGH confidence - slight dampening
+    ELSE IF confidence_score < 0.6:
+        dampening_factor = 0.8  # MODERATE confidence
+    ELSE IF confidence_score < 0.4:
+        dampening_factor = 0.7  # LOW confidence
+    ELSE:
+        dampening_factor = 0.6  # VERY LOW confidence
+
+    # Calculate optimized price
+    item.optimized_price = base_price * dampening_factor
+
+    # Apply bundle value framing
+    IF item.send_type_key IN ["bundle", "flash_bundle"]:
+        item.value_framing = calculate_bundle_value_framing(item)
+
+    # Apply first-to-tip rotation
+    IF item.send_type_key == "first_to_tip":
+        item.tip_amount = apply_day_rotation(item.scheduled_date)
+```
+
+### 8.3 Optimize Revenue Positioning
+
+```
+# Ensure high-value items at peak times
+FOR each day in schedule_week:
+    day_revenue_items = filter(items, category="revenue", date=day)
+    peak_hours = get_peak_hours(day)
+
+    # Sort by revenue potential
+    sorted_items = sort_by(day_revenue_items, "expected_revenue", desc=True)
+
+    # Assign peak slots to highest value items
+    FOR i, item in enumerate(sorted_items[:3]):
+        IF item.scheduled_hour NOT IN peak_hours:
+            # Move to peak hour
+            item.scheduled_time = find_available_peak_slot(day, peak_hours)
+            item.position_optimized = True
+```
+
+### Phase 8 Output State
+
+```json
+{
+  "priced_schedule": {
+    "items": [
+      {
+        "scheduled_date": "2025-01-20",
+        "scheduled_time": "20:03:00",
+        "send_type_key": "ppv_unlock",
+        "optimized_price": 12.99,
+        "original_price": 14.99,
+        "dampening_applied": 0.87,
+        "position_optimized": true
+      }
+    ]
+  },
+  "pricing_summary": {
+    "items_priced": 18,
+    "confidence_dampening_applied": true,
+    "confidence_level": "MODERATE",
+    "average_dampening": 0.85,
+    "value_framing_applied": 3,
+    "first_to_tip_rotation_applied": 2,
+    "positions_optimized": 5
+  }
+}
+```
+
+---
+
+## Phase 9: QUALITY VALIDATION (FINAL GATE)
+
+**Duration**: ~2 seconds
+**Objective**: Validate requirements, authenticity, and completeness, then save to database
+**Input**: Priced schedule from Phase 8 (revenue-optimizer)
+
+### 9.1 Comprehensive Validation Checks
+
+```
+VALIDATION CHECKLIST:
+
+validation_results = {
+    passed: [],
+    warnings: [],
+    errors: []
+}
+
+# Check 1-7: Standard validation (see Phase 7 documentation above)
+# ... (field validation, caption uniqueness, vault, timing, volume, persona, followup linkage)
+
+# Check 8: CAPTION WARNINGS FROM VOLUME CONFIG (CRITICAL)
+IF volume_config.caption_warnings:
+    FOR warning in volume_config.caption_warnings:
+        validation_results.warnings.append({
+            type: "caption_pool_warning",
+            source: "volume_config",
+            warning: warning
+        })
+
+# Check 9: Confidence score validation
+IF volume_config.confidence_score < 0.4:
+    validation_results.warnings.append({
+        type: "very_low_confidence",
+        confidence_score: volume_config.confidence_score,
+        warning: "VERY LOW confidence - flag for manual review"
+    })
+    validation_results.requires_manual_review = True
+
+# Check 10: Authenticity score validation
+FOR each item in all_items:
+    IF item.authenticity_score < 65:
+        validation_results.warnings.append({
+            type: "low_authenticity",
+            item: item.slot_id,
+            score: item.authenticity_score
+        })
+
+# Check 11: 22-Type Diversity validation (CRITICAL)
+unique_types = set(item.send_type_key for item in all_items)
+IF len(unique_types) < 10:
+    validation_results.errors.append({
+        type: "insufficient_diversity",
+        count: len(unique_types),
+        error: "Schedule must have 10+ unique send types"
+    })
+```
+
+### 9.2 Generate Final Validation Report
+
+```
+VALIDATION REPORT STRUCTURE (v2.3):
+
+{
+    "status": "passed" | "passed_with_warnings" | "failed",
+    "quality_score": 85,  // 0-100
+    "summary": {
+        "total_items": 48,
+        "errors": 0,
+        "warnings": 4
+    },
+    "breakdown": {
+        "by_category": {"revenue": 18, "engagement": 21, "retention": 9},
+        "by_day": {...}
+    },
+    "diversity": {
+        "unique_send_types": 15,
+        "revenue_types_used": 5,
+        "engagement_types_used": 6,
+        "retention_types_used": 4
+    },
+    "authenticity": {
+        "average_score": 82.5,
+        "items_needing_review": 3
+    },
+    "pricing": {
+        "confidence_dampening_applied": true,
+        "average_dampening": 0.85
+    },
+    "volume_metadata": {
+        "confidence_score": 0.85,
+        "adjustments_applied": [...],
+        "elasticity_capped": false,
+        "prediction_id": 123
+    },
+    "warnings": [...],
+    "errors": [],
+    "recommendations": [...]
+}
+```
+
+### 9.3 Save to Database (Final Step)
+
+```
+# Only proceed if validation passed or passed_with_warnings
+IF validation_results.status == "failed":
+    RETURN {
+        success: False,
+        error: "Validation failed",
+        details: validation_results.errors
+    }
+
+# Execute save
+result = MCP CALL: save_schedule(
+    creator_id = creator.id,
+    week_start = schedule_week.start_date,
+    items = formatted_items
+)
+
+RETURN {
+    success: True,
+    template_id: result.template_id,
+    items_created: result.item_count,
+    validation_report: validation_results
+}
+```
+
+### Phase 9 Output (Final Response)
 
 ```json
 {
@@ -2042,6 +2280,7 @@ RETURN {
 
   "validation": {
     "status": "passed_with_warnings",
+    "quality_score": 87,
     "warnings": 2,
     "errors": 0
   },
@@ -2049,13 +2288,14 @@ RETURN {
   "items": [
     {
       "scheduled_date": "2025-01-20",
-      "scheduled_time": "09:00:00",
+      "scheduled_time": "09:03:00",
       "send_type_key": "bump_normal",
       "channel_key": "mass_message",
       "target_key": "all_active",
-      "caption_text": "Good morning sunshine..."
-    },
-    // ... all 48 items
+      "caption_text": "Good morning sunshine...",
+      "authenticity_score": 85,
+      "optimized_price": null
+    }
   ]
 }
 ```
@@ -2153,7 +2393,7 @@ ELSE:
 - Volume config entirely missing
 - Page type validation fails
 - MCP server unavailable after retries
-- Validation score < 50 (Phase 7)
+- Validation score < 50 (Phase 9)
 
 **CONTINUE WITH DEGRADATION:**
 - Caption pool depleted (use lower thresholds)
@@ -2428,71 +2668,7 @@ def recover_phase3_content(error_type, context):
 
 ---
 
-#### Phase 4: AUDIENCE TARGETING
-
-**Timeout**: 5 seconds
-**Retry Policy**: None (simple mapping)
-
-##### Common Failure Modes
-
-| Failure Mode | Severity | Detection | Recovery Procedure | Fallback |
-|--------------|----------|-----------|-------------------|----------|
-| Audience target not found | MEDIUM | Target key not in catalog | Default to "all_active" | Always available |
-| Channel incompatible | MEDIUM | Channel doesn't support target | Switch to compatible channel | Use mass_message |
-| Page type mismatch | HIGH | Paid-only target on free page | Filter incompatible targets | Use free-compatible only |
-| Required target missing | HIGH | Followup/renewal target absent | Skip item or use closest match | Flag as warning |
-
-##### Recovery Procedures
-
-```python
-def recover_phase4_targeting(error_type, context):
-    """
-    Recovery procedure for Phase 4 audience targeting errors.
-    """
-    if error_type == "target_not_found":
-        # MEDIUM - default to all_active
-        return {
-            "recoverable": True,
-            "action": "use_default_target",
-            "fallback_target": "all_active",
-            "fallback_channel": "mass_message",
-            "warning": f"Target '{context.target_key}' not found - using all_active"
-        }
-
-    elif error_type == "channel_incompatible":
-        # MEDIUM - switch to compatible channel
-        compatible_channels = get_compatible_channels(context.target_key)
-        if len(compatible_channels) > 0:
-            return {
-                "recoverable": True,
-                "action": "switch_channel",
-                "new_channel": compatible_channels[0],
-                "warning": f"Channel incompatible - switching to {compatible_channels[0]}"
-            }
-        else:
-            return {
-                "recoverable": True,
-                "action": "use_all_active",
-                "fallback_target": "all_active",
-                "fallback_channel": "mass_message",
-                "warning": "No compatible channels - using all_active"
-            }
-
-    elif error_type == "page_type_mismatch":
-        # HIGH - filter incompatible targets
-        return {
-            "recoverable": True,
-            "action": "filter_targets",
-            "allowed_page_types": [context.page_type, "both"],
-            "warning": f"Filtered targets incompatible with page_type '{context.page_type}'"
-        }
-
-    return {"recoverable": True, "action": "use_all_active", "fallback_target": "all_active"}
-```
-
----
-
-#### Phase 5: TIMING OPTIMIZATION
+#### Phase 4: TIMING OPTIMIZATION
 
 **Timeout**: 10 seconds
 **Retry Policy**: 2 retries with relaxed spacing constraints
@@ -2511,9 +2687,9 @@ def recover_phase4_targeting(error_type, context):
 ##### Recovery Procedures
 
 ```python
-def recover_phase5_timing(error_type, context):
+def recover_phase4_timing(error_type, context):
     """
-    Recovery procedure for Phase 5 timing optimization errors.
+    Recovery procedure for Phase 4 timing optimization errors.
     """
     if error_type == "no_available_slots":
         # HIGH - relax constraints
@@ -2580,7 +2756,7 @@ def recover_phase5_timing(error_type, context):
 
 ---
 
-#### Phase 6: FOLLOW-UP GENERATION
+#### Phase 5: FOLLOW-UP GENERATION
 
 **Timeout**: 5 seconds
 **Retry Policy**: None (followup generation is optional)
@@ -2598,9 +2774,9 @@ def recover_phase5_timing(error_type, context):
 ##### Recovery Procedures
 
 ```python
-def recover_phase6_followup(error_type, context):
+def recover_phase5_followup(error_type, context):
     """
-    Recovery procedure for Phase 6 followup generation errors.
+    Recovery procedure for Phase 5 followup generation errors.
     """
     if error_type == "daily_limit_exceeded":
         # LOW - skip lowest priority
@@ -2643,7 +2819,7 @@ def recover_phase6_followup(error_type, context):
 
 ---
 
-#### Phase 7: ASSEMBLY & VALIDATION
+#### Phase 6: ASSEMBLY & VALIDATION
 
 **Timeout**: 10 seconds
 **Retry Policy**: None (validation is final checkpoint)
@@ -2662,9 +2838,9 @@ def recover_phase6_followup(error_type, context):
 ##### Recovery Procedures
 
 ```python
-def recover_phase7_assembly(error_type, context):
+def recover_phase6_assembly(error_type, context):
     """
-    Recovery procedure for Phase 7 assembly & validation errors.
+    Recovery procedure for Phase 6 assembly & validation errors.
     """
     if error_type == "validation_score_critical":
         # CRITICAL - abort
@@ -2767,20 +2943,16 @@ Comprehensive recovery actions for all phases and failure modes.
 | | Duplicate caption detected | MEDIUM | Re-query with exclusions | Allow if necessary | 1-2s |
 | | Vault content mismatch | MEDIUM | Skip content_type_id | Proceed without | < 1s |
 | | Persona missing | LOW | Use default persona | Standard tone | < 1s |
-| **Phase 4** | Target not found | MEDIUM | Default to all_active | Universal target | < 1s |
-| | Channel incompatible | MEDIUM | Switch to compatible channel | mass_message | < 1s |
-| | Page type mismatch | HIGH | Filter incompatible targets | Page-compatible only | < 1s |
-| | Required target missing | HIGH | Use closest match or skip | Log warning | 1-2s |
-| **Phase 5** | No available slots | HIGH | Relax constraints incrementally | Extend to next day | 2-4s |
+| **Phase 4** | No available slots | HIGH | Relax constraints incrementally | Extend to next day | 2-4s |
 | | Timing conflict | MEDIUM | Shift by 5 min increments | Cascade shifts | 1-2s |
 | | Avoid hours violation | MEDIUM | Move to 08:00 or 23:00 | Nearest valid | < 1s |
 | | Min spacing violated | MEDIUM | Cascade shifts | Adjust times | 1-2s |
 | | Time calculation fails | HIGH | Use default 12:00 | Noon fallback | < 1s |
-| **Phase 6** | Daily limit exceeded | LOW | Skip lowest priority | Selective omission | < 1s |
+| **Phase 5** | Daily limit exceeded | LOW | Skip lowest priority | Selective omission | < 1s |
 | | No followup caption | MEDIUM | Flag for manual | Continue without | < 1s |
 | | Late night followup | LOW | Move to next morning 08:00 | Auto-adjust | < 1s |
 | | Parent invalid | HIGH | Skip followup | Log error | < 1s |
-| **Phase 7** | Validation score < 50 | CRITICAL | Abort with report | None | Immediate |
+| **Phase 6** | Validation score < 50 | CRITICAL | Abort with report | None | Immediate |
 | | Validation score 50-69 | HIGH | Return NEEDS_REVIEW | Manual review | Immediate |
 | | Category balance off | MEDIUM | Flag warning | Continue | < 1s |
 | | Missing required fields | HIGH | Fill defaults or abort | Context-dependent | 1-2s |
@@ -3093,7 +3265,6 @@ MCP_TIMEOUT_CONFIG = {
     "get_best_timing": 5,               # 5 seconds
     "get_top_captions": 15,             # 15 seconds (largest query)
     "get_send_type_captions": 15,       # 15 seconds
-    "get_audience_targets": 5,          # 5 seconds
     "get_channels": 5,                  # 5 seconds
     "save_schedule": 20,                # 20 seconds (transaction)
     "execute_query": 30                 # 30 seconds (custom queries)
@@ -3651,11 +3822,11 @@ IF revenue_trend == "up":
                              | state: content_assignments[]
                              v
 +-------------------------------------------------------------------+
-|  PHASE 4: AUDIENCE TARGETING                                      |
+|  PHASE 4: TIMING OPTIMIZATION                                     |
 |  +---------------------------------------------------------+      |
-|  | get_audience_targets --> FOR each slot:                  |      |
-|  |   get_send_type_details --> assign_target -->            |      |
-|  |   validate_channel --> set_channel                       |      |
+|  | get_best_timing --> FOR each slot:                       |      |
+|  |   calculate_optimal_time --> validate_spacing -->        |      |
+|  |   apply_jitter --> set_scheduled_time                    |      |
 |  +---------------------------------------------------------+      |
 +-------------------------------------------------------------------+
                              |
@@ -3741,23 +3912,17 @@ IF revenue_trend == "up":
 | `get_top_captions` | 0-N (fallback) | Generic caption fallback |
 | `get_persona_profile` | 1 | Persona consistency check |
 
-### Phase 4: Targeting
-| Tool | Call Count | Purpose |
-|------|------------|---------|
-| `get_audience_targets` | 1 | Available targets |
-| `get_send_type_details` | N (per slot) | Target requirements |
-
-### Phase 5: Timing
+### Phase 4: Timing
 | Tool | Call Count | Purpose |
 |------|------------|---------|
 | `get_send_type_details` | N (if not cached) | Timing constraints |
 
-### Phase 6: Follow-ups
+### Phase 5: Follow-ups
 | Tool | Call Count | Purpose |
 |------|------------|---------|
 | `get_send_type_captions` | 1 | Follow-up captions |
 
-### Phase 7: Assembly
+### Phase 6: Assembly
 | Tool | Call Count | Purpose |
 |------|------------|---------|
 | `save_schedule` | 1 | Persist to database |
@@ -3854,21 +4019,18 @@ Before proceeding to Audience Targeting, verify:
 
 ---
 
-### After Phase 4 (Audience Targeting)
+### After Phase 3 (Content Curation)
 
 Before proceeding to Timing Optimization, verify:
 
-- [ ] **All items have targets assigned**: Every slot has `target_key`
-- [ ] **Targets match channel capabilities**: Channel supports the assigned target type
-- [ ] **Page type compatibility validated**: No paid-only targets on free pages
-- [ ] **Required targets enforced**: `ppv_followup` -> `ppv_non_purchasers`, `renew_on_message` -> `renew_off`
-- [ ] **Channel keys assigned**: Every slot has `channel_key`
-
-**Checkpoint Action**: If target incompatible, fallback to `all_active`. Log any fallback decisions.
+- [ ] **All items have captions assigned**: Every slot has `caption_id` or flagged for manual
+- [ ] **Freshness scores validated**: Track items with scores below 30
+- [ ] **Caption pool warnings surfaced**: Any `caption_warnings` from volume config noted
+**Checkpoint Action**: If caption shortage, apply fallback thresholds. Log any items flagged for manual creation.
 
 ---
 
-### After Phase 5 (Timing Optimization)
+### After Phase 4 (Timing Optimization)
 
 Before proceeding to Followup Generation, verify:
 
@@ -3886,7 +4048,7 @@ Before proceeding to Followup Generation, verify:
 
 ---
 
-### After Phase 6 (Followup Generation)
+### After Phase 5 (Followup Generation)
 
 Before proceeding to Final Assembly, verify:
 
@@ -3901,7 +4063,7 @@ Before proceeding to Final Assembly, verify:
 
 ---
 
-### After Phase 7 (Final Assembly & Validation)
+### After Phase 6 (Final Assembly & Validation)
 
 Before saving to database, verify:
 
@@ -4193,16 +4355,11 @@ All database operations in this pipeline use the `eros-db` MCP server with 17 av
   }
   ```
 
-### Targeting & Channels Tools (2)
-
-**`get_audience_targets(page_type?, channel_key?)`**
-- Returns: Audience targeting segments
-- Used in: Phase 4.1
-- Filters: By page_type applicability and channel compatibility
+### Channels Tool (1)
 
 **`get_channels(supports_targeting?)`**
 - Returns: Distribution channels (wall_post, mass_message, targeted_message, story, live)
-- Used in: Phase 4.4
+- Used in: Channel validation
 - Filter: Optional supports_targeting boolean
 
 ### Schedule Operations Tools (2)
@@ -4247,20 +4404,20 @@ FOR each slot:
   [FALLBACK] get_top_captions(creator_id, ...)
 ```
 
-**Phase 4 (Targeting)**: 1 + N calls
+**Phase 4 (Timing)**: 1 + N calls
 ```
-get_audience_targets(page_type)
+get_best_timing(creator_id)
 
 FOR each slot:
-  get_send_type_details(slot.send_type_key)
+  get_send_type_details(slot.send_type_key)  // for timing constraints
 ```
 
-**Phase 6 (Followups)**: 1 call
+**Phase 5 (Followups)**: 1 call
 ```
 get_send_type_captions(creator_id, "ppv_followup")
 ```
 
-**Phase 7 (Assembly)**: 1 call
+**Phase 6 (Assembly)**: 1 call
 ```
 save_schedule(creator_id, week_start, items)
 ```

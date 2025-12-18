@@ -1,8 +1,8 @@
 ---
 title: Data Contracts - EROS Schedule Generator Pipeline
-version: 2.2.0
+version: 2.3.0
 created: 2025-12-17
-description: Explicit JSON schemas for all data flowing between agents in the 8-agent schedule generation pipeline
+description: Explicit JSON schemas for all data flowing between agents in the 9-phase schedule generation pipeline
 status: authoritative
 ---
 
@@ -10,7 +10,7 @@ status: authoritative
 
 ## Overview
 
-This document defines the **explicit data contracts** for all data flowing between agents in the EROS Schedule Generator's 8-agent pipeline. Each agent transition specifies required fields, optional fields, validation rules, and example payloads.
+This document defines the **explicit data contracts** for all data flowing between agents in the EROS Schedule Generator's 9-phase pipeline. Each agent transition specifies required fields, optional fields, validation rules, and example payloads.
 
 ### Pipeline Flow
 
@@ -18,11 +18,12 @@ This document defines the **explicit data contracts** for all data flowing betwe
 Phase 1: performance-analyst → performance_metrics
 Phase 2: send-type-allocator → allocation + strategy_metadata
 Phase 3: content-curator → caption_assignments
-Phase 4: audience-targeter → targeting_assignments
-Phase 5: timing-optimizer → timing_assignments
-Phase 6: followup-generator → followup_items
-Phase 7a: schedule-assembler → assembled_schedule
-Phase 7b: quality-validator → validation_result
+Phase 4: timing-optimizer → timing_assignments
+Phase 5: followup-generator → followup_items
+Phase 6: authenticity-engine → humanized_items [NEW]
+Phase 7: schedule-assembler → assembled_schedule
+Phase 8: revenue-optimizer → priced_schedule [NEW]
+Phase 9: quality-validator → validation_result
 ```
 
 **Critical Note**: The `strategy_metadata` output from Phase 2 MUST be preserved through all downstream phases and passed to quality-validator for diversity validation.
@@ -52,7 +53,7 @@ type SendTypeCategory = "revenue" | "engagement" | "retention";
 // Send type keys (22 types)
 type SendTypeKey =
   // Revenue (9 types)
-  | "ppv_unlock"          // Primary PPV unlock (was ppv_video)
+  | "ppv_unlock"          // Primary PPV unlock (replaces legacy ppv_video and ppv_message)
   | "ppv_wall"            // Wall PPV post (FREE pages only)
   | "tip_goal"            // Tip goal campaigns (PAID pages only, 3 modes)
   | "bundle"              // Content bundle
@@ -276,7 +277,7 @@ interface OptimizedVolumeResult {
   elasticity_capped: boolean;            // True if diminishing returns applied
   adjustments_applied: string[];         // Full audit trail
 
-  // Warnings (MUST surface to Phase 7)
+  // Warnings (MUST surface to Phase 9)
   caption_warnings: string[];            // e.g., ["Low captions for ppv_followup: <3 usable"]
 
   // Tracking
@@ -667,113 +668,16 @@ interface ManualCaptionItem {
 
 ---
 
-## Phase 4: AUDIENCE TARGETING → Targeting Assignments
-
-### Agent: audience-targeter
-
-**Inputs**:
-```typescript
-interface AudienceTargeterInput {
-  schedule_items: CaptionAssignedItem[];  // From content-curator
-  page_type: PageType;                    // "paid" or "free"
-}
-```
-
-**Output Contract**:
-```typescript
-interface TargetingAssignmentResult {
-  items: TargetedItem[];
-
-  // Summary statistics
-  targeting_summary: {
-    [targetKey: TargetKey]: number;      // Count per target
-  };
-
-  // Page type filtering
-  page_type_filtered: SendTypeKey[];     // Types excluded due to page_type
-
-  // Channel assignment breakdown
-  channel_assignment: {
-    [channelKey: ChannelKey]: number;    // Count per channel
-  };
-}
-
-interface TargetedItem extends CaptionAssignedItem {
-  // Required targeting fields
-  channel_key: ChannelKey;               // Required
-  target_key: TargetKey;                 // Required
-  targeting_reason: string;              // e.g., "default_mapping", "required_target"
-}
-```
-
-**Example Payload**:
-```json
-{
-  "items": [
-    {
-      "slot": 1,
-      "send_type_key": "ppv_unlock",
-      "category": "revenue",
-      "priority": 1,
-      "caption_id": 789,
-      "caption_text": "Hey babe...",
-      "content_type": "solo",
-      "caption_scores": {"performance": 85.2, "freshness": 92.0, "content_weight_bonus": 15.0, "composite": 87.92},
-      "needs_manual_caption": false,
-      "channel_key": "mass_message",
-      "target_key": "active_30d",
-      "targeting_reason": "default_mapping"
-    },
-    {
-      "slot": 3,
-      "send_type_key": "ppv_followup",
-      "category": "retention",
-      "priority": 3,
-      "caption_id": 901,
-      "caption_text": "Don't miss out babe...",
-      "content_type": "ppv_followup",
-      "caption_scores": {"performance": 78.5, "freshness": 85.0, "content_weight_bonus": 0, "composite": 79.5},
-      "needs_manual_caption": false,
-      "channel_key": "targeted_message",
-      "target_key": "ppv_non_purchasers",
-      "targeting_reason": "required_target"
-    }
-  ],
-  "targeting_summary": {
-    "active_30d": 35,
-    "all_active": 25,
-    "ppv_non_purchasers": 8,
-    "expired_recent": 5,
-    "expiring_soon": 5
-  },
-  "page_type_filtered": [],
-  "channel_assignment": {
-    "mass_message": 50,
-    "targeted_message": 18,
-    "wall_post": 10
-  }
-}
-```
-
-**Validation Rules**:
-- Every item must have `channel_key` and `target_key`
-- Target must be compatible with page_type (no retention targets on free pages)
-- Channel must support the assigned target (wall_post has no targeting)
-- PPV followups MUST use `ppv_non_purchasers` target
-- Expired winback MUST use `expired_recent` target
-
----
-
-## Phase 5: TIMING OPTIMIZATION → Timing Assignments
+## Phase 4: TIMING OPTIMIZATION → Timing Assignments
 
 ### Agent: timing-optimizer
 
 **Inputs**:
 ```typescript
 interface TimingOptimizerInput {
-  schedule_items: TargetedItem[];        // From audience-targeter
-  creator_id: string;                    // For get_best_timing()
-  volume_config: OptimizedVolumeResult;  // For dow_multipliers_used
+  schedule_items: CaptionAssignedItem[];  // From content-curator
+  creator_id: string;                     // For get_best_timing()
+  volume_config: OptimizedVolumeResult;   // For dow_multipliers_used
 }
 ```
 
@@ -863,7 +767,7 @@ interface TimedItem extends TargetedItem {
 
 ---
 
-## Phase 6: FOLLOWUP GENERATION → Followup Items
+## Phase 5: FOLLOWUP GENERATION → Followup Items
 
 ### Agent: followup-generator
 
@@ -974,7 +878,113 @@ interface FollowupItem {
 
 ---
 
-## Phase 7a: SCHEDULE ASSEMBLY → Assembled Schedule
+## Phase 6: AUTHENTICITY ENGINE → Humanized Items [NEW]
+
+### Agent: authenticity-engine
+
+**Inputs**:
+```typescript
+interface AuthenticityEngineInput {
+  schedule_items: FollowupGenerationResult;  // From followup-generator
+  creator_id: string;                        // For get_persona_profile()
+  volume_config: OptimizedVolumeResult;      // For confidence_score
+}
+```
+
+**Output Contract**:
+```typescript
+interface AuthenticityResult {
+  // Humanized items
+  items: HumanizedItem[];
+
+  // Authenticity summary
+  authenticity_summary: {
+    items_processed: number;
+    average_score: number;                   // 0-100
+    items_needing_review: number;            // Score < 65
+    timing_jitter_applied: number;           // Count of items with jitter
+    captions_humanized: number;              // Count of captions modified
+  };
+
+  // Persona profile used
+  persona_applied: {
+    tone: string;                            // e.g., "playful", "seductive"
+    archetype: string;                       // e.g., "girl_next_door"
+    emoji_style: string;                     // e.g., "heavy", "moderate"
+    slang_level: number;                     // 1-5
+  };
+
+  // Pass-through for downstream phases
+  volume_config: OptimizedVolumeResult;
+}
+
+interface HumanizedItem extends TimedItem {
+  // Authenticity scoring
+  authenticity_score: number;                // 0-100
+  needs_review: boolean;                     // True if score < 65
+  review_reason?: string;                    // Why review is needed
+
+  // Humanization flags
+  timing_humanized: boolean;                 // True if jitter applied
+  caption_humanized: boolean;                // True if caption modified
+  original_caption_text?: string;            // Only if caption modified
+
+  // Jitter details
+  timing_jitter: {
+    original_time: ISOTime;
+    jitter_applied: number;                  // Minutes (-5 to +5)
+    final_time: ISOTime;
+  };
+}
+```
+
+**Example Payload**:
+```json
+{
+  "items": [
+    {
+      "slot": 1,
+      "send_type_key": "ppv_unlock",
+      "category": "revenue",
+      "scheduled_date": "2025-12-16",
+      "scheduled_time": "19:47:00",
+      "caption_text": "Hey babe, I made this just for you...",
+      "authenticity_score": 85,
+      "needs_review": false,
+      "timing_humanized": true,
+      "caption_humanized": false,
+      "timing_jitter": {
+        "original_time": "19:45:00",
+        "jitter_applied": 2,
+        "final_time": "19:47:00"
+      }
+    }
+  ],
+  "authenticity_summary": {
+    "items_processed": 48,
+    "average_score": 82.5,
+    "items_needing_review": 3,
+    "timing_jitter_applied": 48,
+    "captions_humanized": 2
+  },
+  "persona_applied": {
+    "tone": "playful",
+    "archetype": "girl_next_door",
+    "emoji_style": "moderate",
+    "slang_level": 3
+  }
+}
+```
+
+**Validation Rules**:
+- All items must have `authenticity_score` between 0-100
+- `needs_review` must be true if `authenticity_score < 65`
+- `timing_jitter.jitter_applied` must be between -5 and +5 minutes
+- `timing_jitter.final_time` must not land on :00, :15, :30, :45 (round minutes)
+
+---
+
+## Phase 7: SCHEDULE ASSEMBLY → Assembled Schedule
 
 ### Agent: schedule-assembler
 
@@ -983,7 +993,7 @@ interface FollowupItem {
 interface ScheduleAssemblerInput {
   allocation: AllocationResult;          // From send-type-allocator (includes strategy_metadata)
   captions: CaptionAssignmentResult;     // From content-curator
-  targets: TargetingAssignmentResult;    // From audience-targeter
+  channels: ChannelAssignment;           // Derived from send type configuration
   timing: TimingAssignmentResult;        // From timing-optimizer
   followups: FollowupGenerationResult;   // From followup-generator
   volume_config: OptimizedVolumeResult;  // Pass-through for quality-validator
@@ -1180,7 +1190,141 @@ interface ScheduleItem {
 
 ---
 
-## Phase 7b: QUALITY VALIDATION → Validation Result
+## Phase 8: REVENUE OPTIMIZATION → Priced Schedule [NEW]
+
+### Agent: revenue-optimizer
+
+**Inputs**:
+```typescript
+interface RevenueOptimizerInput {
+  assembled_schedule: AssembledSchedule;     // From schedule-assembler
+  creator_id: string;                        // For volume context
+  volume_config: OptimizedVolumeResult;      // For confidence_score
+}
+```
+
+**Output Contract**:
+```typescript
+interface RevenueOptimizationResult {
+  // Priced items
+  items: PricedItem[];
+
+  // Pricing summary
+  pricing_summary: {
+    items_priced: number;                    // Revenue items with prices
+    confidence_dampening_applied: boolean;   // True if prices adjusted
+    confidence_level: ConfidenceLevel;       // "LOW", "MEDIUM", "HIGH"
+    average_dampening: number;               // e.g., 0.85 = 15% reduction
+    value_framing_applied: number;           // Bundle items with value framing
+    first_to_tip_rotation_applied: number;   // Items with tip rotation
+    positions_optimized: number;             // Items moved to peak times
+  };
+
+  // Revenue projection
+  revenue_projection: {
+    estimated_weekly: number;                // USD
+    confidence_band: {
+      low: number;                           // USD (low estimate)
+      high: number;                          // USD (high estimate)
+    };
+  };
+
+  // Pass-through for downstream
+  volume_config: OptimizedVolumeResult;
+  strategy_metadata: {                       // MUST preserve from Phase 2
+    [date: ISODate]: DailyStrategy;
+  };
+}
+
+interface PricedItem extends ScheduleItem {
+  // Pricing fields
+  optimized_price: number | null;            // Final price (or null for non-revenue)
+  original_price: number | null;             // Base price before adjustments
+  dampening_applied: number;                 // e.g., 0.87 = 13% reduction
+
+  // Positioning
+  position_optimized: boolean;               // True if moved to peak time
+  original_time?: ISOTime;                   // Only if position changed
+
+  // Bundle value framing (for bundle types)
+  value_framing?: {
+    individual_value: number;                // Sum of individual items
+    bundle_price: number;                    // Discounted bundle price
+    savings_percentage: number;              // e.g., 30 = 30% off
+    savings_display: string;                 // e.g., "Save 30%!"
+  };
+
+  // First-to-tip rotation
+  tip_rotation?: {
+    day_in_rotation: number;                 // 1-7
+    tip_amount: number;                      // USD
+    rotation_strategy: string;               // e.g., "ascending", "random"
+  };
+}
+```
+
+**Example Payload**:
+```json
+{
+  "items": [
+    {
+      "scheduled_date": "2025-12-16",
+      "scheduled_time": "20:03:00",
+      "send_type_key": "ppv_unlock",
+      "category": "revenue",
+      "optimized_price": 12.99,
+      "original_price": 14.99,
+      "dampening_applied": 0.87,
+      "position_optimized": true,
+      "original_time": "18:15:00",
+      "authenticity_score": 85
+    },
+    {
+      "scheduled_date": "2025-12-17",
+      "scheduled_time": "19:47:00",
+      "send_type_key": "bundle",
+      "category": "revenue",
+      "optimized_price": 29.99,
+      "original_price": 35.00,
+      "dampening_applied": 0.86,
+      "position_optimized": false,
+      "value_framing": {
+        "individual_value": 45.00,
+        "bundle_price": 29.99,
+        "savings_percentage": 33,
+        "savings_display": "Save 33%!"
+      }
+    }
+  ],
+  "pricing_summary": {
+    "items_priced": 18,
+    "confidence_dampening_applied": true,
+    "confidence_level": "MEDIUM",
+    "average_dampening": 0.85,
+    "value_framing_applied": 3,
+    "first_to_tip_rotation_applied": 2,
+    "positions_optimized": 5
+  },
+  "revenue_projection": {
+    "estimated_weekly": 850.00,
+    "confidence_band": {
+      "low": 680.00,
+      "high": 1020.00
+    }
+  }
+}
+```
+
+**Validation Rules**:
+- All revenue items must have `optimized_price` set
+- `dampening_applied` must be between 0.5 and 1.0
+- `value_framing.savings_percentage` must be between 10 and 50
+- `position_optimized` items must have `original_time` preserved
+- `strategy_metadata` MUST be passed through unchanged
+
+---
+
+## Phase 9: QUALITY VALIDATION → Validation Result
 
 ### Agent: quality-validator
 
@@ -1379,7 +1523,7 @@ interface ErrorResponse {
   error_code: string;                    // e.g., "INVALID_PAGE_TYPE", "CAPTION_SHORTAGE"
   error_message: string;                 // Human-readable error
   agent: string;                         // Agent name that produced the error
-  phase: number;                         // Pipeline phase (1-7)
+  phase: number;                         // Pipeline phase (1-9)
   timestamp: ISODateTime;
   details?: any;                         // Optional additional context
 }
@@ -1392,7 +1536,7 @@ interface ErrorResponse {
   "error_code": "INSUFFICIENT_DIVERSITY",
   "error_message": "Schedule contains only 8 unique send types. Minimum 10 required.",
   "agent": "quality-validator",
-  "phase": 7,
+  "phase": 9,
   "timestamp": "2025-12-17T10:35:00Z",
   "details": {
     "unique_types_found": 8,
@@ -1622,8 +1766,9 @@ ON CONFLICT(creator_id) DO NOTHING;
 
 | Version | Date       | Changes |
 |---------|------------|---------|
-| 2.2.0   | 2025-12-17 | Initial comprehensive data contracts documentation with full OptimizedVolumeResult integration |
+| 2.3.0   | 2025-12-18 | Updated to 9-phase pipeline: added Phase 6 (authenticity-engine) and Phase 8 (revenue-optimizer) contracts |
 | 2.2.1   | 2025-12-17 | Added ppv_structure_rotation_state table documentation (proposed) |
+| 2.2.0   | 2025-12-17 | Initial comprehensive data contracts documentation with full OptimizedVolumeResult integration |
 
 ---
 

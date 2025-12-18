@@ -115,7 +115,7 @@ def get_send_types(
         "properties": {
             "send_type_key": {
                 "type": "string",
-                "description": "The unique key for the send type (e.g., 'ppv_video', 'bump_normal')"
+                "description": "The unique key for the send type (e.g., 'ppv_unlock', 'bump_normal')"
             }
         },
         "required": ["send_type_key"]
@@ -126,7 +126,7 @@ def get_send_type_details(send_type_key: str) -> dict[str, Any]:
     Get complete details for a single send type by key.
 
     Args:
-        send_type_key: The unique key for the send type (e.g., 'ppv_video', 'bump_normal').
+        send_type_key: The unique key for the send type (e.g., 'ppv_unlock', 'bump_normal').
 
     Returns:
         Dictionary containing:

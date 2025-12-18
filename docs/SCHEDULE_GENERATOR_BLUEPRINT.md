@@ -2,7 +2,7 @@
 
 > Comprehensive design blueprint for the AI-powered multi-agent schedule generation system supporting 37 active OnlyFans creators with 22 distinct send types.
 
-**Version:** 2.2.0 | **Updated:** 2025-12-16
+**Version:** 2.3.0 | **Updated:** 2025-12-18
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@
 
 ## Executive Summary
 
-This blueprint designs a **production-grade, multi-agent schedule generation system** that leverages your Claude Code MAX 20X subscription to create optimized, revenue-maximizing schedules for all 37 active creators. The system combines:
+This blueprint designs a **production-grade, multi-agent schedule generation system** that leverages Claude Code MAX 20X to create optimized, revenue-maximizing schedules for all 37 active creators with 9 specialized agents across 9 phases. The system combines:
 
 - **Multi-Agent Orchestration**: Specialized agents working in parallel for analysis, optimization, and generation
 - **Claude Code Skill Package**: Reusable capability for on-demand schedule generation
@@ -48,7 +48,7 @@ After deep research, the optimal architecture is a **hybrid approach**:
 ### Why This Hybrid Approach?
 
 1. **Skill for Discovery**: Claude automatically invokes the skill when users mention "schedule", "generate", "optimize content timing", etc.
-2. **Multi-Agent for Scale**: 37 creators analyzed in parallel with specialized agents (performance, persona, content, timing)
+2. **Multi-Agent for Scale**: 37 creators analyzed in parallel with 9 specialized agents across 9 phases (performance, allocation, curation, timing, followups, authenticity, assembly, revenue optimization, validation)
 3. **MCP for Data**: Type-safe, performant database access without context bloat
 4. **Adaptive Learning**: Volume performance tracking feeds back into optimization
 
@@ -70,7 +70,7 @@ After deep research, the optimal architecture is a **hybrid approach**:
               │              MASTER ORCHESTRATOR AGENT               │
               │           (Opus 4.5 - Complex Coordination)          │
               │                                                      │
-              │  • Decomposes request into parallel subtasks         │
+              │  • Decomposes request into 9-phase pipeline          │
               │  • Manages agent lifecycle and dependencies          │
               │  • Synthesizes results into final schedules          │
               │  • Handles errors and retries                        │
@@ -79,22 +79,23 @@ After deep research, the optimal architecture is a **hybrid approach**:
                     ┌────────────────────┼────────────────────┬────────────────────┐
                     │                    │                    │                    │
                     ▼                    ▼                    ▼                    ▼
-    ┌───────────────────────┐ ┌───────────────────────┐ ┌───────────────────────┐ ┌───────────────────────┐
-    │  PERFORMANCE ANALYST  │ │ SEND TYPE ALLOCATOR   │ │   CONTENT CURATOR     │ │  AUDIENCE TARGETER    │
-    │   (Sonnet - Analysis) │ │   (Sonnet - Planning) │ │  (Sonnet - Selection) │ │   (Sonnet - Matching) │
-    │                       │ │                       │ │                       │ │                       │
-    │ • Historical trends   │ │ • Revenue allocation  │ │ • Caption ranking     │ │ • Segment selection   │
-    │ • Saturation signals  │ │ • Engagement balance  │ │ • Send type matching  │ │ • Channel assignment  │
-    │ • Opportunity scores  │ │ • Retention planning  │ │ • Content diversity   │ │ • Targeting rules     │
-    │ • Volume calibration  │ │ • 22 type scheduling  │ │ • Freshness scoring   │ │ • Reach optimization  │
-    └───────────┬───────────┘ └───────────┬───────────┘ └───────────┬───────────┘ └───────────┬───────────┘
-                │                         │                         │                         │
-                └─────────────────────────┼─────────────────────────┼─────────────────────────┘
-                                          │                         │
-                                          ▼                         ▼
+    ┌───────────────────────┐ ┌───────────────────────┐ ┌───────────────────────┐
+    │ PHASE 1: PERFORMANCE  │ │ PHASE 2: SEND TYPE    │ │ PHASE 3: CONTENT      │
+    │      ANALYST          │ │     ALLOCATOR         │ │     CURATOR           │
+    │   (Sonnet)            │ │   (Sonnet)            │ │   (Sonnet)            │
+    │                       │ │                       │ │                       │
+    │ • Historical trends   │ │ • Revenue allocation  │ │ • Caption ranking     │
+    │ • Saturation signals  │ │ • Engagement balance  │ │ • Send type matching  │
+    │ • Opportunity scores  │ │ • Retention planning  │ │ • Content diversity   │
+    │ • Volume calibration  │ │ • 22 type scheduling  │ │ • Freshness scoring   │
+    └───────────┬───────────┘ └───────────┬───────────┘ └───────────┬───────────┘
+                │                         │                         │
+                └─────────────────────────┼─────────────────────────┘
+                                          │
+                                          ▼
                     ┌─────────────────────────────────────────────┐ ┌─────────────────────────────────────────────┐
-                    │          TIMING OPTIMIZER AGENT             │ │        FOLLOWUP GENERATOR AGENT             │
-                    │          (Haiku - Fast Computation)         │ │          (Sonnet - Automation)              │
+                    │     PHASE 4: TIMING OPTIMIZER               │ │     PHASE 5: FOLLOWUP GENERATOR             │
+                    │          (Sonnet)                           │ │          (Sonnet)                           │
                     │                                             │ │                                             │
                     │  • Best hours by creator                    │ │  • Auto-generate PPV followups              │
                     │  • Day-of-week patterns                     │ │  • Link drop scheduling                     │
@@ -106,25 +107,47 @@ After deep research, the optimal architecture is a **hybrid approach**:
                                                                   │
                                                                   ▼
                     ┌─────────────────────────────────────────────────────────────────────┐
-                    │                    SCHEDULE ASSEMBLER AGENT                          │
-                    │                     (Sonnet - Generation)                            │
+                    │              PHASE 6: AUTHENTICITY ENGINE                            │
+                    │                     (Sonnet)                                         │
+                    │                                                                      │
+                    │  • Anti-AI detection on all captions                                 │
+                    │  • Humanization of flagged content                                   │
+                    │  • Natural variation injection                                       │
+                    │  • Persona alignment scoring                                         │
+                    └─────────────────────┬────────────────────────────────────────────────┘
+                                          │
+                                          ▼
+                    ┌─────────────────────────────────────────────────────────────────────┐
+                    │              PHASE 7: SCHEDULE ASSEMBLER                             │
+                    │                     (Sonnet)                                         │
                     │                                                                      │
                     │  • Combines all inputs into schedule                                 │
                     │  • Applies volume constraints by category                            │
                     │  • Validates business rules and page type restrictions               │
-                    │  • Generates final output with send types, channels, targets         │
+                    │  • Generates final output with send types and channels               │
                     └─────────────────────┬────────────────────────────────────────────────┘
                                           │
                                           ▼
                     ┌─────────────────────────────────────────────┐
-                    │           QUALITY VALIDATOR AGENT           │
-                    │           (Sonnet - Verification)           │
+                    │     PHASE 8: REVENUE OPTIMIZER              │
+                    │           (Sonnet)                          │
                     │                                             │
-                    │  • Caption authenticity check               │
-                    │  • Schedule completeness                    │
+                    │  • Price optimization for PPV/bundles       │
+                    │  • Positioning strategy                     │
+                    │  • Value perception optimization            │
+                    │  • Final pricing authority                  │
+                    └─────────────────────┬───────────────────────┘
+                                          │
+                                          ▼
+                    ┌─────────────────────────────────────────────┐
+                    │     PHASE 9: QUALITY VALIDATOR              │
+                    │           (Sonnet)                          │
+                    │                                             │
+                    │  • Schedule completeness check              │
+                    │  • Business rules validation                │
                     │  • Revenue projection validation            │
                     │  • Final approval / iteration               │
-                    └─────────────────────────────────────────────┘
+                    └─────────────────────┬───────────────────────┘
                                           │
                                           ▼
                               ┌───────────────────────┐
@@ -171,26 +194,14 @@ The enhanced EROS Schedule Generator supports a comprehensive taxonomy of 22 dis
 
 **Note**: `ppv_message` (deprecated) has been merged into `ppv_unlock`. Transition period ends 2025-01-16.
 
-### 5 Distribution Channels
+### 4 Distribution Channels
 
 1. **wall_post** - Public posts on creator wall/feed
-2. **mass_message** - Messages to all active subscribers (supports targeting)
-3. **targeted_message** - Messages to specific audience segments
-4. **story** - Temporary 24-hour story posts
-5. **live** - Live broadcast streams
+2. **mass_message** - Messages to all active subscribers
+3. **story** - Temporary 24-hour story posts
+4. **live** - Live broadcast streams
 
-### 10 Audience Targets
-
-1. **all_active** - All currently subscribed fans
-2. **renew_off** - Fans with auto-renewal disabled (paid pages only)
-3. **renew_on** - Fans with auto-renewal enabled (paid pages only)
-4. **expired_recent** - Expired within last 30 days (paid pages only)
-5. **expired_all** - All former subscribers (paid pages only)
-6. **never_purchased** - Subscribers who never bought PPV
-7. **recent_purchasers** - Purchased in last 7 days
-8. **high_spenders** - Top 20% by spend
-9. **inactive_7d** - No activity in 7 days
-10. **ppv_non_purchasers** - Received but didn't buy specific PPV
+**Note**: Audience targeting has been removed in v2.3.0. All sends now use channel-based distribution without segment filtering.
 
 ---
 
@@ -606,7 +617,7 @@ TOOLS = [
                 "creator_id": {"type": "string"},
                 "caption_type": {"type": "string", "description": "ppv_unlock, descriptive_tease, flirty_opener, etc."},
                 "content_type": {"type": "string", "description": "boy_girl, solo, anal, etc."},
-                "send_type_key": {"type": "string", "description": "Filter by compatible send type (e.g., 'ppv_video', 'bump_normal')"},
+                "send_type_key": {"type": "string", "description": "Filter by compatible send type (e.g., 'ppv_unlock', 'bump_normal')"},
                 "min_freshness": {"type": "number", "default": 30},
                 "min_performance": {"type": "number", "default": 40},
                 "limit": {"type": "integer", "default": 20}
@@ -631,7 +642,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "send_type_key": {"type": "string", "description": "Send type key (e.g., 'ppv_video', 'bump_normal')"}
+                "send_type_key": {"type": "string", "description": "Send type key (e.g., 'ppv_unlock', 'bump_normal')"}
             },
             "required": ["send_type_key"]
         }
@@ -643,7 +654,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "creator_id": {"type": "string"},
-                "send_type_key": {"type": "string", "description": "Send type key (e.g., 'ppv_video')"},
+                "send_type_key": {"type": "string", "description": "Send type key (e.g., 'ppv_unlock')"},
                 "min_freshness": {"type": "number", "default": 30},
                 "min_performance": {"type": "number", "default": 40},
                 "limit": {"type": "integer", "default": 10}
@@ -658,17 +669,6 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "supports_targeting": {"type": "boolean", "description": "Filter to channels that support audience targeting"}
-            }
-        }
-    },
-    {
-        "name": "get_audience_targets",
-        "description": "Get available audience targeting options, optionally filtered by page type and channel",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "page_type": {"type": "string", "enum": ["paid", "free"], "description": "Filter by applicable page type"},
-                "channel_key": {"type": "string", "description": "Filter by compatible channel"}
             }
         }
     },
@@ -1337,17 +1337,7 @@ Responsibilities:
 - Avoid content types in AVOID tier
 - Prioritize vault-available content
 
-### Agent 4: Audience Targeter (NEW in Wave 3)
-**Model**: Sonnet | **Tools**: get_audience_targets, get_channels, get_creator_profile
-
-Responsibilities:
-- Assign appropriate audience targets to each send type
-- Map send types to distribution channels (wall_post, mass_message, etc.)
-- Apply page type targeting rules (renew_off for paid pages only)
-- Optimize reach for each send type category
-- Configure targeting for follow-ups (ppv_non_purchasers)
-
-### Agent 5: Timing Optimizer
+### Agent 4: Timing Optimizer
 **Model**: Haiku | **Tools**: get_best_timing, get_creator_profile
 
 Responsibilities:
@@ -1358,7 +1348,7 @@ Responsibilities:
 - Apply Friday/Sunday boost for revenue types
 - Schedule follow-ups with appropriate delays
 
-### Agent 6: Followup Generator (NEW in Wave 3)
+### Agent 5: Followup Generator (NEW in Wave 3)
 **Model**: Sonnet | **Tools**: get_send_type_details, get_send_type_captions
 
 Responsibilities:
@@ -1368,7 +1358,7 @@ Responsibilities:
 - Select appropriate follow-up captions
 - Apply follow-up targeting (ppv_non_purchasers)
 
-### Agent 7: Schedule Assembler
+### Agent 6: Schedule Assembler
 **Model**: Sonnet | **Tools**: save_schedule, get_creator_profile
 
 Responsibilities:
@@ -1380,7 +1370,7 @@ Responsibilities:
 - Calculate projected earnings
 - Format output with send types, channels, targets
 
-### Agent 8: Quality Validator
+### Agent 7: Quality Validator
 **Model**: Sonnet | **Tools**: get_send_type_details, get_persona_profile
 
 Responsibilities:
@@ -1398,7 +1388,7 @@ Responsibilities:
 | creator | string | required | Creator page_name or creator_id |
 | week_start | date | next Monday | Schedule start date (YYYY-MM-DD) |
 | days | int | 7 | Number of days to schedule |
-| send_type_filter | array | all | Filter to specific send types (e.g., ['ppv_video', 'bundle']) |
+| send_type_filter | array | all | Filter to specific send types (e.g., ['ppv_unlock', 'bundle']) |
 | category_filter | string | all | Filter by category: 'revenue', 'engagement', 'retention', or 'all' |
 | include_retention | bool | auto | Include retention types (auto-enabled for paid pages) |
 | include_followups | bool | true | Auto-generate follow-up sends for PPVs |
@@ -1544,9 +1534,8 @@ This skill uses the `eros-db` MCP server with these primary tools:
 - `get_send_type_details` - Get detailed requirements and constraints for a specific send type
 - `get_send_type_captions` - Get captions compatible with a specific send type via caption type mappings
 
-### NEW Channel & Targeting Tools (Wave 3)
+### NEW Channel & Volume Tools (Wave 3)
 - `get_channels` - Query available distribution channels (5 types)
-- `get_audience_targets` - Query audience segments (10 types) with page type filtering
 - `get_volume_config` - Get volume configuration by category (revenue/engagement/retention)
 ```
 

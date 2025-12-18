@@ -13,9 +13,9 @@ tools:
 
 ## Phase Assignment
 
-**Status**: Optional Utility Agent (not part of core 7-phase pipeline)
+**Status**: Optional Utility Agent (not part of core 9-phase pipeline)
 
-This agent is NOT part of the standard schedule generation pipeline phases 1-7. Instead, it serves as an **on-demand utility agent** that can be invoked:
+This agent is NOT part of the standard schedule generation pipeline phases 1-9. Instead, it serves as an **on-demand utility agent** that can be invoked:
 
 1. **During Quality Review** - When quality-validator identifies captions needing improvement
 2. **Manual Caption Requests** - When user requests caption optimization or A/B variants
@@ -36,7 +36,7 @@ This agent is NOT part of the standard schedule generation pipeline phases 1-7. 
 ```
                     ┌──────────────────┐
                     │ quality-validator│
-                    │    (Phase 7b)    │
+                    │    (Phase 9)     │
                     └────────┬─────────┘
                              │ needs_manual_caption: true
                              ▼

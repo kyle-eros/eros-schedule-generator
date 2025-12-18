@@ -8,7 +8,7 @@ This package provides:
 - server: Main entry point and request routing
 - protocol: JSON-RPC 2.0 protocol handling
 - connection: Database connection management
-- tools: All 17 MCP tool implementations
+- tools: All 16 MCP tool implementations
 - utils: Security validation and helper functions
 
 Usage:
@@ -59,11 +59,10 @@ from mcp.tools.performance import (
 )
 from mcp.tools.targeting import (
     get_channels,
-    get_audience_targets,
 )
 from mcp.tools.query import execute_query
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 __all__ = [
     # Main entry point
     "main",
@@ -99,7 +98,6 @@ __all__ = [
     "get_content_type_rankings",
     # Targeting tools
     "get_channels",
-    "get_audience_targets",
     # Query tool
     "execute_query",
 ]

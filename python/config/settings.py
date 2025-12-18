@@ -173,7 +173,7 @@ class Settings:
             "followup": {
                 "max_per_day": 4,
                 "min_delay_minutes": 20,
-                "enabled_types": ["ppv_video", "ppv_message", "bundle"],  # DEPRECATED: ppv_video→ppv_unlock, ppv_message→ppv_unlock, remove after 2025-01-16
+                "enabled_types": ["ppv_unlock", "ppv_wall", "tip_goal", "bundle"],  # Updated to use current send types
             },
         }
 

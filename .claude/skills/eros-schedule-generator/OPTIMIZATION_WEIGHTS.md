@@ -264,12 +264,13 @@ TIMING_PREFERENCES.update({
         "page_type": "paid",
     },
 
-    "ppv_message": {
-        "preferred_hours": [19, 21],
-        "boost": 1.2,
-        "description": "Evening for message PPV opens",
-        "follows_ppv_unlock_timing": True,
-    },
+    # NOTE: ppv_message DEPRECATED - merged into ppv_unlock (retained for historical reference)
+    # "ppv_message": {
+    #     "preferred_hours": [19, 21],
+    #     "boost": 1.2,
+    #     "description": "Evening for message PPV opens",
+    #     "follows_ppv_unlock_timing": True,
+    # },
 
     "ppv_followup": {
         "preferred_hours": "calculated",
@@ -1239,12 +1240,13 @@ PRICE_RANGES = {
         "default": 20,
         "description": "Competition tip goal",
     },
-    "ppv_message": {
-        "min": 5,
-        "max": 40,
-        "default": 12,
-        "description": "Message PPV unlock pricing",
-    },
+    # NOTE: ppv_message DEPRECATED - merged into ppv_unlock (retained for historical reference)
+    # "ppv_message": {
+    #     "min": 5,
+    #     "max": 40,
+    #     "default": 12,
+    #     "description": "Message PPV unlock pricing",
+    # },
 }
 ```
 
@@ -1380,7 +1382,8 @@ SEND_TYPE_PRIORITY = {
     "like_farm": 20,
 
     # Retention
-    "ppv_message": 55,
+    # NOTE: ppv_message DEPRECATED - merged into ppv_unlock (retained for historical reference)
+    # "ppv_message": 55,
     "expired_winback": 50,
     "renew_on_message": 45,
     "renew_on_post": 40,

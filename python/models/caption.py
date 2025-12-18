@@ -16,7 +16,7 @@ class Caption:
     Attributes:
         caption_id: Database primary key
         caption_text: The actual caption text
-        send_type_key: Associated send type (e.g., 'ppv_video')
+        send_type_key: Associated send type (e.g., 'ppv_unlock')
         content_type_id: Content type identifier
         media_type: 'picture', 'video', 'gif', 'flyer', 'none'
         length_category: 'short', 'medium', 'long'

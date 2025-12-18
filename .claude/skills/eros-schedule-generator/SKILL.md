@@ -1,7 +1,7 @@
 ---
 name: eros-schedule-generator
 description: Generate optimized weekly schedules for OnlyFans creators. Use PROACTIVELY when user mentions scheduling, generating schedules, content planning, PPV optimization, or revenue maximization. Automatically invoked for schedule-related requests.
-version: 2.2.0
+version: 2.3.0
 model: sonnet
 triggers:
   - generate a schedule
@@ -14,11 +14,51 @@ triggers:
   - retention schedule
 ---
 
+## MCP Tool Usage Mandate
+
+**CRITICAL ENFORCEMENT DIRECTIVE**
+
+This skill REQUIRES actual MCP tool invocations. Generating schedules without database queries is PROHIBITED.
+
+### Enforcement Rules
+
+1. **No Hallucinated Data**: Every data point must originate from an MCP tool response
+2. **Tool Count Tracking**: Each phase must log `tools_invoked` count
+3. **Checkpoint Verification**: Before advancing phases, verify `tools_invoked > 0`
+4. **Failure on Zero Tools**: If any phase completes with `tools_invoked == 0`, HALT execution
+
+### Phase-to-Tool Mapping
+
+| Phase | Agent | Required Tools |
+|-------|-------|----------------|
+| 1 | performance-analyst | get_creator_profile, get_volume_config, get_performance_trends, get_vault_availability |
+| 2 | send-type-allocator | get_send_types, get_volume_config |
+| 3 | content-curator | get_send_type_captions, get_top_captions |
+| 4 | timing-optimizer | get_best_timing |
+| 5 | followup-generator | get_send_type_details |
+| 6 | authenticity-engine | get_persona_profile |
+| 7 | schedule-assembler | get_channels, get_creator_profile |
+| 8 | revenue-optimizer | get_send_type_details, get_volume_config |
+| 9 | quality-validator | get_creator_profile, get_persona_profile, save_schedule |
+
+### Verification Protocol
+
+At each checkpoint, output:
+```
+TOOLS_INVOKED: N
+TOOLS_EXPECTED: M
+STATUS: [PASS/FAIL]
+```
+
+If STATUS == FAIL, do NOT proceed to next phase.
+
+---
+
 # EROS Schedule Generator
 
 ## Purpose
 
-Orchestrates the 22-type schedule generation system for OnlyFans creators, producing optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention. The system leverages performance analytics, caption freshness scoring, audience targeting, and type-specific timing rules to maximize creator earnings while maintaining authentic communication patterns.
+Orchestrates the 22-type schedule generation system for OnlyFans creators, producing optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention. The system leverages performance analytics, caption freshness scoring, and type-specific timing rules to maximize creator earnings while maintaining authentic communication patterns.
 
 ---
 
@@ -69,55 +109,61 @@ Invoke this skill when the user requests any of the following:
 
 ## Multi-Agent Workflow
 
-The schedule generation process coordinates eight specialized agents, each responsible for a distinct aspect of the workflow.
+The schedule generation process coordinates nine specialized agents across 9 phases, each responsible for a distinct aspect of the workflow.
 
-### 1. performance-analyst
+### 1. performance-analyst (Phase 1)
 **Role**: Analyze creator performance trends and saturation levels
 **Inputs**: Creator ID, performance period (7d/14d/30d)
 **Outputs**: Saturation score, opportunity score, trend indicators, revenue velocity
 **Tools**: `get_performance_trends`, `get_creator_profile`
 
-### 2. send-type-allocator
+### 2. send-type-allocator (Phase 2)
 **Role**: Distribute send types across daily slots based on volume configuration
 **Inputs**: Volume config, performance analysis, category focus
 **Outputs**: Daily allocation map with send_type_keys per day
 **Tools**: `get_volume_config`, `get_send_types`
 
-### 3. content-curator
+### 3. content-curator (Phase 3)
 **Role**: Select type-appropriate captions using send_type_key matching
 **Inputs**: Allocated send types, creator persona, vault availability
 **Outputs**: Caption assignments with performance and freshness scores
 **Tools**: `get_send_type_captions`, `get_top_captions`, `get_persona_profile`
 
-### 4. audience-targeter
-**Role**: Assign correct audience targets for each schedule item
-**Inputs**: Send type requirements, page type, channel constraints
-**Outputs**: Target assignments per item with applicability validation
-**Tools**: `get_audience_targets`, `get_send_type_details`
-
-### 5. timing-optimizer
+### 4. timing-optimizer (Phase 4)
 **Role**: Calculate optimal posting times with type-specific rules
 **Inputs**: Historical performance data, send type timing constraints
 **Outputs**: Scheduled times with spacing validation
 **Tools**: `get_best_timing`, `get_send_type_details`
 
-### 6. followup-generator
+### 5. followup-generator (Phase 5)
 **Role**: Auto-generate followup items for PPV sends
 **Inputs**: PPV schedule items, followup delay configuration
 **Outputs**: Linked followup items with parent references
 **Tools**: `get_send_type_details` (for ppv_followup configuration)
 
-### 7. schedule-assembler
-**Role**: Combine all components into final schedule structure
-**Inputs**: All agent outputs, creator profile, week parameters
-**Outputs**: Complete schedule ready for validation
-**Tools**: None (pure assembly logic)
+### 6. authenticity-engine (Phase 6) [NEW]
+**Role**: Apply anti-AI humanization and persona consistency
+**Inputs**: Schedule items with captions, creator persona
+**Outputs**: Humanized items with authenticity scores
+**Tools**: `get_persona_profile`
 
-### 8. quality-validator
-**Role**: Validate requirements, authenticity, and completeness
-**Inputs**: Assembled schedule, business rules
+### 7. schedule-assembler (Phase 7)
+**Role**: Combine all components into final schedule structure
+**Inputs**: All agent outputs including authenticity results, creator profile, week parameters
+**Outputs**: Complete schedule ready for optimization
+**Tools**: `get_channels`, `get_creator_profile`
+
+### 8. revenue-optimizer (Phase 8) [NEW]
+**Role**: Optimize pricing and positioning for maximum revenue
+**Inputs**: Assembled schedule, volume config
+**Outputs**: Priced items with positioning recommendations
+**Tools**: `get_send_type_details`, `get_volume_config`
+
+### 9. quality-validator (Phase 9)
+**Role**: Validate requirements, authenticity, and completeness (FINAL GATE)
+**Inputs**: Optimized schedule, business rules
 **Outputs**: Validation report, corrected schedule if needed
-**Tools**: `get_vault_availability`, `get_content_type_rankings`
+**Tools**: `get_creator_profile`, `get_persona_profile`, `save_schedule`
 
 ---
 
@@ -317,26 +363,7 @@ The `dow_multipliers_used` field shows the multipliers that produced this distri
     - Flag items requiring new caption creation
 ```
 
-### Phase 4: AUDIENCE TARGETING
-**Duration**: ~1 second
-**Objective**: Assign appropriate audience targets
-
-```
-4.1 Load targeting options
-    - get_audience_targets(page_type, channel_key)
-    - Filter by send type requirements
-
-4.2 For each schedule item:
-    - get_send_type_details(send_type_key)
-    - Extract: default_target, required_targets, forbidden_targets
-    - Assign appropriate target_key
-
-4.3 Validate targeting consistency
-    - Ensure targets match channel capabilities
-    - Verify page_type applicability
-```
-
-### Phase 5: TIMING OPTIMIZATION
+### Phase 4: TIMING OPTIMIZATION
 **Duration**: ~2 seconds
 **Objective**: Calculate optimal times with type-specific rules
 
@@ -360,48 +387,104 @@ The `dow_multipliers_used` field shows the multipliers that produced this distri
     - Adjust for flash bundles (shorter) vs standard PPV (longer)
 ```
 
-### Phase 6: FOLLOW-UP GENERATION
+### Phase 5: FOLLOW-UP GENERATION
 **Duration**: ~1 second
 **Objective**: Create automatic followup items for PPV sends
 
 ```
-6.1 Identify PPV items requiring followups
+5.1 Identify PPV items requiring followups
     - Filter: send_type_category = "revenue"
     - Check: generates_followup = true
 
-6.2 Generate followup items
+5.2 Generate followup items
     - send_type_key: "ppv_followup"
     - scheduled_time: parent_time + followup_delay_minutes
     - is_follow_up: 1
     - parent_item_id: reference to parent
 
-6.3 Select followup captions
+5.3 Select followup captions
     - get_send_type_captions(creator_id, "ppv_followup")
     - Match to parent content type context
 ```
 
-### Phase 7: ASSEMBLY & VALIDATION
-**Duration**: ~2 seconds
-**Objective**: Combine components and save to database
+### Phase 6: AUTHENTICITY ENGINE [NEW]
+**Duration**: ~1 second
+**Objective**: Apply anti-AI humanization and persona consistency
+
+```
+6.1 Load persona profile
+    - get_persona_profile(creator_id)
+    - Extract: tone, archetype, emoji_style, slang_level
+
+6.2 Humanize captions
+    - Apply timing jitter (+-5 minutes)
+    - Inject natural language variation
+    - Add persona-specific emoji patterns
+    - Remove AI-detectable patterns
+
+6.3 Calculate authenticity scores
+    - Score each item 0-100
+    - Flag items below 65 for review
+    - Apply slang level adjustments
+```
+
+### Phase 7: SCHEDULE ASSEMBLY
+**Duration**: ~1 second
+**Objective**: Combine all components into final schedule structure
 
 ```
 7.1 Assemble schedule items
-    - Merge: allocation + caption + target + timing + followups
-    - Add metadata: priority, media_type, flyer_required, price
+    - Merge: allocation + caption + target + timing + followups + authenticity
+    - Add metadata: priority, media_type, flyer_required
 
-7.2 Run quality checks
+7.2 Apply expiration rules
+    - Set expires_at for time-sensitive sends
+    - Validate expiration windows
+
+7.3 Merge authenticity results
+    - Integrate humanized captions
+    - Preserve authenticity scores
+```
+
+### Phase 8: REVENUE OPTIMIZATION [NEW]
+**Duration**: ~1 second
+**Objective**: Optimize pricing and positioning for maximum revenue
+
+```
+8.1 Load revenue context
+    - get_volume_config(creator_id) for confidence_score
+    - get_send_type_details for pricing rules
+
+8.2 Apply dynamic pricing
+    - Calculate prices based on content type performance
+    - Apply confidence dampening for new creators
+    - Set bundle value framing
+
+8.3 Optimize positioning
+    - Place high-value items at peak times
+    - Apply first-to-tip day rotation
+    - Balance revenue distribution across week
+```
+
+### Phase 9: QUALITY VALIDATION (FINAL GATE)
+**Duration**: ~2 seconds
+**Objective**: Validate requirements and save to database
+
+```
+9.1 Run quality checks
     - Validate all required fields present
     - Check caption uniqueness across schedule
     - Verify vault has required content types
     - Confirm timing conflicts resolved
+    - Validate 22-type diversity requirements
 
-7.3 Generate validation report
+9.2 Generate validation report
     - Items by category breakdown
     - Coverage gaps identified
     - Recommendations for improvement
     - Include caption_warnings from volume_config
 
-7.4 Save to database
+9.3 Save to database
     - save_schedule(creator_id, week_start, items)
     - Return: template_id, item_ids, summary
 ```
@@ -410,7 +493,7 @@ The `dow_multipliers_used` field shows the multipliers that produced this distri
 
 When `caption_warnings` from OptimizedVolumeResult is non-empty, the schedule generator MUST:
 
-1. **Surface warnings to quality-validator**: Pass warnings to Phase 7 validation
+1. **Surface warnings to quality-validator**: Pass warnings to Phase 9 validation
 2. **Log warnings in validation report**: Include in final summary
 3. **Adjust allocation if critical**: If warnings mention "critical shortage":
    - Reduce allocation for affected send types by 50%
@@ -479,7 +562,7 @@ if volume_config.caption_warnings:
   "scheduled_time": "20:00:00",
 
   "send_type": {
-    "key": "ppv_video",
+    "key": "ppv_unlock",
     "category": "revenue",
     "display_name": "PPV Video"
   },
@@ -594,10 +677,9 @@ if volume_config.caption_warnings:
 | `get_send_types` | All send types filtered by page_type |
 | `get_volume_config` | Get daily limits per category and type caps |
 
-### Targeting & Channels (2 tools)
+### Channels (1 tool)
 | Tool | Purpose |
 |------|---------|
-| `get_audience_targets` | Targets filtered by page_type and channel |
 | `get_channels` | Available channels with targeting support |
 
 ### Schedule Operations (2 tools)
@@ -677,7 +759,7 @@ Before finalizing any schedule, validate:
 |-------|-------|------------|
 | No captions available | Freshness filter too strict | Reduce min_freshness threshold |
 | Volume exceeded | Too many items allocated | Reduce category_focus intensity |
-| Invalid target | Target not applicable to channel | Use get_audience_targets with channel_key filter |
+| Invalid channel | Channel not applicable to send type | Verify channel compatibility with get_channels |
 | Timing conflict | Multiple items at same time | Increase minimum spacing |
 | Missing content type | Vault doesn't have required media | Flag for content creation |
 
@@ -685,8 +767,7 @@ Before finalizing any schedule, validate:
 
 1. If caption freshness low: Use top performers with warning
 2. If vault incomplete: Skip items requiring unavailable content
-3. If targeting limited: Use broader audience targets
-4. If timing constrained: Spread items to adjacent days
+3. If timing constrained: Spread items to adjacent days
 
 ---
 
@@ -715,7 +796,7 @@ Response: Creates revenue-optimized schedule:
 
 ### Custom Send Type Selection
 ```
-User: Create schedule for alexia with only bump_normal and ppv_video
+User: Create schedule for alexia with only bump_normal and ppv_unlock
 
 Response: Creates targeted schedule:
 - Only specified send types allocated
@@ -741,7 +822,7 @@ Phase 1 (Initialization):
   [PARALLEL] get_send_types + get_vault_availability + get_best_timing
 
 Phase 3-4 (Content + Targeting):
-  [PARALLEL] content-curator + audience-targeter
+  content-curator → timing-optimizer → followup-generator
   (These agents operate on different data and can run simultaneously)
 ```
 
@@ -813,6 +894,7 @@ Extended validation with proactive issue resolution:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.3.0 | 2025-12-18 | Removed audience targeting system, consolidated to 16 MCP tools, documentation cleanup |
 | 2.2.0 | 2025-12-16 | Full OptimizedVolumeResult integration: 13 fields, 8 optimization modules, confidence scoring, DOW multipliers, caption warnings handling |
 | 2.1.0 | 2025-12-16 | PPV restructuring: ppv_unlock, ppv_wall, tip_goal, 22-type system |
 | 2.0.6 | 2025-12-16 | Wave 6: Testing & Validation - 410 tests, 62.78% coverage, comprehensive test suite, quality gates |
@@ -821,6 +903,6 @@ Extended validation with proactive issue resolution:
 | 2.0.3 | 2025-12-15 | Wave 3: MCP Modularization & Domain Models - 17 modular tools, SendTypeRegistry, frozen dataclasses, configuration management |
 | 2.0.2 | 2025-12-15 | Wave 2: Type Safety & Code Quality - Modern type hints, custom exceptions, structured logging, input validation decorators |
 | 2.0.1 | 2025-12-15 | Wave 1: Security Hardening - SQL injection protection, input validation, foreign key enforcement, database integrity |
-| 2.0.0 | 2025-01-15 | Enhanced Send Type System - 21-type taxonomy, 5 channels, 10 audience targets, MCP integration |
+| 2.0.0 | 2025-01-15 | Enhanced Send Type System - 21-type taxonomy, 5 channels, MCP integration |
 | 1.5.0 | 2024-11-01 | Added multi-agent workflow |
 | 1.0.0 | 2024-08-01 | Initial release |

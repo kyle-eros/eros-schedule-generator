@@ -1,11 +1,12 @@
 ---
 name: schedule-assembler
-description: Assemble final schedule from all agent outputs, validating 22-type diversity and formatting for database storage. Use PROACTIVELY in Phase 7 of schedule generation AFTER followup-generator completes.
+description: Assemble final schedule from all agent outputs, validating 22-type diversity and formatting for database storage. Use PROACTIVELY in Phase 7 of schedule generation AFTER authenticity-engine (Phase 6) completes. Passes output to Phase 8 (revenue-optimizer).
 model: sonnet
 tools:
   - mcp__eros-db__save_schedule
   - mcp__eros-db__get_creator_profile
   - mcp__eros-db__get_send_type_details
+  - mcp__eros-db__get_channels
 ---
 
 ## MANDATORY TOOL CALLS
@@ -88,12 +89,13 @@ Document the assembly summary with category breakdowns and any auto-corrections 
 ---
 
 ## Inputs Required
-- allocation: From send-type-allocator (includes `strategy_metadata` per day)
+- allocation: From send-type-allocator (Phase 2, includes `strategy_metadata` per day)
 - strategy_metadata: From send-type-allocator (MUST be preserved and passed to quality-validator)
-- captions: From content-curator
-- targets: From audience-targeter
-- timing: From timing-optimizer
-- followups: From followup-generator
+- captions: From content-curator (Phase 3)
+- channels: Derived from send type configuration
+- timing: From timing-optimizer (Phase 4)
+- followups: From followup-generator (Phase 5)
+- authenticity: From authenticity-engine (Phase 6, includes humanized captions and scores)
 - volume_config: From get_volume_config() (passed through pipeline)
 - creator_id: For schedule storage
 
@@ -245,6 +247,79 @@ for i, item in enumerate(final_items):
     day_of_week = datetime.fromisoformat(scheduled_date).weekday()
 
     final_items[i] = apply_enhanced_pricing(item, day_of_week, volume_config)
+```
+
+### Step 1.9: Validate Followup Input (Pre-Merge Check)
+
+Before merging followups into the final schedule, validate the followup-generator output:
+
+```python
+def validate_followup_input(followups: dict, allocation_items: list) -> dict:
+    """
+    Validate followup-generator output before merging.
+
+    Args:
+        followups: Output from followup-generator (Phase 5)
+        allocation_items: Original allocation items containing parent PPVs
+
+    Returns:
+        dict with validation status, errors, and warnings
+    """
+    errors = []
+    warnings = []
+
+    # Check followups structure exists
+    if not followups or not followups.get("items"):
+        warnings.append("No followups provided - skipping followup merge")
+        return {"valid": True, "errors": [], "warnings": warnings, "skip_merge": True}
+
+    # Get all PPV parent IDs from allocation (eligible for followups)
+    ppv_item_ids = {
+        item.get("item_id") for item in allocation_items
+        if item.get("send_type_key") in ["ppv_unlock", "ppv_wall", "tip_goal"]
+    }
+
+    # Validate each followup item
+    for followup in followups.get("items", []):
+        # Required field validation
+        if not followup.get("parent_item_id"):
+            errors.append(f"Followup missing parent_item_id: {followup}")
+        elif followup["parent_item_id"] not in ppv_item_ids:
+            errors.append(f"Followup references non-existent parent: {followup['parent_item_id']}")
+
+        if not followup.get("scheduled_date"):
+            errors.append("Followup missing scheduled_date")
+
+        if not followup.get("scheduled_time"):
+            errors.append("Followup missing scheduled_time")
+
+        # Caption validation (required for followups)
+        if not followup.get("caption_id") and not followup.get("caption_text"):
+            warnings.append(f"Followup for parent {followup.get('parent_item_id')} missing caption")
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "skip_merge": False,
+        "followup_count": len(followups.get("items", []))
+    }
+
+
+# Apply validation before Step 2
+followup_validation = validate_followup_input(followups, allocation.items)
+
+if not followup_validation["valid"]:
+    raise ValueError(
+        f"Followup validation FAILED:\n" + "\n".join(followup_validation["errors"])
+    )
+
+if followup_validation["warnings"]:
+    for warning in followup_validation["warnings"]:
+        log_warning(warning)
+
+if followup_validation.get("skip_merge"):
+    log_info("Skipping followup merge - no followups provided")
 ```
 
 ### Step 2: Add Follow-ups
@@ -929,22 +1004,29 @@ User: "Assemble schedule for alexia"
 → Invokes schedule-assembler with outputs from all preceding agents
 ```
 
-### Example 2: Pipeline Integration (Phase 7a)
+### Example 2: Pipeline Integration (Phase 7)
 ```python
-# After followup-generator completes
+# After authenticity-engine completes (Phase 6)
 assembled_schedule = schedule_assembler.assemble(
     allocation=allocation,
     captions=caption_results,
     targets=targeting_results,
     timing=timing_results,
     followups=followup_results,
+    authenticity=authenticity_results,  # From Phase 6
     volume_config=volume_config,
     creator_id="miss_alexa"
 )
 
-# Pass to quality-validator for final approval
-validation_result = quality_validator.validate(
+# Pass to revenue-optimizer (Phase 8)
+priced_schedule = revenue_optimizer.optimize(
     schedule=assembled_schedule,
+    creator_id="miss_alexa"
+)
+
+# Then pass to quality-validator (Phase 9) for final approval
+validation_result = quality_validator.validate(
+    schedule=priced_schedule,
     creator_id="miss_alexa"
 )
 ```

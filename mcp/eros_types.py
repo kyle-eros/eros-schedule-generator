@@ -362,27 +362,6 @@ class ChannelsResponse(TypedDict):
     count: int
 
 
-class AudienceTargetData(TypedDict):
-    """Audience targeting segment configuration."""
-    target_id: int
-    target_key: str
-    display_name: str
-    description: str
-    filter_type: str
-    filter_criteria: Dict[str, Any]
-    applicable_page_types: List[str]
-    applicable_channels: List[str]
-    typical_reach_percentage: int
-    is_active: int
-    created_at: str
-
-
-class AudienceTargetsResponse(TypedDict):
-    """Response from get_audience_targets."""
-    targets: List[AudienceTargetData]
-    count: int
-
-
 # ============================================================================
 # Schedule Operations Types
 # ============================================================================
@@ -395,7 +374,6 @@ class ScheduleItem(TypedDict):
     channel: str
     send_type_key: Optional[str]
     channel_key: Optional[str]
-    target_key: Optional[str]
     caption_id: Optional[int]
     caption_text: Optional[str]
     suggested_price: Optional[float]

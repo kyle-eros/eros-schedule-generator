@@ -56,7 +56,7 @@ FOR each eligible_item in eligible_items:
 followup.parent_item_id = eligible_item.id
 
 // This creates the relationship:
-// eligible_item (ppv_video) -> followup (ppv_followup)
+// eligible_item (ppv_unlock) -> followup (ppv_followup)
 ```
 
 ### Step 4: Calculate Timing

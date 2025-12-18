@@ -25,7 +25,7 @@ class SendTypeRegistry:
     Usage:
         registry = SendTypeRegistry()
         registry.load_from_database(conn)
-        ppv_config = registry.get("ppv_video")
+        ppv_config = registry.get("ppv_unlock")
         revenue_types = registry.get_by_category("revenue")
     """
 
@@ -201,7 +201,7 @@ class SendTypeRegistry:
             preferences["boost"] = 1.0
 
         # Type-specific overrides
-        if send_type.send_type_key == "ppv_video":
+        if send_type.send_type_key == "ppv_unlock":
             preferences["preferred_hours"] = [19, 21]
             preferences["boost"] = 1.3
         elif send_type.send_type_key == "vip_program":
@@ -244,7 +244,7 @@ class SendTypeRegistry:
         """Get send type configuration by key.
 
         Args:
-            key: Send type key (e.g., 'ppv_video')
+            key: Send type key (e.g., 'ppv_unlock')
 
         Returns:
             Send type configuration

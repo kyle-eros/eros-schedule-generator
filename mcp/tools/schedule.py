@@ -19,7 +19,7 @@ logger = logging.getLogger("eros_db_server")
 
 @mcp_tool(
     name="save_schedule",
-    description="Save generated schedule to database (creates template and items). Supports both legacy format and new send_type_key/channel_key/target_key fields.",
+    description="Save generated schedule to database (creates template and items). Supports both legacy format and new send_type_key/channel_key fields.",
     schema={
         "type": "object",
         "properties": {
@@ -43,7 +43,6 @@ logger = logging.getLogger("eros_db_server")
                         "channel": {"type": "string"},
                         "send_type_key": {"type": "string", "description": "Send type key (resolves to send_type_id)"},
                         "channel_key": {"type": "string", "description": "Channel key (resolves to channel_id)"},
-                        "target_key": {"type": "string", "description": "Audience target key (resolves to target_id)"},
                         "caption_id": {"type": "integer"},
                         "caption_text": {"type": "string"},
                         "suggested_price": {"type": "number"},
@@ -85,7 +84,6 @@ def save_schedule(
             - channel: Legacy 'mass_message' or 'wall_post'
             - send_type_key: New send type key (resolves to send_type_id)
             - channel_key: New channel key (resolves to channel_id)
-            - target_key: Audience target key (resolves to target_id)
             - caption_id: Optional caption ID
             - caption_text: Optional caption text
             - suggested_price: Optional price
@@ -132,9 +130,6 @@ def save_schedule(
 
         cursor = conn.execute("SELECT channel_id, channel_key FROM channels")
         channels_map = {row["channel_key"]: row["channel_id"] for row in cursor.fetchall()}
-
-        cursor = conn.execute("SELECT target_id, target_key FROM audience_targets")
-        targets_map = {row["target_key"]: row["target_id"] for row in cursor.fetchall()}
 
         # Count PPVs and bumps
         total_ppvs = sum(1 for item in items if item.get("item_type") == "ppv" or (item.get("send_type_key") or "").startswith("ppv"))
@@ -203,15 +198,6 @@ def save_schedule(
                 else:
                     warnings.append(f"Item {idx}: Unknown channel_key '{channel_key}'")
 
-            # Resolve target_key to target_id
-            target_id = None
-            target_key = item.get("target_key")
-            if target_key:
-                if target_key in targets_map:
-                    target_id = targets_map[target_key]
-                else:
-                    warnings.append(f"Item {idx}: Unknown target_key '{target_key}'")
-
             # Determine is_follow_up based on parent_item_id
             parent_item_id = item.get("parent_item_id")
             is_follow_up = 1 if parent_item_id is not None else 0
@@ -222,10 +208,10 @@ def save_schedule(
                     template_id, creator_id, scheduled_date, scheduled_time,
                     item_type, channel, caption_id, caption_text,
                     suggested_price, content_type_id, flyer_required, priority, status,
-                    send_type_id, channel_id, target_id,
+                    send_type_id, channel_id,
                     linked_post_url, expires_at, followup_delay_minutes,
                     media_type, campaign_goal, parent_item_id, is_follow_up
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     template_id,
@@ -242,7 +228,6 @@ def save_schedule(
                     item.get("priority", 5),
                     send_type_id,
                     channel_id,
-                    target_id,
                     item.get("linked_post_url"),
                     item.get("expires_at"),
                     item.get("followup_delay_minutes"),

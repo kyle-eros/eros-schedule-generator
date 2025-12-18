@@ -1,8 +1,8 @@
 # EROS Schedule Generator API Reference
 
-Complete documentation for all 17 MCP (Model Context Protocol) tools available in the EROS Database Server.
+Complete documentation for all 16 MCP (Model Context Protocol) tools available in the EROS Database Server.
 
-**Version**: 2.2.0
+**Version**: 2.3.0
 **MCP Server**: `mcp/eros_db_server.py`
 **Protocol**: JSON-RPC 2.0 over stdin/stdout
 
@@ -31,13 +31,12 @@ Complete documentation for all 17 MCP (Model Context Protocol) tools available i
 12. [get_volume_config](#12-get_volume_config)
 13. [get_volume_assignment](#13-get_volume_assignment)
 
-### Targeting & Channels
-14. [get_audience_targets](#14-get_audience_targets)
-15. [get_channels](#15-get_channels)
+### Channels
+14. [get_channels](#14-get_channels)
 
 ### Schedule Operations
-16. [save_schedule](#16-save_schedule)
-17. [execute_query](#17-execute_query)
+15. [save_schedule](#15-save_schedule)
+16. [execute_query](#16-execute_query)
 
 ---
 
@@ -779,7 +778,7 @@ Get complete details for a single send type by key, including related caption ty
 #### Usage Example
 
 ```python
-result = get_send_type_details(send_type_key="ppv_video")
+result = get_send_type_details(send_type_key="ppv_unlock")
 
 # Via natural language
 "Show me details for the ppv_unlock send type"
@@ -861,83 +860,9 @@ result = get_volume_assignment(creator_id="alexia")
 
 ---
 
-## Targeting & Channels Tools
+## Channels Tools
 
-### 14. get_audience_targets
-
-Get audience targets filtered by page_type and/or channel_key using JSON array matching.
-
-#### Parameters
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `page_type` | string | No | Optional filter by page_type ('paid' or 'free') |
-| `channel_key` | string | No | Optional filter by channel key |
-
-#### Returns
-
-```json
-{
-  "targets": [
-    {
-      "target_id": 1,
-      "target_key": "all_paid_fans",
-      "display_name": "All Paid Fans",
-      "description": "All currently subscribed paid fans",
-      "filter_type": "subscription_status",
-      "filter_criteria": {
-        "subscription_status": "active",
-        "page_type": "paid"
-      },
-      "applicable_page_types": ["paid"],
-      "applicable_channels": ["mass_message", "wall_post"],
-      "typical_reach_percentage": 100,
-      "is_active": 1,
-      "created_at": "2025-11-01T10:00:00"
-    },
-    {
-      "target_id": 5,
-      "target_key": "high_spenders",
-      "display_name": "High Spenders",
-      "description": "Fans who have spent $100+ in last 30 days",
-      "filter_type": "spending_behavior",
-      "filter_criteria": {
-        "min_spending_30d": 100,
-        "subscription_status": "active"
-      },
-      "applicable_page_types": ["paid", "free"],
-      "applicable_channels": ["mass_message"],
-      "typical_reach_percentage": 15,
-      "is_active": 1,
-      "created_at": "2025-11-01T10:00:00"
-    }
-  ],
-  "count": 12
-}
-```
-
-#### Usage Example
-
-```python
-# All targets
-result = get_audience_targets()
-
-# Filter by page type
-result = get_audience_targets(page_type="paid")
-
-# Filter by channel
-result = get_audience_targets(channel_key="mass_message")
-
-# Both filters
-result = get_audience_targets(page_type="paid", channel_key="mass_message")
-
-# Via natural language
-"Show me all audience targets for paid pages"
-```
-
----
-
-### 15. get_channels
+### 14. get_channels
 
 Get all channels with optional filtering by targeting support.
 
@@ -1002,7 +927,7 @@ result = get_channels(supports_targeting=True)
 
 ## Schedule Operations Tools
 
-### 16. save_schedule
+### 15. save_schedule
 
 Save generated schedule to database. Creates a schedule_template record and inserts all schedule_items.
 
@@ -1099,7 +1024,7 @@ result = save_schedule(
 
 ---
 
-### 17. execute_query
+### 16. execute_query
 
 Execute a read-only SQL SELECT query for custom analysis.
 
@@ -1203,7 +1128,7 @@ Common error types:
 ### Key Naming Conventions
 
 - **creator_id**: Alphanumeric with underscore/hyphen (e.g., "alexia", "miss_alexa")
-- **send_type_key**: Snake_case (e.g., "ppv_video", "bump_normal")
+- **send_type_key**: Snake_case (e.g., "ppv_unlock", "bump_normal")
 - **channel_key**: Snake_case (e.g., "mass_message", "wall_post")
 - **target_key**: Snake_case (e.g., "all_paid_fans", "high_spenders")
 
@@ -1574,7 +1499,11 @@ digest = analyzer.generate_daily_digest(data)
 
 ## Version History
 
-### v2.2.0 (Current)
+### v2.3.0 (Current)
+- Removed audience targeting system (16 tools)
+- Documentation cleanup and version alignment
+
+### v2.2.0
 - Complete MCP server modularization (17 focused modules)
 - Domain model architecture with frozen/slotted dataclasses
 - Send type registry with O(1) lookups
@@ -1607,6 +1536,6 @@ digest = analyzer.generate_daily_digest(data)
 
 ---
 
-*EROS Schedule Generator v2.2.0*
+*EROS Schedule Generator v2.3.0*
 *MCP Server Documentation*
 *Last Updated: December 17, 2025*

@@ -237,7 +237,7 @@ def start_metrics_server(port: Optional[int] = None) -> bool:
 
         # Set server info
         SERVER_INFO.info({
-            'version': '2.2.0',
+            'version': '2.3.0',
             'name': 'eros-db-server',
             'protocol_version': '2024-11-05'
         })

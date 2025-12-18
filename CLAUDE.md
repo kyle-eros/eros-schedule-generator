@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 8 specialized agents to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
+AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 9 specialized agents across 9 phases to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
 
-**Version**: 2.2.0
+**Version**: 2.3.0
 **Database**: SQLite (250MB, 59 tables, 37 active creators)
 **Architecture**: Multi-agent pipeline with MCP database integration
 
@@ -26,27 +26,28 @@ AI-powered multi-agent schedule generation system for OnlyFans creators using a 
 | Location | Purpose |
 |----------|---------|
 | `.claude/skills/eros-schedule-generator/SKILL.md` | Main skill entry point |
-| `.claude/skills/eros-schedule-generator/ORCHESTRATION.md` | 7-phase pipeline documentation |
-| `.claude/agents/` | 8 specialized agent definitions |
-| `mcp/eros_db_server.py` | MCP database server (17 tools) |
+| `.claude/skills/eros-schedule-generator/ORCHESTRATION.md` | 9-phase pipeline documentation |
+| `.claude/agents/` | 9 specialized agent definitions |
+| `mcp/eros_db_server.py` | MCP database server (16 tools) |
 | `python/` | Core Python algorithms |
 | `database/eros_sd_main.db` | Production SQLite database |
 | `docs/` | Comprehensive documentation (240KB+) |
 
-## 8 Specialized Agents
+## 9 Specialized Agents
 
 1. **performance-analyst** - Saturation/opportunity analysis
 2. **send-type-allocator** - Daily send type distribution
 3. **content-curator** - Caption selection with freshness scoring
-4. **audience-targeter** - Audience segment assignment
-5. **timing-optimizer** - Optimal posting time calculation
-6. **followup-generator** - Auto-generate PPV followups
+4. **timing-optimizer** - Optimal posting time calculation
+5. **followup-generator** - Auto-generate PPV followups
+6. **authenticity-engine** - Anti-AI humanization [NEW]
 7. **schedule-assembler** - Final schedule assembly
-8. **quality-validator** - Requirements validation
+8. **revenue-optimizer** - Price/positioning optimization [NEW]
+9. **quality-validator** - Final validation gate
 
 ## MCP Tools Available
 
-All database operations use the `eros-db` MCP server (17 tools):
+All database operations use the `eros-db` MCP server (16 tools):
 
 ### Creator Data (3 tools)
 - **`get_creator_profile`** - Comprehensive creator data including analytics, persona, top content types, and volume configuration
@@ -77,23 +78,22 @@ All database operations use the `eros-db` MCP server (17 tools):
   - Tracking: `prediction_id`, `message_count`, `adjustments_applied` (audit trail)
   - 8 integrated modules: Base Tier, Multi-Horizon Fusion, Confidence Dampening, DOW Distribution, Elasticity Bounds, Content Weighting, Caption Pool Check, Prediction Tracking
 
-### Targeting & Channels (2 tools)
-- **`get_audience_targets`** - Audience targeting segments filtered by page type and channel compatibility
-- **`get_channels`** - Distribution channels (wall_post, mass_message, targeted_message, story, live) with targeting support
+### Channels (1 tool)
+- **`get_channels`** - Distribution channels (wall_post, mass_message, story, live)
 
 ### Schedule Operations (2 tools)
-- **`save_schedule`** - Persist generated schedule to database with send types, channels, and audience targets
+- **`save_schedule`** - Persist generated schedule to database with send types and channels
 - **`execute_query`** - Execute read-only SQL queries for custom analysis and diagnostics
 
 ### Tool Count Verification
-✓ Creator Data: 3 tools
-✓ Performance & Analytics: 3 tools
-✓ Content & Captions: 3 tools
-✓ Send Type Configuration: 3 tools
-✓ Targeting & Channels: 2 tools
-✓ Schedule Operations: 2 tools
-✓ Deprecated (still functional): 1 tool (`get_volume_assignment`)
-**Total: 17 tools**
+- Creator Data: 3 tools
+- Performance & Analytics: 3 tools
+- Content & Captions: 3 tools
+- Send Type Configuration: 3 tools
+- Channels: 1 tool
+- Schedule Operations: 2 tools
+- Deprecated (still functional): 1 tool (`get_volume_assignment`)
+**Total: 16 tools**
 
 **Deprecation Notice**: `get_volume_assignment` remains available for backward compatibility but returns a deprecation warning. New implementations should use `get_volume_config()` which provides dynamic calculation with full `OptimizedVolumeResult` metadata instead of static assignments.
 

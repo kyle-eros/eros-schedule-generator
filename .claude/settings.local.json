@@ -11,7 +11,6 @@
 
       "mcp__eros-db__execute_query",
       "mcp__eros-db__get_active_creators",
-      "mcp__eros-db__get_audience_targets",
       "mcp__eros-db__get_best_timing",
       "mcp__eros-db__get_channels",
       "mcp__eros-db__get_content_type_rankings",

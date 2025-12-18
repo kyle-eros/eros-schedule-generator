@@ -133,7 +133,7 @@ def adjust_for_free_page(config: dict) -> dict:
     Reallocate retention slots to engagement.
     """
     if page_type == "free":
-        # Only ppv_message and ppv_followup applicable
+        # Only ppv_followup applicable (ppv_unlock is revenue, not retention)
         # Reduce retention, increase engagement
         reallocation = config["retention_per_day"] - 1
         config["retention_per_day"] = max(1, config["retention_per_day"] - reallocation)
@@ -486,11 +486,11 @@ def apply_day_adjustments(base_config: dict, day_of_week: str) -> dict:
 |-----|------------------|--------------------|--------------------|
 | Monday | Slower conversion | Catch-up browsing | bump_normal, dm_farm |
 | Tuesday | Standard | Standard | Balanced mix |
-| Wednesday | Standard | Mid-week peak | ppv_video, bumps |
+| Wednesday | Standard | Mid-week peak | ppv_unlock, bumps |
 | Thursday | Standard | Pre-weekend buildup | bundles, game_post |
-| Friday | High (payday) | High activity | ppv_video, flash_bundle |
-| Saturday | High conversion | Peak leisure | ppv_video, bundle, bumps |
-| Sunday | Highest conversion | Extended browsing | ppv_video x3, game_post |
+| Friday | High (payday) | High activity | ppv_unlock, flash_bundle |
+| Saturday | High conversion | Peak leisure | ppv_unlock, bundle, bumps |
+| Sunday | Highest conversion | Extended browsing | ppv_unlock x3, game_post |
 
 ---
 
@@ -1008,7 +1008,7 @@ allocation = {
         "items": [
             {
                 "slot": 1,
-                "send_type": "ppv_video",
+                "send_type": "ppv_unlock",
                 "category": "revenue",
                 "scheduled_date": "2025-12-16",
                 "scheduled_time": "08:30",
@@ -1024,7 +1024,7 @@ allocation = {
             },
             {
                 "slot": 3,
-                "send_type": "ppv_video",
+                "send_type": "ppv_unlock",
                 "category": "revenue",
                 "scheduled_date": "2025-12-16",
                 "scheduled_time": "11:00",
@@ -1090,8 +1090,8 @@ START: Need to fill slot X
    |
    +-- REVENUE
    |   |
-   |   +-- Is ppv_video count < 4 today?
-   |   |   +-- YES: Is this slot 1, 2, or 3 of revenue? -> SELECT ppv_video
+   |   +-- Is ppv_unlock count < 4 today?
+   |   |   +-- YES: Is this slot 1, 2, or 3 of revenue? -> SELECT ppv_unlock
    |   |   +-- NO: Continue to secondary types
    |   |
    |   +-- Was vip_program used this week?
@@ -1100,7 +1100,7 @@ START: Need to fill slot X
    |   |
    |   +-- Is there a special type slot available? (bundle/flash/game)
    |   |   +-- YES: Select based on performance scores
-   |   |   +-- NO: Fill with additional ppv_video or bundle
+   |   |   +-- NO: Fill with additional ppv_unlock or bundle
    |
    +-- ENGAGEMENT
    |   |
@@ -1125,10 +1125,10 @@ START: Need to fill slot X
        |   |   +-- NO: SELECT expired_winback (priority 1)
        |   |   +-- YES: Has renew_on_message been used?
        |   |       +-- NO: SELECT renew_on_message (priority 2)
-       |   |       +-- YES: SELECT ppv_message or renew_on_post
-       |   +-- NO (free page): SELECT ppv_message
+       |   |       +-- YES: SELECT ppv_followup or renew_on_post
+       |   +-- NO (free page): SELECT ppv_followup
        |
-       +-- Fill remaining with ppv_message
+       +-- Fill remaining with ppv_followup
 
 END: Return selected send_type
 ```

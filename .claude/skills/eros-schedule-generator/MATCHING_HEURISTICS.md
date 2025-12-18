@@ -169,8 +169,8 @@ else:
 ```
 
 **Priority Tiers:**
-- Priority 1: Designed specifically for this send type (e.g., ppv_unlock for ppv_video)
-- Priority 2: Compatible and effective (e.g., ppv_tease for ppv_video)
+- Priority 1: Designed specifically for this send type (e.g., ppv_unlock for ppv_unlock)
+- Priority 2: Compatible and effective (e.g., ppv_tease for ppv_unlock)
 - Priority 3: Generic but usable (e.g., flirty_generic for bump_normal)
 - Priority 4+: Poor fit, only use in fallback
 
@@ -1494,7 +1494,7 @@ Measure impact on:
 ```python
 {
     'status': 'MANUAL_REQUIRED',
-    'send_type_key': 'ppv_video',
+    'send_type_key': 'ppv_unlock',
     'reason': 'No captions available after all fallback attempts',
     'action': 'Add captions to caption bank for this send type',
     'suggestion': 'Create 3-5 ppv_unlock captions with performance_score >= 40'

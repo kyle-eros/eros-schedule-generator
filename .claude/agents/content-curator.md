@@ -523,7 +523,7 @@ def validate_length_distribution(schedule_items):
 ### Step 3: Apply Send Type Requirements
 ```
 SEND_TYPE_CAPTION_RULES = {
-    # Primary PPV unlock (renamed from ppv_video)
+    # Primary PPV unlock (replaces legacy ppv_video and ppv_message)
     "ppv_unlock": {
         "required_types": ["ppv_unlock", "ppv_tease"],
         "caption_length": "long",  # 300+ chars
@@ -797,7 +797,7 @@ caption_results = content_curator.select_captions(
     used_caption_ids=set()  # Track to prevent duplicates
 )
 
-# Pass to audience-targeter
+# Pass to timing-optimizer
 audience_targeter.assign_targets(
     schedule_items=caption_results.items,
     page_type="paid"

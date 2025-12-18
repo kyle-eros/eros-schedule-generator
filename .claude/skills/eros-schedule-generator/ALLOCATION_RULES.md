@@ -69,7 +69,7 @@ For **free pages**, retention sends are reduced or eliminated since retention-sp
 Free page distribution:
 - Revenue: 55-65%
 - Engagement: 35-45%
-- Retention: 0-5% (only ppv_message and ppv_followup applicable)
+- Retention: 0-5% (only ppv_followup applicable for free pages)
 
 ---
 
@@ -78,8 +78,8 @@ Free page distribution:
 ### Step 1: Determine Base Volume
 
 ```
-1. Get creator's volume_level from volume_assignments table
-2. Look up base counts: revenue_per_day, engagement_per_day, retention_per_day
+1. Get creator's volume configuration via get_volume_config() MCP tool
+2. Extract base counts: revenue_per_day, engagement_per_day, retention_per_day
 3. Calculate total_sends = revenue + engagement + retention
 ```
 
@@ -346,7 +346,7 @@ IF saturation_score < 30:
 ```
 IF opportunity_score > 60:
     // High potential for revenue
-    PRIORITIZE: ppv_video, bundle, flash_bundle
+    PRIORITIZE: ppv_unlock, bundle, flash_bundle
 
 IF opportunity_score < 40:
     // Focus on engagement building

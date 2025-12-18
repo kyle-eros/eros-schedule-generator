@@ -1,6 +1,6 @@
 ---
 name: quality-validator
-description: Validate generated schedules for quality, 22-type diversity, authenticity, and completeness. Use PROACTIVELY in Phase 7 of schedule generation AFTER schedule-assembler completes as the FINAL approval gate.
+description: Validate generated schedules for quality, 22-type diversity, authenticity, and completeness. Use PROACTIVELY in Phase 9 of schedule generation AFTER revenue-optimizer (Phase 8) completes as the FINAL approval gate.
 model: sonnet
 tools:
   - mcp__eros-db__get_persona_profile
@@ -1092,11 +1092,11 @@ User: "Validate schedule for alexia"
   - creator_id: "alexia"
 ```
 
-### Example 2: Pipeline Integration (Phase 7b - Final Gate)
+### Example 2: Pipeline Integration (Phase 9 - Final Gate)
 ```python
-# After schedule-assembler completes
+# After revenue-optimizer completes (Phase 8)
 validation_result = quality_validator.validate(
-    schedule=assembled_schedule,
+    schedule=priced_schedule,  # From revenue-optimizer
     creator_id="miss_alexa"
 )
 

@@ -135,7 +135,6 @@ if not re.match(r'^[a-zA-Z0-9_-]+$', creator_id):
 | `get_top_captions` | creator_id, send_type_key | SQL injection, path traversal |
 | `get_send_type_details` | send_type_key | Command injection |
 | `get_send_type_captions` | creator_id, send_type_key | SQL injection |
-| `get_audience_targets` | channel_key | Path traversal, XSS |
 | `save_schedule` | creator_id | SQL injection |
 
 ### TASK 1.1.4: Security Event Logging

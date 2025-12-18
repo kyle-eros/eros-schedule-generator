@@ -2,7 +2,7 @@
 
 > Complete user guide for generating optimized OnlyFans content schedules using the AI-powered multi-agent system.
 
-**Version:** 2.2.0 | **Updated:** 2025-12-16
+**Version:** 2.3.0 | **Updated:** 2025-12-18
 
 ## Table of Contents
 
@@ -73,18 +73,19 @@ Generate schedules for all tier 1 creators
 
 ### Multi-Agent Architecture
 
-The system deploys 8 specialized agents in sequence:
+The system deploys 9 specialized agents across 9 phases:
 
-| Agent | Role | Model |
-|-------|------|-------|
-| **Performance Analyst** | Analyzes trends and saturation signals | Sonnet |
-| **Send Type Allocator** | Distributes send types across daily slots | Sonnet |
-| **Content Curator** | Selects and ranks captions | Sonnet |
-| **Audience Targeter** | Assigns audience targets to schedule items | Sonnet |
-| **Timing Optimizer** | Determines optimal posting times | Sonnet |
-| **Followup Generator** | Auto-generates PPV follow-ups | Sonnet |
-| **Schedule Assembler** | Constructs final schedule | Sonnet |
-| **Quality Validator** | Final approval gate | Sonnet |
+| Phase | Agent | Role | Model |
+|-------|-------|------|-------|
+| 1 | **Performance Analyst** | Analyzes trends and saturation signals | Sonnet |
+| 2 | **Send Type Allocator** | Distributes send types across daily slots | Sonnet |
+| 3 | **Content Curator** | Selects and ranks captions | Sonnet |
+| 4 | **Timing Optimizer** | Determines optimal posting times | Sonnet |
+| 5 | **Followup Generator** | Auto-generates PPV follow-ups | Sonnet |
+| 6 | **Authenticity Engine** | Anti-AI detection and humanization | Sonnet |
+| 7 | **Schedule Assembler** | Constructs final schedule | Sonnet |
+| 8 | **Revenue Optimizer** | Price and positioning optimization | Sonnet |
+| 9 | **Quality Validator** | Final approval gate | Sonnet |
 
 ### Data Sources
 
@@ -120,8 +121,11 @@ The system will:
 2. Analyze content type rankings and saturation signals
 3. Select top-performing captions with freshness scoring
 4. Determine optimal posting times based on historical success
-5. Assemble schedule respecting volume limits
-6. Validate quality and authenticity
+5. Auto-generate PPV followups
+6. Apply anti-AI humanization to ensure authentic voice
+7. Assemble schedule respecting volume limits
+8. Optimize pricing and positioning for revenue items
+9. Validate quality and completeness
 
 ### Batch Generation
 
@@ -209,7 +213,7 @@ For programmatic access:
 Focus on specific send types:
 
 ```
-Generate schedule for miss_alexa using only ppv_video and bundle types
+Generate schedule for miss_alexa using only ppv_unlock and bundle types
 ```
 
 Or filter by category:
@@ -344,7 +348,7 @@ If engagement drops:
 2. Lower `min_performance` or `min_freshness` thresholds
 3. Check caption type mappings:
 ```
-What caption types are needed for ppv_video?
+What caption types are needed for ppv_unlock?
 ```
 4. Add new captions with required caption types
 
@@ -656,4 +660,4 @@ Validates that bundle captions include proper value anchoring patterns.
 
 ---
 
-*Version 2.2.0 | Last Updated: 2025-12-17*
+*Version 2.3.0 | Last Updated: 2025-12-18*

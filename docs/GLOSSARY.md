@@ -2,7 +2,7 @@
 
 > Comprehensive glossary of all domain terms and technical concepts used in the EROS Schedule Generator system.
 
-**Version:** 2.2.0 | **Updated:** 2025-12-16
+**Version:** 2.3.0 | **Updated:** 2025-12-18
 
 ---
 
@@ -12,7 +12,7 @@
 A creator with `is_active = 1` in the database who is currently scheduling content and has at least one active subscription page.
 
 **Agent**
-A specialized AI component with a specific role in the schedule generation pipeline. The system uses 8 agents: performance-analyst, send-type-allocator, content-curator, audience-targeter, timing-optimizer, followup-generator, schedule-assembler, and quality-validator.
+A specialized AI component with a specific role in the schedule generation pipeline. The system uses 9 agents: performance-analyst, send-type-allocator, content-curator, timing-optimizer, followup-generator, authenticity-engine, schedule-assembler, revenue-optimizer, and quality-validator.
 
 **Algorithm Version**
 The version identifier of the scheduling algorithm used to generate a template, stored in `schedule_templates.algorithm_version` (e.g., `multi_agent_v1`).
@@ -20,8 +20,17 @@ The version identifier of the scheduling algorithm used to generate a template, 
 **Analytics Summary**
 Aggregated performance metrics for a creator over a specified period, stored in `creator_analytics_summary` table.
 
-**Audience Target**
-A segment of subscribers defined by engagement level, purchase history, or subscription status. Examples include `all_active`, `renew_off`, `high_spenders`, and `ppv_non_purchasers`. See table `audience_targets`.
+**AI Detection Risk**
+Risk score (low/medium/high) indicating likelihood of content being flagged as AI-generated. Used by authenticity-engine to identify captions requiring humanization.
+
+**Authenticity Engine**
+Phase 6 agent that performs anti-AI detection and humanization on scheduled captions to ensure content appears naturally human-written.
+
+**Authenticity Score**
+Score (0-100) measuring how authentic and human a caption appears, considering natural variation, emotional markers, and anti-AI patterns.
+
+**Audience Target** (DEPRECATED in v2.3.0)
+Legacy concept from v2.2.0. Audience targeting has been removed from the system. All sends now use channel-based distribution without segment filtering.
 
 **Auto-Renewal**
 OnlyFans feature where fans' subscriptions automatically renew at expiration. Tracked via `renewal_status` filter for targeted messaging.
@@ -136,8 +145,8 @@ Former subscriber whose subscription has ended. Targets: `expired_recent` (< 30 
 **Fan**
 A subscriber to a creator's OnlyFans page. Also called "subscriber".
 
-**Filter Type**
-Classification of audience targeting filter: `subscription_status`, `engagement`, `purchase_history`, `renewal_status`.
+**Filter Type** (DEPRECATED in v2.3.0)
+Legacy concept from v2.2.0. Audience targeting filters have been removed from the system.
 
 **Flash Bundle**
 Time-limited bundle offer with urgency messaging and limited quantity. Send type: `flash_bundle`.
@@ -174,8 +183,11 @@ Caption with `creator_id = NULL`, available for use by any creator.
 
 ## H
 
-**High Spenders**
-Audience segment of top 20% fans by total spend. Target: `high_spenders`.
+**High Spenders** (DEPRECATED in v2.3.0)
+Legacy audience segment concept from v2.2.0. Targeting has been removed from the system.
+
+**Humanization**
+Process of modifying AI-generated or template content to appear more naturally human-written, adding variation, emotional markers, and natural language patterns.
 
 ---
 
@@ -273,6 +285,9 @@ Creator ranking (1-5) based on total revenue and fan metrics. Tier 1 = highest.
 **Persona**
 Creator's communication style and brand identity. Stored in `creator_personas` table.
 
+**Persona Alignment Score**
+Score (0-100) measuring how well a caption matches the creator's voice, tone, and persona characteristics.
+
 **Persona Profile**
 Complete persona configuration including tone, archetype, emoji usage, slang level, and voice samples.
 
@@ -314,14 +329,17 @@ Agent providing final approval gate for generated schedules before output.
 
 ## R
 
-**Recent Purchasers**
-Fans who bought content in last 7 days. Target: `recent_purchasers`.
+**Recent Purchasers** (DEPRECATED in v2.3.0)
+Legacy audience segment concept from v2.2.0. Targeting has been removed from the system.
 
-**Renew Off**
-Fans with auto-renewal disabled. Paid page target: `renew_off`.
+**Renew Off** (DEPRECATED in v2.3.0)
+Legacy audience segment concept from v2.2.0. Targeting has been removed from the system.
 
-**Renew On**
-Fans with auto-renewal enabled. Paid page target: `renew_on`.
+**Renew On** (DEPRECATED in v2.3.0)
+Legacy audience segment concept from v2.2.0. Targeting has been removed from the system.
+
+**Revenue Optimizer**
+Phase 8 agent that optimizes pricing for PPV, bundles, and other revenue items with final pricing authority.
 
 **Renewal**
 Automatic or manual subscription extension at expiration.
@@ -330,10 +348,12 @@ Automatic or manual subscription extension at expiration.
 Caption type designed to encourage auto-renewal activation or re-subscription.
 
 **Retention**
-Category of 5 send types focused on keeping subscribers: `renew_on_post`, `renew_on_message`, `ppv_message`, `ppv_followup`, `expired_winback`.
+Category of 4 send types focused on keeping subscribers: `renew_on_post`, `renew_on_message`, `ppv_followup`, `expired_winback`.
+
+- **Deprecated (1 type)**: ppv_message (merged into ppv_unlock)
 
 **Revenue**
-Category of 7 send types focused on direct monetization: `ppv_video`, `vip_program`, `game_post`, `bundle`, `flash_bundle`, `snapchat_bundle`, `first_to_tip`.
+Category of 9 send types focused on direct monetization: `ppv_unlock`, `ppv_wall`, `tip_goal`, `bundle`, `flash_bundle`, `game_post`, `first_to_tip`, `vip_program`, `snapchat_bundle`.
 
 ---
 
@@ -361,7 +381,7 @@ One of 21 categorized message types with specific requirements and constraints. 
 Agent responsible for distributing send types across daily time slots.
 
 **Send Type Key**
-Unique identifier for send type (e.g., `ppv_video`, `bump_normal`). Primary reference in code.
+Unique identifier for send type (e.g., `ppv_unlock`, `bump_normal`). Primary reference in code.
 
 **Skill**
 Reusable Claude Code capability package. Main skill: `eros-schedule-generator`.
@@ -379,11 +399,11 @@ Fan with active or expired subscription to creator's page.
 
 ## T
 
-**Target**
-See "Audience Target".
+**Target** (DEPRECATED in v2.3.0)
+Legacy concept from v2.2.0. See "Audience Target (DEPRECATED)".
 
-**Targeted Message**
-Message sent to specific audience segment. Channel: `targeted_message`.
+**Targeted Message** (DEPRECATED in v2.3.0)
+Legacy channel concept from v2.2.0. System now uses channel-based distribution without segment filtering.
 
 **Template**
 See "Schedule Template".
@@ -470,10 +490,10 @@ Campaign targeting expired subscribers for re-engagement. Send type: `expired_wi
 ppv_unlock, flirty_opener, descriptive_tease, tip_request, renewal_pitch, engagement_hook, ppv_followup, sexting_response, exclusive_offer
 
 ### Channels
-wall_post, mass_message, targeted_message, story, live
+wall_post, mass_message, story, live
 
-### Audience Targets
-all_active, renew_off, renew_on, expired_recent, expired_all, never_purchased, recent_purchasers, high_spenders, inactive_7d, ppv_non_purchasers
+### Audience Targets (DEPRECATED in v2.3.0)
+Legacy concept from v2.2.0. System now uses channel-based distribution without segment filtering.
 
 ### Performance Tiers
 TOP (70-100), MID (40-69), LOW (30-39), AVOID (< 30)
@@ -483,4 +503,4 @@ LOW (0-999 fans), MID (1K-4.9K), HIGH (5K-14.9K), ULTRA (15K+)
 
 ---
 
-*Version 2.2.0 | Last Updated: 2025-12-16*
+*Version 2.3.0 | Last Updated: 2025-12-18*

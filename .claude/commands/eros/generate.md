@@ -8,7 +8,6 @@ allowed-tools:
   - mcp__eros-db__get_send_type_captions
   - mcp__eros-db__get_best_timing
   - mcp__eros-db__get_performance_trends
-  - mcp__eros-db__get_audience_targets
   - mcp__eros-db__get_persona_profile
   - mcp__eros-db__get_vault_availability
   - mcp__eros-db__save_schedule
@@ -17,7 +16,7 @@ argument-hint: <creator_id_or_name> [week_start] (e.g., "grace_bennett", "2025-1
 
 # Generate Schedule Command
 
-Generate an optimized weekly schedule for the specified creator using the full 8-agent orchestration pipeline.
+Generate an optimized weekly schedule for the specified creator using the full 9-phase orchestration pipeline.
 
 ## Arguments
 
@@ -43,16 +42,17 @@ Generate an optimized weekly schedule for the specified creator using the full 8
 
 ## Execution
 
-Invoke the eros-schedule-generator skill to orchestrate the complete schedule generation pipeline:
+Invoke the eros-schedule-generator skill to orchestrate the complete 9-phase schedule generation pipeline:
 
-1. **Performance Analysis** - Assess saturation/opportunity scores
-2. **Send Type Allocation** - Distribute 22 send types across the week
-3. **Content Curation** - Select type-appropriate captions with freshness scoring
-4. **Audience Targeting** - Assign correct targets per item
-5. **Timing Optimization** - Calculate optimal posting times
-6. **Followup Generation** - Auto-generate PPV followups
-7. **Schedule Assembly** - Combine all components
-8. **Quality Validation** - Ensure requirements met
+1. **Performance Analysis** - Assess saturation/opportunity scores (performance-analyst)
+2. **Send Type Allocation** - Distribute 22 send types across the week (send-type-allocator)
+3. **Content Curation** - Select type-appropriate captions with freshness scoring (content-curator)
+4. **Timing Optimization** - Calculate optimal posting times (timing-optimizer)
+5. **Followup Generation** - Auto-generate PPV followups (followup-generator)
+6. **Authenticity Engine** - Apply anti-AI humanization and persona consistency (authenticity-engine) [NEW]
+7. **Schedule Assembly** - Combine all components into final structure (schedule-assembler)
+8. **Revenue Optimization** - Optimize pricing and positioning (revenue-optimizer) [NEW]
+9. **Quality Validation** - Final approval gate and database save (quality-validator)
 
 ## 22 Send Types Distributed
 
@@ -323,8 +323,8 @@ Resolution: Add vault_matrix entries for creator's content types.
 
 | Metric | Typical Value | Notes |
 |--------|---------------|-------|
-| Execution Time | 15-45 seconds | Full 8-phase pipeline |
-| Database Queries | 20-30 | Multiple tools across all phases |
+| Execution Time | 20-50 seconds | Full 9-phase pipeline |
+| Database Queries | 25-35 | Multiple tools across all phases |
 | Memory Usage | Moderate | Caches caption pool and send types |
 
 ### Performance Factors
@@ -337,16 +337,17 @@ Resolution: Add vault_matrix entries for creator's content types.
 
 ### Pipeline Phase Timing
 
-| Phase | Typical Duration |
-|-------|------------------|
-| Performance Analysis | 2-4 seconds |
-| Send Type Allocation | 1-2 seconds |
-| Content Curation | 5-10 seconds |
-| Audience Targeting | 1-2 seconds |
-| Timing Optimization | 2-3 seconds |
-| Followup Generation | 1-2 seconds |
-| Schedule Assembly | 1-2 seconds |
-| Quality Validation | 2-3 seconds |
+| Phase | Agent | Typical Duration |
+|-------|-------|------------------|
+| 1 | performance-analyst | 2-4 seconds |
+| 2 | send-type-allocator | 1-2 seconds |
+| 3 | content-curator | 5-10 seconds |
+| 4 | timing-optimizer | 2-3 seconds |
+| 5 | followup-generator | 1-2 seconds |
+| 6 | authenticity-engine [NEW] | 1 second |
+| 7 | schedule-assembler | 1-2 seconds |
+| 8 | revenue-optimizer [NEW] | 1 second |
+| 9 | quality-validator | 2-3 seconds |
 
 ## Related Commands
 
@@ -374,6 +375,35 @@ To generate schedules for multiple creators:
 ```
 
 ## Execution Protocol
+
+### Tool Invocation Enforcement
+
+**CRITICAL**: Each phase MUST invoke MCP tools where specified. Proceeding without required tool calls is FORBIDDEN.
+
+| Phase | Agent | Required Tools | Minimum Calls |
+|-------|-------|----------------|---------------|
+| 1 | performance-analyst | get_creator_profile, get_volume_config, get_performance_trends, get_vault_availability | 4 |
+| 2 | send-type-allocator | get_send_types | 1 |
+| 3 | content-curator | get_send_type_captions (per item) | 7+ |
+| 4 | timing-optimizer | get_best_timing | 1 |
+| 5 | followup-generator | (computation only) | 0 |
+| 6 | authenticity-engine | get_persona_profile | 1 |
+| 7 | schedule-assembler | (computation only) | 0 |
+| 8 | revenue-optimizer | (computation only) | 0 |
+| 9 | quality-validator | save_schedule | 1 |
+
+**VERIFICATION PROTOCOL**: After each checkpoint, confirm `tools_invoked >= minimum` before proceeding.
+
+If `tools_invoked == 0` for any phase (except Phases 5, 7, 8), **HALT** and re-execute with actual MCP calls.
+
+Output at each checkpoint:
+```
+TOOLS_INVOKED: N
+TOOLS_EXPECTED: M
+STATUS: [PASS/FAIL]
+```
+
+---
 
 You MUST execute these phases IN ORDER. After each phase, output a brief checkpoint summary.
 
@@ -408,37 +438,62 @@ For each allocated slot:
 
 **CHECKPOINT 3**: Output caption assignments summary with freshness scores
 
-### Phase 4: AUDIENCE TARGETING
-For each schedule item:
-1. `get_audience_targets(page_type, channel_key)` - Get valid targets
-2. Assign appropriate target based on send type requirements
-3. Validate target is compatible with channel
-
-**CHECKPOINT 4**: Output targeting summary
-
-### Phase 5: TIMING OPTIMIZATION
+### Phase 4: TIMING OPTIMIZATION
 1. `get_best_timing(creator_id)` - Get optimal hours/days
 2. Assign times ensuring minimum 45-minute spacing between sends
 3. Apply jitter (+/-5 minutes) to avoid round numbers
 
-**CHECKPOINT 5**: Output daily schedule with times
+**CHECKPOINT 4**: Output daily schedule with times
 
-### Phase 6: FOLLOWUP GENERATION
+### Phase 5: FOLLOWUP GENERATION
 For each PPV/revenue send:
 1. Determine if followup needed based on send type
 2. Generate ppv_followup items with 20-45 minute delays
 3. Respect max 4 followups per day
 
-**CHECKPOINT 6**: Output followup items linked to parent PPVs
+**CHECKPOINT 5**: Output followup items linked to parent PPVs
 
-### Phase 7: ASSEMBLY & SAVE
-1. Combine all components into schedule_items array
-2. `save_schedule(creator_id, week_start, items)` - Persist to database
-3. Report validation results from save_schedule response
+### Phase 6: AUTHENTICITY ENGINE [NEW]
+1. `get_persona_profile(creator_id)` - Get tone, archetype, emoji style
+2. Apply timing jitter (+/-5 minutes) to humanize schedule
+3. Calculate authenticity scores (0-100) for each item
+4. Flag items with score < 65 for review
 
-**CHECKPOINT 7**: Output final summary:
+**CHECKPOINT 6**: Output authenticity summary:
+- Items processed
+- Average authenticity score
+- Items needing review
+
+### Phase 7: SCHEDULE ASSEMBLY
+1. Merge all components from previous phases
+2. Combine allocation + captions + timing + followups + authenticity
+3. Prepare final schedule structure
+
+**CHECKPOINT 7**: Output assembly summary:
+- Total items assembled
+- By category breakdown
+- Authenticity integration confirmed
+
+### Phase 8: REVENUE OPTIMIZATION [NEW]
+1. Apply confidence-based pricing dampening
+2. Optimize positioning of high-value items to peak times
+3. Apply bundle value framing and first-to-tip rotation
+
+**CHECKPOINT 8**: Output pricing summary:
+- Items priced
+- Average dampening applied
+- Positions optimized
+
+### Phase 9: QUALITY VALIDATION & SAVE
+1. Run comprehensive validation checks
+2. Validate 22-type diversity (minimum 10 unique types)
+3. `save_schedule(creator_id, week_start, items)` - Persist to database
+4. Report validation results
+
+**CHECKPOINT 9**: Output final summary:
 - Schedule ID
 - Total items created
+- Quality score (0-100)
 - Diversity validation (pass/fail)
 - Any warnings
 

@@ -5,14 +5,14 @@ EROS Database MCP Server - Main Entry Point
 A Model Context Protocol (MCP) server providing database access tools for the
 EROS schedule generation system. Implements JSON-RPC 2.0 protocol over stdin/stdout.
 
-This server exposes 17 tools for:
+This server exposes 16 tools for:
 - Creator profile and performance data retrieval
 - Caption selection with freshness scoring
 - Optimal timing analysis
 - Volume assignment management
 - Content type rankings
 - Send type configuration
-- Channel and audience target management
+- Channel management
 - Schedule persistence
 
 Features:
@@ -28,7 +28,7 @@ Configuration:
 - EROS_LOG_FORMAT: Log format (json, text)
 
 Author: EROS Development Team
-Version: 2.2.0
+Version: 2.3.0
 """
 
 import atexit
@@ -86,7 +86,7 @@ def initialize_server() -> None:
     Starts metrics server, initializes connection pool, and registers
     shutdown handlers.
     """
-    logger.info("Initializing EROS MCP Server v2.2.0")
+    logger.info("Initializing EROS MCP Server v2.3.0")
 
     # Start Prometheus metrics server
     if METRICS_AVAILABLE:

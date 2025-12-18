@@ -1148,7 +1148,7 @@ metrics["game_performance"] = game_performance
 - Use 14d period by default for balanced trend analysis
 - Saturation/opportunity scores come from volume_performance_tracking table (or calculated on-demand)
 - Content rankings come from top_content_types analysis
-- Static volume_assignments table is DEPRECATED - use dynamic calculation
+- Volume configuration uses get_volume_config() MCP tool for dynamic calculation (static volume_assignments table deprecated)
 - Game performance tracking uses 90-day window for stability
 - Bayesian priors reset after 180 days of inactivity for a game type
 

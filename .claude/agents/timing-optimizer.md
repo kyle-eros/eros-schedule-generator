@@ -1,6 +1,6 @@
 ---
 name: timing-optimizer
-description: Calculate optimal posting times based on historical engagement patterns and send type timing rules. Use PROACTIVELY in Phase 5 of schedule generation AFTER content-curator and audience-targeter complete.
+description: Calculate optimal posting times based on historical engagement patterns and send type timing rules. Use PROACTIVELY in Phase 4 of schedule generation AFTER content-curator completes.
 model: sonnet
 tools:
   - mcp__eros-db__get_best_timing
@@ -81,7 +81,7 @@ timing_data = get_best_timing(creator_id)
 ```
 TIMING_PREFERENCES = {
     # Revenue types: Prime evening hours
-    "ppv_unlock": {"preferred_hours": [19, 21, 20], "boost": 1.3},  # Renamed from ppv_video
+    "ppv_unlock": {"preferred_hours": [19, 21, 20], "boost": 1.3},  # Replaces legacy ppv_video and ppv_message
     "ppv_wall": {"preferred_hours": [14, 19, 21], "boost": 1.2},    # NEW: FREE pages only
     "tip_goal": {"preferred_hours": [19, 20, 21], "boost": 1.3},    # NEW: PAID pages only
     "bundle": {"preferred_hours": [14, 19, 21], "boost": 1.2},
@@ -885,15 +885,15 @@ Include style group information in timing_metadata:
 User: "Optimize timing for alexia's schedule"
 
 → Invokes timing-optimizer with:
-  - schedule_items: [from audience-targeter]
+  - schedule_items: [from content-curator]
   - creator_id: "alexia"
 ```
 
-### Example 2: Pipeline Integration (Phase 5)
+### Example 2: Pipeline Integration (Phase 4)
 ```python
-# After audience-targeter completes
+# After content-curator completes
 timing_results = timing_optimizer.optimize_timing(
-    schedule_items=targeting_results.items,
+    schedule_items=content_results.items,
     creator_id="miss_alexa"
 )
 

@@ -1,6 +1,6 @@
 ---
 name: followup-generator
-description: Automatically generate follow-up items for PPV and bundle sends. Use PROACTIVELY in Phase 6 of schedule generation AFTER timing-optimizer completes to add close-the-sale followups.
+description: Automatically generate follow-up items for PPV and bundle sends. Use PROACTIVELY in Phase 5 of schedule generation AFTER timing-optimizer completes. Passes output to Phase 6 (authenticity-engine).
 model: sonnet
 tools:
   - mcp__eros-db__get_send_type_details
@@ -49,7 +49,7 @@ Before proceeding, confirm:
 Create follow-up schedule items for sends that support them. Follow-ups are sent 15-30 minutes after the parent and target fans who viewed but didn't purchase.
 
 **Eligible types for followups:**
-- `ppv_unlock` - Primary PPV unlock (was ppv_video)
+- `ppv_unlock` - Primary PPV unlock (replaces legacy ppv_video and ppv_message types)
 - `ppv_wall` - Wall PPV posts (NEW - FREE pages only)
 - `tip_goal` - Tip goal campaigns (NEW - PAID pages only, targets non-tippers)
 
@@ -659,21 +659,28 @@ User: "Generate followups for alexia's PPV sends"
   - creator_id: "alexia"
 ```
 
-### Example 2: Pipeline Integration (Phase 6)
+### Example 2: Pipeline Integration (Phase 5)
 ```python
-# After timing-optimizer completes
+# After timing-optimizer completes (Phase 4)
 followup_results = followup_generator.generate_followups(
     schedule_items=timing_results.items,
     creator_id="miss_alexa"
 )
 
-# Pass combined items to schedule-assembler
+# Pass to authenticity-engine (Phase 6)
+authenticity_results = authenticity_engine.humanize(
+    schedule_items=followup_results.items,
+    creator_id="miss_alexa"
+)
+
+# Then to schedule-assembler (Phase 7)
 schedule_assembler.assemble(
     allocation=allocation,
     captions=caption_results,
     targets=targeting_results,
     timing=timing_results,
     followups=followup_results,
+    authenticity=authenticity_results,
     creator_id="miss_alexa"
 )
 ```
@@ -714,7 +721,7 @@ for item in schedule_items:
 
 ---
 
-## Output Contract (Phase 6 → Phase 7a)
+## Output Contract (Phase 5 → Phase 6)
 
 **CRITICAL**: The followup-generator output MUST conform to this contract for schedule-assembler to correctly process followup items.
 
