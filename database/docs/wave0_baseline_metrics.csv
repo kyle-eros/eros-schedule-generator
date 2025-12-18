@@ -1,0 +1,57 @@
+metric_category,metric_name,value,notes
+TOTAL,total_captions,59405,Complete caption bank count
+TOTAL,null_content_type_id,656,1.10% of total
+TOTAL,null_caption_type,0,0% - all have caption_type
+TOTAL,distinct_content_types,37,Expected 39 per plan
+TOTAL,distinct_caption_types,22,Legacy types to be remapped
+CONFIDENCE,avg_classification_confidence,0.5022,Very low - needs improvement
+CONFIDENCE,confidence_below_0.5,0,0.00%
+CONFIDENCE,confidence_0.5_to_0.7,58763,98.92%
+CONFIDENCE,confidence_0.7_to_0.9,642,1.08%
+CONFIDENCE,confidence_above_0.9,0,0.00%
+PERFORMANCE,avg_performance_score,40.11,Baseline average
+PERFORMANCE,min_performance_score,0.02,Lowest score
+PERFORMANCE,max_performance_score,100.00,Highest score
+PERFORMANCE,null_performance_score,0,All have scores
+PERFORMANCE,perf_0_to_20,8118,13.67%
+PERFORMANCE,perf_20_to_40,4403,7.41%
+PERFORMANCE,perf_40_to_60,42641,71.78%
+PERFORMANCE,perf_60_to_80,1630,2.74%
+PERFORMANCE,perf_80_to_100,2613,4.40%
+CREATORS,distinct_creators,36,Plus 1 NULL for shared
+CREATORS,min_captions_per_creator,17,Smallest creator
+CREATORS,max_captions_per_creator,48519,Shared library (NULL)
+CREATORS,avg_captions_per_creator,1605.5,Average per creator
+CREATORS,shared_captions_null_creator,48519,81.67% of total
+CAPTION_TYPE,ppv_unlock,19493,32.81%
+CAPTION_TYPE,flirty_opener,17774,29.92%
+CAPTION_TYPE,descriptive_tease,14535,24.47%
+CAPTION_TYPE,renewal_reminder,2108,3.55%
+CAPTION_TYPE,general,1269,2.14%
+CAPTION_TYPE,normal_bump,1217,2.05%
+CAPTION_TYPE,engagement,1073,1.81%
+CAPTION_TYPE,mood_check,470,0.79%
+CAPTION_TYPE,tell_me,466,0.78%
+CAPTION_TYPE,tip_campaign,330,0.56%
+CAPTION_TYPE,custom_promo,154,0.26%
+CAPTION_TYPE,live_promo,140,0.24%
+CAPTION_TYPE,vip_promo,118,0.20%
+CAPTION_TYPE,ppv_followup,112,0.19%
+CAPTION_TYPE,ppv,55,0.09%
+CAPTION_TYPE,dick_rating,28,0.05%
+CAPTION_TYPE,sexting_promo,23,0.04%
+CAPTION_TYPE,vidcall_promo,15,0.03%
+CAPTION_TYPE,feed_bump,13,0.02%
+CAPTION_TYPE,teaser,4,0.01%
+CAPTION_TYPE,promo,4,0.01%
+CAPTION_TYPE,expired_winback,4,0.01%
+CONTENT_TYPE,teasing_31,31674,53.32%
+CONTENT_TYPE,boy_girl_11,3755,6.32%
+CONTENT_TYPE,solo_19,2195,3.69%
+CONTENT_TYPE,bundle_offer_26,2142,3.61%
+CONTENT_TYPE,flash_sale_27,1923,3.24%
+CONTENT_TYPE,renewal_retention_33,1733,2.92%
+CONTENT_TYPE,pussy_play_16,1571,2.64%
+CONTENT_TYPE,tip_request_32,1105,1.86%
+CONTENT_TYPE,tits_play_18,1090,1.83%
+CONTENT_TYPE,implied_pussy_play_34,978,1.65%

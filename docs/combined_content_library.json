@@ -1,0 +1,199 @@
+{
+  "content_schedule_library": [
+    {
+      "category": "Revenue & Sales Posts",
+      "items": [
+        {
+          "title": "VIP Post",
+          "purpose": "Promotes the \"VIP Program\" (usually a $200 tip) which grants access to exclusive content styles.",
+          "strategy": "Post once with a flyer; never repost. Set as a campaign starting at a $1,000 goal, expanding in $1,000 increments up to $10,000.",
+          "attributes": {}
+        },
+        {
+          "title": "PPV Post (Pay-Per-View)",
+          "purpose": "Selling a specific video.",
+          "strategy": "General execution depends on page type.",
+          "attributes": {
+            "paid_pages_strategy": "Must be campaigns. Use a GIF or picture flyer.",
+            "free_pages_strategy": "Can be post unlocks. Sometimes no flyer is needed.",
+            "content_guidelines": "Long, descriptive, sexy caption with emojis."
+          }
+        },
+        {
+          "title": "Game Posts",
+          "purpose": "A buying opportunity presented as a game (e.g., \"Spin the Wheel\") with a chance to win prizes.",
+          "strategy": "Campaign style with a set price to play. Almost always uses a GIF.",
+          "attributes": {}
+        },
+        {
+          "title": "Bundle Posts",
+          "purpose": "Offering a content bundle at a set price.",
+          "strategy": "Advertise the \"deal value.\" Keep it sexy and eye-catching, not overly salesy. Use a GIF or picture flyer.",
+          "attributes": {}
+        },
+        {
+          "title": "Flash Bundle Posts",
+          "purpose": "A limited-quantity bundle to create urgency.",
+          "strategy": "Campaign style with a generic graphic or model GIF/picture.",
+          "attributes": {}
+        },
+        {
+          "title": "Snapchat Bundle",
+          "purpose": "A specific bundle advertised as \"old Snapchat nudes\" (e.g., from age 18–19).",
+          "strategy": "High conversion rate. Use a throwback picture with the Snapchat text bar as the flyer.",
+          "attributes": {}
+        },
+        {
+          "title": "First To Tip Post",
+          "purpose": "A gamified post where the goal matches the exact tip amount.",
+          "strategy": "Visually enticing caption and flyer. Set to expire after 24 hours (or longer for higher goals).",
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "category": "Engagement & Traffic Drivers (Bumps)",
+      "items": [
+        {
+          "title": "Link Drop Posts",
+          "purpose": "Pushes a previous post back to fans' feeds (similar to a retweet).",
+          "strategy": "Short caption promoting a campaign or buying opportunity with the link to that post. Always expire after 24 hours.",
+          "attributes": {
+            "note": "If done correctly, the post preview will generate automatically."
+          }
+        },
+        {
+          "title": "Wall Post Link Drop",
+          "purpose": "Promote a specific wall campaign.",
+          "strategy": "Caption + Link. Must manually add a GIF/picture from the same scene (unlike standard link drops, these do not auto-display the preview). Great for pushing wall tips.",
+          "attributes": {}
+        },
+        {
+          "title": "Normal Post Bump",
+          "purpose": "Entice fans to DM you.",
+          "strategy": "Cute/flirty picture. Caption should sound like a \"horny girl\" but keep it short.",
+          "attributes": {}
+        },
+        {
+          "title": "Descriptive Bumps",
+          "purpose": "Similar to normal bumps, but drives DMs through storytelling.",
+          "strategy": "Uses a longer, sexually descriptive caption.",
+          "attributes": {}
+        },
+        {
+          "title": "Text Only Bumps",
+          "purpose": "Quick engagement without media.",
+          "strategy": "Short, flirty, cute text.",
+          "attributes": {
+            "example_text": "wyd right now daddy 💕"
+          }
+        },
+        {
+          "title": "Flyer/GIF Post Bumps",
+          "purpose": "High-visibility bump.",
+          "strategy": "Longer sexual caption paired with a designed flyer or GIF for maximum attention.",
+          "attributes": {}
+        },
+        {
+          "title": "DM Farm Posts",
+          "purpose": "Get fans to DM immediately (e.g., for a free surprise or because you are \"active now\").",
+          "strategy": "GIF, picture, or flyer. Emoji incentives work best here.",
+          "attributes": {}
+        },
+        {
+          "title": "Like Farm Posts",
+          "purpose": "Boosts engagement metrics.",
+          "strategy": "Encourage fans to \"Like\" all posts in exchange for a free incentive.",
+          "attributes": {}
+        },
+        {
+          "title": "Live Promo Posts",
+          "purpose": "Notify fans of an upcoming livestream.",
+          "strategy": "Use a livestream flyer with the specific time and info in the caption.",
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "category": "Retention & Messaging (Backend)",
+      "items": [
+        {
+          "title": "Renew On Post (Paid Pages Only)",
+          "purpose": "Convince fans to turn on auto-renewal.",
+          "strategy": "Enticing caption with the auto-renew link. Can use GIFs, pictures, or videos.",
+          "attributes": {
+            "link_format": "https://onlyfans.com/USERNAME?enable_renew=1"
+          }
+        },
+        {
+          "title": "Renew On Message (Mass Message)",
+          "purpose": "Sent specifically to fans with auto-renewal off.",
+          "strategy": "Offer a free prize/incentive to click the renewal link.",
+          "attributes": {}
+        },
+        {
+          "title": "PPV/Unlock Message",
+          "purpose": "Mass message to fans with a locked post.",
+          "strategy": "Fully adjustable pricing. Can use a flyer, picture, GIF, or video.",
+          "attributes": {}
+        },
+        {
+          "title": "PPV Follow Up",
+          "purpose": "Sent 10–30 minutes after a PPV message to close the sale.",
+          "strategy": "Bump, convince, or entice.",
+          "attributes": {
+            "examples": [
+              "I can't believe I just sent this",
+              "Offering a free nude if they buy immediately"
+            ]
+          }
+        },
+        {
+          "title": "Expired Subscriber Message (Paid Pages Only)",
+          "purpose": "Win back former fans.",
+          "strategy": "Run daily. Message must match the current subscriber campaign/incentive. Always send with picture/GIF flyers.",
+          "attributes": {}
+        }
+      ]
+    }
+  ],
+  "content_types": [
+    "anal",
+    "behind_scenes",
+    "blowjob",
+    "blowjob_dildo",
+    "boy_girl",
+    "boy_girl_girl",
+    "bundle_offer",
+    "creampie",
+    "deepthroat",
+    "deepthroat_dildo",
+    "dick_rating",
+    "dom_sub",
+    "exclusive_content",
+    "feet",
+    "flash_sale",
+    "gfe",
+    "girl_girl",
+    "girl_girl_girl",
+    "implied_pussy_play",
+    "implied_solo",
+    "implied_tits_play",
+    "implied_toy_play",
+    "joi",
+    "lingerie",
+    "live_stream",
+    "pool_outdoor",
+    "pov",
+    "pussy_play",
+    "renewal_retention",
+    "shower_bath",
+    "solo",
+    "squirt",
+    "story_roleplay",
+    "teasing",
+    "tip_request",
+    "tits_play",
+    "toy_play"
+  ]
+}

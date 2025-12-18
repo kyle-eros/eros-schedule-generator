@@ -1,0 +1,4 @@
+risk_category,count,avg_length,total_uses,total_earnings
+NEVER_USED,171,14.8,0,0.0
+USED_NO_EARNINGS,808,16.1,997,0.0
+DECENT_EARNINGS,1,11.0,1,58.76

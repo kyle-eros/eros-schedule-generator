@@ -1,0 +1,192 @@
+# =============================================================================
+# EROS Dynamic Volume Algorithm Configuration
+# Version: 1.0.0
+# =============================================================================
+#
+# This file defines configuration for the dynamic volume calculation algorithm.
+# All values can be overridden via environment variables using the prefix
+# EROS_VOLUME_ (e.g., EROS_VOLUME_SATURATION_HIGH=75).
+#
+# Configuration sections:
+#   - volume: Fan thresholds, tier configs, and bounds
+#   - performance: Saturation and opportunity thresholds
+#   - multipliers: Volume adjustment multipliers
+#   - trends: Revenue trend thresholds
+#   - new_creator: New creator handling defaults
+#
+
+# =============================================================================
+# VOLUME TIER CONFIGURATION
+# =============================================================================
+volume:
+  # Fan count thresholds for tier classification
+  # Maps tier names to (min_fans, max_fans) ranges
+  # null for max means infinity (no upper bound)
+  fan_thresholds:
+    LOW:
+      min: 0
+      max: 999
+    MID:
+      min: 1000
+      max: 4999
+    HIGH:
+      min: 5000
+      max: 14999
+    ULTRA:
+      min: 15000
+      max: null  # null = infinity
+
+  # Tier-based configuration templates
+  # Maps volume tiers to page-type-specific category limits
+  # Note: Free pages should have retention=0 enforced at calculation time
+  tier_configs:
+    LOW:
+      paid:
+        revenue: 3
+        engagement: 3
+        retention: 1
+      free:
+        revenue: 4
+        engagement: 3
+        retention: 1
+    MID:
+      paid:
+        revenue: 4
+        engagement: 3
+        retention: 2
+      free:
+        revenue: 5
+        engagement: 3
+        retention: 1
+    HIGH:
+      paid:
+        revenue: 5
+        engagement: 4
+        retention: 2
+      free:
+        revenue: 6
+        engagement: 4
+        retention: 2
+    ULTRA:
+      paid:
+        revenue: 6
+        engagement: 5
+        retention: 3
+      free:
+        revenue: 8
+        engagement: 5
+        retention: 2
+
+  # Volume bounds per category (min, max)
+  # Ensures calculated volumes stay within safe operational limits
+  bounds:
+    revenue:
+      min: 1
+      max: 8
+    engagement:
+      min: 1
+      max: 6
+    retention:
+      min: 0
+      max: 4
+
+# =============================================================================
+# PERFORMANCE THRESHOLDS
+# =============================================================================
+performance:
+  # Saturation score thresholds (0-100 scale)
+  # High saturation indicates audience fatigue, requiring volume reduction
+  saturation:
+    low: 30      # Below this: no saturation effect
+    medium: 50   # Above this: moderate volume reduction
+    high: 70     # Above this: significant volume reduction
+
+  # Opportunity score thresholds (0-100 scale)
+  # High opportunity indicates underserved audience, allowing volume increase
+  opportunity:
+    low: 30      # Below this: no opportunity boost
+    medium: 50   # Above this: moderate volume increase (if saturation is low)
+    high: 70     # Above this: significant volume increase (if saturation is medium or below)
+
+# =============================================================================
+# MULTIPLIERS
+# =============================================================================
+multipliers:
+  # Saturation multipliers - reduce volume when audience is saturated
+  # These multiply the base tier volume
+  saturation:
+    high: 0.7      # Applied when saturation >= 70
+    medium: 0.9    # Applied when saturation >= 50 and < 70
+    normal: 1.0    # Applied when saturation < 50
+
+  # Opportunity multipliers - increase volume when opportunity exists
+  # Only applied when saturation is below threshold
+  opportunity:
+    high: 1.2      # Applied when opportunity >= 70 AND saturation < 50
+    medium: 1.1    # Applied when opportunity >= 50 AND saturation < 30
+    normal: 1.0    # Default when conditions not met
+
+  # Smooth interpolation settings (Phase 3 enhancement)
+  # When enabled, uses linear interpolation instead of step functions
+  smooth_interpolation:
+    enabled: true
+    # Saturation interpolation breakpoints
+    saturation_breakpoints:
+      - score: 0
+        multiplier: 1.0
+      - score: 30
+        multiplier: 1.0
+      - score: 50
+        multiplier: 0.9
+      - score: 70
+        multiplier: 0.7
+      - score: 100
+        multiplier: 0.7
+    # Opportunity breakpoints (applied when saturation allows)
+    opportunity_breakpoints:
+      - score: 0
+        multiplier: 1.0
+      - score: 30
+        multiplier: 1.0
+      - score: 50
+        multiplier: 1.1
+      - score: 70
+        multiplier: 1.2
+      - score: 100
+        multiplier: 1.2
+
+# =============================================================================
+# TREND THRESHOLDS
+# =============================================================================
+trends:
+  # Revenue trend thresholds for discrete adjustments
+  # Trend is percentage change over analysis period
+  revenue_threshold_negative: -15  # % below triggers -1 adjustment
+  revenue_threshold_positive: 15   # % above triggers +1 adjustment
+
+# =============================================================================
+# NEW CREATOR CONFIGURATION
+# =============================================================================
+new_creator:
+  # Minimum number of messages before using performance data
+  # Below this threshold, conservative defaults are used
+  min_messages_for_analysis: 5
+
+  # Days after first message to consider creator "new"
+  # New creators get conservative defaults
+  days_to_consider_new: 30
+
+  # Default scores for new creators (conservative values)
+  default_saturation: 40.0    # Slightly below medium threshold
+  default_opportunity: 60.0   # Slightly above medium threshold
+
+# =============================================================================
+# ROUNDING CONFIGURATION (Phase 3 enhancement)
+# =============================================================================
+rounding:
+  # Use Decimal for intermediate calculations
+  use_decimal: true
+  # Rounding method: HALF_UP (banker's rounding)
+  method: ROUND_HALF_UP
+  # Decimal places for intermediate calculations
+  precision: 4

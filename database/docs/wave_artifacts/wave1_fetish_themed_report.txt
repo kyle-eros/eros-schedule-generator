@@ -1,0 +1,98 @@
+================================================================================
+WAVE 1: FETISH-THEMED CAPTION CLASSIFIER - FINAL REPORT
+================================================================================
+Classification Method: wave1_fetish_themed_classifier
+Execution Date: 2025-12-15
+
+PROCESSING SUMMARY
+--------------------------------------------------------------------------------
+Total captions with NULL content_type_id (start): 656
+Total captions processed in this wave: 513
+Total captions classified: 28
+Classification rate: 5.5%
+Remaining NULL captions: 471
+
+CLASSIFICATION BREAKDOWN BY CONTENT TYPE
+--------------------------------------------------------------------------------
+pool_outdoor (ID: 21)       : 8 captions
+dom_sub (ID: 14)            : 6 captions
+shower_bath (ID: 20)        : 3 captions
+lingerie (ID: 22)           : 3 captions
+feet (ID: 13)               : 3 captions
+pov (ID: 24)                : 2 captions
+story_roleplay (ID: 23)     : 1 caption
+--------------------------------------------------------------------------------
+TOTAL                       : 28 captions
+
+CONFIDENCE DISTRIBUTION
+--------------------------------------------------------------------------------
+0.70-0.79: 28 captions (100%)
+0.80-0.89: 0 captions (0%)
+0.90-1.00: 0 captions (0%)
+
+Average confidence: 0.70
+
+ANALYSIS
+--------------------------------------------------------------------------------
+- All classifications had single keyword matches (confidence 0.70)
+- This suggests these are clear but not heavily emphasized fetish themes
+- The low classification rate (5.5%) indicates most remaining captions are
+  general/non-fetish content, as expected for Wave 1
+- pool_outdoor was the most common category, driven by keywords like "sun",
+  "beach", "pool" in outdoor/lifestyle content
+
+KEYWORD EFFECTIVENESS
+--------------------------------------------------------------------------------
+Most effective keywords (by frequency of matches):
+- "sun" / "outdoor" / "beach" → pool_outdoor
+- "worship" / "obey" / "control" → dom_sub
+- "shower" / "wet" / "water" → shower_bath
+- "lingerie" / "panties" → lingerie
+- "feet" / "toes" → feet
+- "pov" / "view" → pov
+- "playing" → story_roleplay
+
+SAMPLE CLASSIFICATIONS
+--------------------------------------------------------------------------------
+dom_sub:
+- "Ready to come have a little fun with me tonight? I could make that cock 
+   beg for me like a good boy should 😈"
+- "Worship my body tonight!"
+
+feet:
+- "Soft feet for your 🍆"
+- "French manicured toes 🦶🏼"
+
+lingerie:
+- "My favorite shopping is lingerie stores 😍"
+- "If i let you pull my panties to the side… what would you do next?"
+
+pool_outdoor:
+- "wyd if i wear this to a pool party"
+- "Let's fuck on the beach 😌"
+
+shower_bath:
+- "Fresh out the shower.. What do you think I did next?"
+- "Wanna take a shower with me?"
+
+pov:
+- "This could've been your view"
+- "POV: You have the cheekiest Oktoberfest waitress 🍻"
+
+QUALITY VERIFICATION
+--------------------------------------------------------------------------------
+✓ All 28 captions verified in database
+✓ Content type IDs correctly mapped (13, 14, 20, 21, 22, 23, 24)
+✓ classification_method = 'wave1_fetish_themed_classifier'
+✓ classification_confidence = 0.70 for all single-keyword matches
+✓ updated_at timestamps set to current datetime
+
+RECOMMENDATIONS FOR NEXT WAVES
+--------------------------------------------------------------------------------
+1. Wave 2 should focus on ACTION/ACTIVITY types (bj_deepthroat, riding, anal, etc.)
+2. Wave 3 should focus on BODY/VISUAL types (ass, tits_boobs, pussy, etc.)
+3. The remaining 471 NULL captions are likely general engagement/promotional content
+4. Consider implementing multi-keyword boosting for higher confidence scores
+5. Consider creating a "general_sexy" or "default" category for remaining NULL captions
+
+================================================================================

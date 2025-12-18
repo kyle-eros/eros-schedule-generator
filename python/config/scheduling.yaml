@@ -1,0 +1,199 @@
+# =============================================================================
+# EROS Schedule Generator Configuration
+# Version: 2.2.0
+# =============================================================================
+#
+# This file defines core configuration for the EROS schedule generation
+# pipeline. All values can be overridden via environment variables using
+# the prefix EROS_ (e.g., EROS_WEIGHT_PERFORMANCE=0.4).
+#
+# Configuration sections:
+#   - scoring: Caption scoring weights and thresholds
+#   - timing: Schedule timing preferences and constraints
+#   - volume: Volume tier configurations and limits
+#   - allocation: Day-of-week adjustments and patterns
+#   - followup: PPV followup generation rules
+#
+
+# =============================================================================
+# SCORING CONFIGURATION
+# =============================================================================
+scoring:
+  # Scoring weights for caption selection (must sum to 1.0)
+  weights:
+    performance: 0.35    # Historical performance score (0-100)
+    freshness: 0.25      # Days since last use (higher = fresher)
+    type_priority: 0.20  # Send type priority (revenue > engagement > retention)
+    persona_match: 0.10  # Creator persona alignment score
+    diversity: 0.10      # Content diversity bonus
+
+  # Quality and freshness thresholds
+  thresholds:
+    min_performance: 40  # Minimum performance score to use caption
+    min_freshness: 30    # Minimum days since last use (freshness threshold)
+    reuse_days: 30       # Days before caption can be reused
+
+# =============================================================================
+# TIMING CONFIGURATION
+# =============================================================================
+timing:
+  # Prime hours for maximum engagement (24-hour format)
+  prime_hours: [10, 14, 19, 21]
+
+  # Prime days of week (0=Monday, 6=Sunday)
+  # Friday, Saturday, Sunday are peak revenue days
+  prime_days: [4, 5, 6]
+
+  # Hours to avoid (late night/early morning, low engagement)
+  avoid_hours: [3, 4, 5, 6, 7]
+
+  # Minimum spacing between sends (minutes)
+  min_spacing_minutes: 45
+
+  # Maximum sends per hour (prevent clustering)
+  max_per_hour: 2
+
+# =============================================================================
+# JITTER CONFIGURATION (Organic Time Variation)
+# =============================================================================
+# Jitter adds minute-level variation to schedule times to avoid
+# templated/predictable patterns. This makes schedules feel more organic
+# and authentic, as if a human scheduled each day differently.
+#
+jitter:
+  # Enable/disable jitter system
+  enabled: true
+
+  # Jitter range in minutes (applied to each scheduled time)
+  min_minutes: -7
+  max_minutes: 8
+
+  # Minutes to avoid (machine-like round numbers)
+  # Times that would land on these will be nudged by 1-3 minutes
+  avoid_round_minutes: [0, 15, 30, 45]
+
+  # Per-creator variance: Same creator gets consistent but unique timing patterns
+  # Different creators will have different jitter patterns
+  per_creator_variance: true
+
+  # Per-day variance: Same creator's Monday differs from Tuesday
+  # Creates weekly variety while maintaining consistency
+  per_day_variance: true
+
+  # Seed stability: If true, regenerating a schedule produces same times
+  # Useful for reproducibility and testing
+  deterministic: true
+
+# =============================================================================
+# VOLUME TIER CONFIGURATION
+# =============================================================================
+volume:
+  # Volume tiers based on fan count:
+  #   LOW: 0-999 fans
+  #   MID: 1,000-4,999 fans
+  #   HIGH: 5,000-14,999 fans
+  #   ULTRA: 15,000+ fans
+  #
+  # Each tier defines sends per day by category (revenue/engagement/retention)
+  # Free pages cannot have retention sends
+  tiers:
+    LOW:
+      paid:
+        revenue: 3
+        engagement: 3
+        retention: 1
+      free:
+        revenue: 4
+        engagement: 3
+        retention: 0
+
+    MID:
+      paid:
+        revenue: 4
+        engagement: 3
+        retention: 2
+      free:
+        revenue: 5
+        engagement: 3
+        retention: 0
+
+    HIGH:
+      paid:
+        revenue: 5
+        engagement: 4
+        retention: 2
+      free:
+        revenue: 6
+        engagement: 4
+        retention: 0
+
+    ULTRA:
+      paid:
+        revenue: 6
+        engagement: 5
+        retention: 3
+      free:
+        revenue: 8
+        engagement: 5
+        retention: 0
+
+  # Daily maximums by category (hard limits)
+  daily_maximums:
+    revenue: 8
+    engagement: 6
+    retention: 4
+
+  # Weekly maximums by category (hard limits)
+  weekly_maximums:
+    revenue: 45
+    engagement: 35
+    retention: 20
+
+# =============================================================================
+# ALLOCATION CONFIGURATION
+# =============================================================================
+allocation:
+  # Day-of-week volume adjustments
+  # Adds/subtracts from base volume for each day
+  # 0 = Monday, 6 = Sunday
+  day_adjustments:
+    0: -1  # Monday - slower start to week
+    1: 0   # Tuesday - normal volume
+    2: 0   # Wednesday - normal volume
+    3: 0   # Thursday - normal volume
+    4: 1   # Friday - peak revenue day (increase volume)
+    5: 1   # Saturday - high activity (increase volume)
+    6: 0   # Sunday - normal volume
+
+# =============================================================================
+# FOLLOWUP CONFIGURATION
+# =============================================================================
+followup:
+  # Maximum PPV followups per day
+  max_per_day: 4
+
+  # Minimum delay between parent PPV and followup (minutes)
+  min_delay_minutes: 20
+
+  # Send types that support automatic followup generation
+  enabled_types:
+    - ppv_video
+    - ppv_message
+    - bundle
+
+# =============================================================================
+# FUTURE CONFIGURATION SECTIONS
+# =============================================================================
+# The following sections are planned for future implementation:
+#
+# performance:
+#   saturation_thresholds: [30, 50, 70]
+#   opportunity_weights: {...}
+#
+# validation:
+#   required_fields: [...]
+#   business_rules: {...}
+#
+# export:
+#   formats: [csv, json, excel]
+#   templates: {...}

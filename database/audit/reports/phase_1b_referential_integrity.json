@@ -1,0 +1,184 @@
+{
+  "phase": "1B",
+  "agent": "sql-pro",
+  "status": "WARNING",
+  "timestamp": "2025-12-11T00:00:00Z",
+  "summary": "Referential integrity audit complete. No true FK orphans found, but discovered 29,955 mass_messages with NULL creator_id (43.6% of table) representing historical/inactive creator data. 839 captions missing content_type_id classification. FK enforcement is disabled by default in SQLite.",
+  "table_counts": {
+    "creators": 36,
+    "caption_bank": 20429,
+    "mass_messages": 68674,
+    "vault_matrix": 1192,
+    "content_types": 37,
+    "creator_personas": 36,
+    "schedule_templates": 0,
+    "schedule_items": 0,
+    "schedulers": 13
+  },
+  "orphan_scan": {
+    "relationships_checked": 41,
+    "orphans_found": 0,
+    "details": [
+      {"table": "mass_messages", "column": "creator_id", "orphan_count": 0, "sample_ids": [], "note": "No orphans - NULL values are allowed but represent data quality issue"},
+      {"table": "mass_messages", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "mass_messages", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_bank", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "vault_matrix", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "vault_matrix", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_items", "column": "template_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_items", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_items", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_items", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_items", "column": "parent_item_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "schedule_templates", "column": "scheduler_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "scheduler_assignments", "column": "scheduler_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "scheduler_assignments", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "creator_personas", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "creator_analytics_summary", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "creator_feature_flags", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "volume_assignments", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "volume_overrides", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "volume_performance_tracking", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "top_content_types", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_audit_log", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_classifications", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_classifications", "column": "original_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_classifications", "column": "new_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_creator_performance", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "caption_integrity_issues", "column": "caption_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "bump_variants", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "engagement_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "free_preview_bank", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "free_preview_bank", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "game_wheel_configs", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "link_drop_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "poll_bank", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "retention_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "tip_incentive_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "vip_post_templates", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "wall_posts", "column": "creator_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "wall_posts", "column": "content_type_id", "orphan_count": 0, "sample_ids": []},
+      {"table": "wall_posts", "column": "caption_id", "orphan_count": 0, "sample_ids": []}
+    ]
+  },
+  "cascade_behavior": {
+    "tested": 3,
+    "working": 3,
+    "tables_with_cascade_delete": [
+      {"table": "creator_feature_flags", "column": "creator_id", "references": "creators", "behavior": "CASCADE"},
+      {"table": "volume_assignments", "column": "creator_id", "references": "creators", "behavior": "CASCADE"},
+      {"table": "volume_performance_tracking", "column": "creator_id", "references": "creators", "behavior": "CASCADE"}
+    ],
+    "tables_with_no_action": 38,
+    "issues": [
+      {
+        "severity": "WARNING",
+        "description": "Foreign key enforcement is OFF by default in SQLite (PRAGMA foreign_keys = 0). CASCADE DELETE and FK constraints are not enforced at runtime unless explicitly enabled.",
+        "recommendation": "Add 'PRAGMA foreign_keys = ON;' at application connection time or in database initialization scripts."
+      }
+    ]
+  },
+  "unique_constraints": {
+    "checked": 8,
+    "violations": [],
+    "constraints_verified": [
+      {"table": "creators", "column": "page_name", "status": "PASS"},
+      {"table": "caption_bank", "column": "caption_hash", "status": "PASS"},
+      {"table": "content_types", "column": "type_name", "status": "PASS"},
+      {"table": "creator_personas", "column": "creator_id", "status": "PASS"},
+      {"table": "vault_matrix", "columns": ["creator_id", "content_type_id"], "status": "PASS"},
+      {"table": "schedule_templates", "columns": ["creator_id", "week_start"], "status": "PASS"},
+      {"table": "creator_analytics_summary", "columns": ["creator_id", "period_type"], "status": "PASS"},
+      {"table": "scheduler_assignments", "columns": ["scheduler_id", "creator_id"], "status": "PASS"}
+    ]
+  },
+  "circular_references": {
+    "checked": true,
+    "tables_checked": ["schedule_items"],
+    "found": [],
+    "note": "schedule_items.parent_item_id self-reference checked for cycles - none found"
+  },
+  "data_quality_findings": {
+    "null_fk_analysis": {
+      "mass_messages_null_creator_id": {
+        "total_null": 29955,
+        "percentage_of_table": 43.6,
+        "breakdown": {
+          "completely_orphaned_null_page_name": 10813,
+          "has_page_name_not_in_creators": 19142
+        },
+        "unmatched_page_names_count": 94,
+        "note": "These represent historical/inactive creators not in current creators table"
+      },
+      "caption_bank_null_content_type_id": {
+        "total_null": 839,
+        "note": "Captions missing content type classification"
+      },
+      "caption_bank_null_creator_id": {
+        "total_null": 9510,
+        "note": "Expected - these are universal captions not tied to specific creator"
+      }
+    }
+  },
+  "issues": [
+    {
+      "severity": "WARNING",
+      "description": "29,955 mass_messages (43.6%) have NULL creator_id - historical data from inactive/removed creators",
+      "table": "mass_messages",
+      "affected_rows": 29955,
+      "recommendation": "Consider: (1) Archive historical data to separate table, (2) Add inactive creators to creators table with is_active=0, or (3) Document as intentional for analytics preservation"
+    },
+    {
+      "severity": "WARNING",
+      "description": "10,813 mass_messages have both NULL creator_id AND NULL page_name - completely unattributable",
+      "table": "mass_messages",
+      "affected_rows": 10813,
+      "recommendation": "Investigate source of these records. May be import errors or data from before creator tracking was implemented."
+    },
+    {
+      "severity": "WARNING",
+      "description": "94 distinct page_names in mass_messages do not exist in creators table",
+      "table": "mass_messages",
+      "affected_rows": 19142,
+      "recommendation": "Create inactive creator records for historical page_names to maintain referential integrity, or archive to historical_mass_messages table"
+    },
+    {
+      "severity": "INFO",
+      "description": "839 captions in caption_bank have NULL content_type_id - missing classification",
+      "table": "caption_bank",
+      "affected_rows": 839,
+      "recommendation": "Run content type classification pipeline to assign appropriate content_type_id values"
+    },
+    {
+      "severity": "INFO",
+      "description": "Foreign key enforcement disabled by default in SQLite",
+      "table": "ALL",
+      "affected_rows": 0,
+      "recommendation": "Enable with PRAGMA foreign_keys = ON at connection time to prevent future orphans"
+    },
+    {
+      "severity": "INFO",
+      "description": "38 FK relationships use NO ACTION (default) - deletions could create orphans if FK enforcement enabled",
+      "table": "MULTIPLE",
+      "affected_rows": 0,
+      "recommendation": "Review critical relationships (mass_messages->creators, caption_bank->content_types) for appropriate ON DELETE behavior"
+    }
+  ],
+  "recommendations": {
+    "immediate": [
+      "Enable PRAGMA foreign_keys = ON in application connection code",
+      "Classify 839 captions with NULL content_type_id"
+    ],
+    "short_term": [
+      "Create historical_creators table for inactive page_names (94 distinct)",
+      "Migrate or archive 29,955 mass_messages with NULL creator_id",
+      "Add ON DELETE SET NULL or CASCADE to critical FK relationships"
+    ],
+    "long_term": [
+      "Implement data archival strategy for historical performance data",
+      "Add NOT NULL constraints to creator_id where appropriate after data cleanup",
+      "Create database triggers to prevent future NULL creator_id insertions"
+    ]
+  }
+}

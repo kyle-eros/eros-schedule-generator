@@ -1,0 +1,906 @@
+caption_id,caption_text,len,times_used,total_earnings,performance_score,source,created_at,cleanup_reason
+20393,"🍒",1,2,70.0,35.85,internal,"2025-12-12 02:43:02",VERY_SHORT_LOW_PERFORMANCE_WITH_EARNINGS
+20156,"💕",1,2,82.0,27.07,internal,"2025-12-09 12:51:51",VERY_SHORT_LOW_PERFORMANCE_WITH_EARNINGS
+20041,"🎀",1,1,36.0,16.06,internal,"2025-12-09 12:51:04",VERY_SHORT_LOW_PERFORMANCE_WITH_EARNINGS
+20200,"💗",1,1,30.0,13.1,internal,"2025-12-11 05:09:06",VERY_SHORT_LOW_PERFORMANCE_WITH_EARNINGS
+20347,"🙀",1,0,0.0,50.0,internal,"2025-12-11 05:10:56",EMOJI_DEADWEIGHT
+19770,"🖤🩵",2,0,0.0,50.0,internal,"2025-12-09 12:49:36",EMOJI_DEADWEIGHT
+19885,"🥵🥵",2,0,0.0,50.0,internal,"2025-12-09 12:50:13",EMOJI_DEADWEIGHT
+19977,"🙈💘",2,0,0.0,50.0,internal,"2025-12-09 12:50:40",EMOJI_DEADWEIGHT
+20097,"🖤🖤",2,0,0.0,50.0,internal,"2025-12-09 12:51:16",EMOJI_DEADWEIGHT
+20186,"💘🍓",2,0,0.0,50.0,internal,"2025-12-10 07:24:05",EMOJI_DEADWEIGHT
+20248,">⩊<",3,0,0.0,50.0,internal,"2025-12-11 05:09:43",EMOJI_DEADWEIGHT
+19955,"👋🏼👋🏼",4,0,0.0,50.0,internal,"2025-12-09 12:50:39",EMOJI_DEADWEIGHT
+19957,"☀️☺️",4,0,0.0,50.0,internal,"2025-12-09 12:50:39",EMOJI_DEADWEIGHT
+20491,"(ˇωˇ)",5,0,0.0,50.0,scraped,"2025-12-12 03:36:14",EMOJI_DEADWEIGHT
+19947,"Hey 😛",5,0,0.0,50.0,internal,"2025-12-09 12:50:39",EMOJI_DEADWEIGHT
+20371,"Hey 👋🏻",6,0,0.0,50.0,internal,"2025-12-11 05:10:57",EMOJI_DEADWEIGHT
+19721,"cheers🥂",7,0,0.0,50.0,internal,"2025-12-09 12:44:22",EMOJI_DEADWEIGHT
+19918,"Oh hi🙈🌸",7,0,0.0,50.0,internal,"2025-12-09 12:50:25",EMOJI_DEADWEIGHT
+19960,"Fuck me?",8,0,0.0,50.0,internal,"2025-12-09 12:50:39",EMOJI_DEADWEIGHT
+20089,peekaboo,8,0,0.0,50.0,internal,"2025-12-09 12:51:16",EMOJI_DEADWEIGHT
+20263,"Hello 🥰💕",8,0,0.0,50.0,internal,"2025-12-11 05:09:55",EMOJI_DEADWEIGHT
+20348,"at work🤪",8,0,0.0,50.0,internal,"2025-12-11 05:10:56",EMOJI_DEADWEIGHT
+20469,"pick 1 🙈",8,0,0.0,50.0,internal,"2025-12-12 02:44:54",EMOJI_DEADWEIGHT
+19831,"Smack it🙌",9,0,0.0,50.0,internal,"2025-12-09 12:49:49",EMOJI_DEADWEIGHT
+20148,"so cute 🥰",9,0,0.0,50.0,internal,"2025-12-09 12:51:40",EMOJI_DEADWEIGHT
+20202,":¨ ·.· ¨:",9,0,0.0,50.0,internal,"2025-12-11 05:09:18",EMOJI_DEADWEIGHT
+20222,"Hey babes",9,0,0.0,50.0,internal,"2025-12-11 05:09:30",EMOJI_DEADWEIGHT
+1875,"Hi baby 👋🏻",10,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3336,"Morning ❄️",10,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19760,"bouncy 🍑🐇🎀",10,0,0.0,50.0,internal,"2025-12-09 12:49:25",VERY_SHORT_NEVER_USED
+20150,"Funny me 😋",10,0,0.0,50.0,internal,"2025-12-09 12:51:40",VERY_SHORT_NEVER_USED
+53240,"Wanna talk?",11,6,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23177,"are you up?",11,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48882,"Still up? 👀",11,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48889,"Still up? 🤔",11,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+40834,"I’m horny 🥵",11,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+56734,"woke up wet",11,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48883,"still up? 😊",11,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+21760,"1, 2, or 3😈",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30436,"Good moanin",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31568,"here habibi",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31709,"Hey babe! 😉",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31710,"Hey babe! 😊",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31899,"Hey baby! 😉",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32544,"heyyy wyd 🤭",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32675,"hi there c:",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32678,"Hi there! 😘",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32680,"hi you hehe",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32693,"hii babe :)",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32724,"hiiiiiii c:",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32731,"Hit me up 😉",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+40555,"I’m bored 😐",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43136,"Let's snap😍",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43166,"Lets play 🐱",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44314,"morning! ☀️",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44318,"Morning!! 😘",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49696,"TGIF habibi",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57461,"Wyd today 💖",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57462,"wyd today 🥰",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+21790,"77 or 69? 😛",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23855,"BABY?? ❤️❤️",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23879,"babyyy? ;))",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31142,"Guess what?",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31556,"helloooo? 😣",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31969,"Hey baby? 😗",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32428,"hey, wyd? 😊",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48415,"Spank it? 🙈",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48884,"Still up? 😋",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48885,"still up? 😏",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48886,"still up? 😔",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48887,"Still up? 😕",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48888,"still up? 🙈",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57437,"wyd babe? 💋",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57438,"wyd babe? 🥰",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57443,"Wyd baby? 😘",11,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1072,"hiiii &lt;3",11,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2853,"Hi habibi 🧿",11,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1793,"Hey baby ❤️",11,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1860,"hii wyd rn?",11,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+30195,"Fuck it.  😈",11,1,58.76,24.46,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_LOW_PERFORMANCE_WITH_EARNINGS
+19728,"Sweet girl💗",11,0,0.0,50.0,internal,"2025-12-09 12:44:22",VERY_SHORT_NEVER_USED
+19909,"💦 looks >>>",11,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+19914,"i see you 👀",11,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+19923,"Sunshine☀️😊",11,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+20043,"goood girl😈",11,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20046,comfortable,11,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20047,"let's play?",11,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20151,"New style 😈",11,0,0.0,50.0,internal,"2025-12-09 12:51:40",VERY_SHORT_NEVER_USED
+20153,"Home girl 💘",11,0,0.0,50.0,internal,"2025-12-09 12:51:51",VERY_SHORT_NEVER_USED
+20345,"goood girl😇",11,0,0.0,50.0,internal,"2025-12-11 05:10:56",VERY_SHORT_NEVER_USED
+20382,"wakey wakey",11,0,0.0,50.0,internal,"2025-12-11 05:11:08",VERY_SHORT_NEVER_USED
+24899,"Busy Monday?",12,4,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32969,"how are you?",12,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+2036,"Morning baby",12,3,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+24896,"Busy baby? 😩",12,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51562,"u up habibi?",12,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57455,"wyd rn babe?",12,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58404,"You there? 😈",12,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24130,"Be my baby ❤",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24797,"Bored asf 🥵😇",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30362,"gn habibiiii",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30367,"go grab it 😉",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31534,"Hello babe 😉",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32044,"Hey cutie! 🥰",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32205,"hey there! 😉",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32335,"Hey, baby!😉😉",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32697,"Hii Habibi 😘",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35806,"I miss you 👀",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43120,"Let's play 🫣",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51954,"wakey wakey😘",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+60084,"💁‍♀️💁‍♀️💁‍♀️",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+60714,"🤦‍♀️🤦‍♀️🤦‍♀️",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23187,"Are you up?🙈",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23227,"ass or tits?",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23511,"Babeee?? :))",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24897,"Busy baby? 😫",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43519,"loong day? 🤔",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43520,"Loong day? 🥺",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48890,"still up? 🫣🥺",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51138,"Tits or ass?",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51454,"u busy baby?",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51540,"u still up??",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51586,"u working? 🙈",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52659,"wanna relax?",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53141,"Wanna sext?🥵",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57569,"you awake? 😒",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58405,"you there? 😏",12,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1922,"Are you up ?",12,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1970,"Morning love",12,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3524,"You awake? 🙃",12,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2065,"Pay for it 🐱",12,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3256,"on c b rn ;)",12,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+20490,"extra yummy🤤",12,0,0.0,50.0,scraped,"2025-12-12 03:36:14",VERY_SHORT_NEVER_USED
+19917,"Pink candy🍭🍬",12,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+20062,"Late again 😏",12,0,0.0,50.0,internal,"2025-12-09 12:51:15",VERY_SHORT_NEVER_USED
+20344,"im in papi 🔥",12,0,0.0,50.0,internal,"2025-12-11 05:10:56",VERY_SHORT_NEVER_USED
+20461,"UR MF BABY 🤤",12,0,0.0,50.0,internal,"2025-12-12 02:44:31",VERY_SHORT_NEVER_USED
+22512,"Are you busy?",13,17,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30769,"Good morning😘",13,4,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30767,"Good morning💖",13,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31569,"here habibi..",13,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43057,"Let's chat ❤️",13,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46835,"Ride or sit?🙈",13,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52640,"Wanna play? 😈",13,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25771,"Can’t sleep 😏",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26151,"come closer 👅",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+28807,"Dominate me 😫",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31248,"habibi i love",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31313,"Happy monday🥰",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31557,"helloooooo c:",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32057,"hey daddy wyd",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32109,"Hey handsome!",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33809,"Hurry babe! 😊",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33810,"hurry baby! 😉",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+50679,"this is crazy",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22330,"are u here? 🤗",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22635,"Are you free?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23182,"Are you up? 👀",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23183,"are you up? 😉",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23184,"Are you up? 😘",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23185,"are you up? 🙈",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23186,"Are you up? 🤔",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23296,"Babe hello?🥺🥺",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23636,"Baby wyddd? 👀",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24718,"Bg or solo?🍆💦",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24719,"BG or SOLO?😈💦",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24895,"Busy at work?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31540,"hello babyyy?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31983,"Hey babyyy? 🤔",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32239,"hey you busy?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33557,"how's life? 😉",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33578,"how's work? 😊",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43612,"lunch time? 🤤",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46355,"pussy or ass?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48618,"Still busy? 🥺",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51539,"u still up? 😞",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51541,"u there babe?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52639,"Wanna play? 👀",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52641,"wanna play? 😋",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57458,"wyd rn babe?😘",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57556,"You around? 👀",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58369,"You still up?",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58400,"you there? :(",13,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1452,"u ok baby ? 😍",13,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2119,"Hi habibi 🍉 🍉",13,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3058,"hehe thx baby",13,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3402,"slap my kitty",13,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19718,"yes, daddy? 💗",13,0,0.0,50.0,internal,"2025-12-09 12:44:22",VERY_SHORT_NEVER_USED
+19800,"tongue out :3",13,0,0.0,50.0,internal,"2025-12-09 12:49:48",VERY_SHORT_NEVER_USED
+19996,"all for you 😘",13,0,0.0,50.0,internal,"2025-12-09 12:50:51",VERY_SHORT_NEVER_USED
+20093,"happy humpday",13,0,0.0,50.0,internal,"2025-12-09 12:51:16",VERY_SHORT_NEVER_USED
+20099,"Come to mommy",13,0,0.0,50.0,internal,"2025-12-09 12:51:16",VERY_SHORT_NEVER_USED
+20343,"Just selfie 😍",13,0,0.0,50.0,internal,"2025-12-11 05:10:45",VERY_SHORT_NEVER_USED
+30572,"good morning 😘",14,7,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22524,"are you busy?🥺",14,5,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23087,"Are you there?",14,5,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31546,"hello there c:",14,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44087,"Morning babe 😘",14,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30588,"Good morning 🥰",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32153,"Hey morning! 😉",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43745,"Me &gt; Jade 🤭",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23225,"Ass or pussy?😈",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32460,"heyy babe? 🥺❤️",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43854,"miss me yet? 😘",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48809,"Still up baby?",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57457,"wyd rn babe? 🥰",14,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22469,"are you awake🥺",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30437,"Good moaninnnn",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30562,"Good morning ☀",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30571,"good morning 😋",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30586,"GOOD MORNING 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30627,"Good morning!🥰",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31528,"Heeyy babeee 😙",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31550,"Hello, cutie 💕",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32112,"Hey handsome!😊",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32178,"hey stranger 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32291,"Hey! morning 😊",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32716,"hiiii there c:",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34118,"I cant sleep 🥺",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35807,"I MISS YOU! 😣🥺",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37644,"I'm horny rn 😈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42863,"Lazy morning 💤",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44086,"Morning babe 😊",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44236,"morning to u 😉",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44237,"Morning to u 😊",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51389,"truth or dare😈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51939,"Wake up baby 🥰",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22323,"are u busy rn?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22422,"Are you alone?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22850,"are you on rn?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23229,"Ass or tits? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23230,"Ass or Tits? 🤭",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23859,"Babyy hello? 🤍",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24729,"BG,GG or SOLO?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25346,"Can we talk? 💋",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25347,"Can we talk? 🥺",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29681,"Fast or slow?😈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30871,"Got any plans?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31150,"Guess what?? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32231,"Hey u there? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32698,"Hii what's up?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43850,"Miss me yet? 💋",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43851,"Miss me yet? 😇",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43852,"Miss me yet? 😉",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43853,"Miss me yet? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43855,"miss me yet? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45730,"off to work? 🥹",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48612,"Still awake? 😉",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48743,"still there? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48744,"still there? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48745,"Still there? 🤔",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48925,"stl Up, babe?🤔",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51144,"tits or ass? 😈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51452,"u busy babe? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51453,"u busy babe? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51758,"up for a chat?",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57456,"Wyd rn babe? 👀",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57459,"Wyd rn baby? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57463,"Wyd tonight? 😏",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57464,"Wyd tonight? 🥰",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57608,"you busy rn? 🙃",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58455,"You up babe? 😋",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58456,"you up babe? 🥺",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58457,"you up baby? 🙈",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58504,"you uup boo? 😉",14,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1598,"Just woke up 😇",14,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2165,"Good morning !",14,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2193,"My cash app :)",14,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3549,"Smash or pass?",14,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2911,"Morning habibi",14,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19840,"SQUIRT QUEEN!💦",14,0,0.0,50.0,internal,"2025-12-09 12:50:00",VERY_SHORT_NEVER_USED
+19954,"Sweet like a 🍑",14,0,0.0,50.0,internal,"2025-12-09 12:50:39",VERY_SHORT_NEVER_USED
+19993,"Sweet girl Vi💛",14,0,0.0,50.0,internal,"2025-12-09 12:50:51",VERY_SHORT_NEVER_USED
+20039,"are you ready?",14,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20066,"i'd save you 😋",14,0,0.0,50.0,internal,"2025-12-09 12:51:15",VERY_SHORT_NEVER_USED
+20176,"Funny kitty 😍🥰",14,0,0.0,50.0,internal,"2025-12-10 07:23:53",VERY_SHORT_NEVER_USED
+20462,"selfieee baby😳",14,0,0.0,50.0,internal,"2025-12-12 02:44:42",VERY_SHORT_NEVER_USED
+20463,"break at work🤤",14,0,0.0,50.0,internal,"2025-12-12 02:44:42",VERY_SHORT_NEVER_USED
+22519,"Are you busy? 👀",15,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33628,"How's your day?",15,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48852,"Still up, baby?",15,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55131,"What you up to?",15,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25678,"Can't sleeeep 🥹",15,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26580,"cum on me daddy",15,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44122,"Morning baby! 😊",15,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51384,"Truth or dare 😈",15,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22427,"Are you alone?😈",15,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22464,"are you awake 😢",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22465,"Are you awake 🙈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22466,"Are you awake 🥰",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26223,"come play baby😋",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29381,"enjoy it baby 😉",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29778,"feeling dirty 🥵",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30431,"Good evening ☺️",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30563,"Good morning ☀️",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30794,"goodnighttttt 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30885,"got dicked down",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31322,"Happy new year😇",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32111,"Hey handsome! 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32723,"hiiiiii daddy 😳",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32875,"Horny morning 🥵",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34087,"I can't sleep 🥹",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35715,"I made a mess 🥵",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35822,"I need a dick 🙄",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37828,"I'm so wet rn 💦",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44083,"morning babe ❤️",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44094,"Morning babe! 😊",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44123,"Morning baby! 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44148,"Morning cutie 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22454,"Are you asleep?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22521,"Are you busy? 😏",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22522,"Are you busy? 😕",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22523,"Are you busy? 🥺",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22725,"are you here? 🙈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23094,"Are you there??",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23095,"Are you there?🥺",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23620,"baby u there? 👀",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23647,"BABY!! u there?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24720,"BG 😈 or SOLO 🥵?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24721,"BG, GG or Solo?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30824,"Got a minute? 🙈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31541,"Hello daddyy? 😈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31835,"hey baby wyd? 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32294,"Hey! u awake? 😒",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32699,"Hii what's up?😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32710,"hiii you there?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33744,"How’s your day?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42756,"Kiss or lick? 🫦",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43747,"Me for lunch? 🤭",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43751,"Me or coffee?🤭😈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44312,"morning! wyd? 😊",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46497,"Ready for me? 👀",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46523,"Ready to 69? 🍆😈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46534,"Ready to cum? 🥵",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48235,"So... What now?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48715,"Still not up? 😏",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48807,"still up babe?😊",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48808,"Still up babee?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48815,"still up babyy?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48822,"still up daddy?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51141,"tits or ass? 🍒🍑",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51146,"Tits or ass?? 😏",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51388,"Truth or dare?👀",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51544,"U there babe? 👀",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51545,"u there babe? 😞",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51546,"u there babe? 🙈",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51547,"u there baby? 😏",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51548,"u there habibi?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52051,"Wanna cuddle? 😘",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54860,"what u up to? 😜",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57645,"You chilling? 😃",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58375,"you still up? 😏",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58376,"you still up? 🫶",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58391,"you there babe?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+60554,"😘 do u miss me?",15,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1522,"good morning 🙊🙊",15,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2150,"Did u cum yet ?",15,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3192,"Custom request?",15,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3390,"STREAMING NOW X",15,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+4015,"I’m so horny! 😝",15,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19771,"Good morning 😋🥰",15,0,0.0,50.0,internal,"2025-12-09 12:49:36",VERY_SHORT_NEVER_USED
+19959,"Rip it off me?😛",15,0,0.0,50.0,internal,"2025-12-09 12:50:39",VERY_SHORT_NEVER_USED
+19967,"@kelseyxovip 😛💜",15,0,0.0,50.0,internal,"2025-12-09 12:50:39",VERY_SHORT_NEVER_USED
+19990,"Back to school📚",15,0,0.0,50.0,internal,"2025-12-09 12:50:51",VERY_SHORT_NEVER_USED
+20079,"Spoiler alert!🚨",15,0,0.0,50.0,internal,"2025-12-09 12:51:16",VERY_SHORT_NEVER_USED
+20085,nudesssssssssss,15,0,0.0,50.0,internal,"2025-12-09 12:51:16",VERY_SHORT_NEVER_USED
+20240,"Join me here? 💦",15,0,0.0,50.0,internal,"2025-12-11 05:09:42",VERY_SHORT_NEVER_USED
+20328,"Ready to train♡",15,0,0.0,50.0,internal,"2025-12-11 05:10:44",VERY_SHORT_NEVER_USED
+20342,"Check my look 😋",15,0,0.0,50.0,internal,"2025-12-11 05:10:45",VERY_SHORT_NEVER_USED
+55397,"whatcha doing? 👀",16,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23092,"Are you there? 😈",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30965,"got time for me?",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46491,"Ready for fun? 😘",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48799,"still up babe? 😩",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51386,"Truth or Dare? 😈",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57449,"wyd now, babe? 🥰",16,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+21543,"### wyd rn baby😈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22334,"are u mad at me🥹",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22869,"are you online 💚",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23173,"are you up yet 🙈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23174,"Are you up yet 🤪",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26467,"Craving it bad 🍆",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26498,"Craving you rn 🤭",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29184,"Don’t miss this!",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29283,"Dream about me 🫦",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30121,"For you, babe ❤️",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30412,"Good afternoon 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30620,"good morning! 🙈😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30624,"Good morning!! 😊",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30626,"good morning!!🌞🌇",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30757,"Good morninggg 🥰",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31261,habibiiiiiiiiiii,16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31351,"hard morning! 🍆😋",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32104,"Hey guess what 🙈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34093,"I can't sleep. 🥺",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37461,"I'm bored babe 😒",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43183,"Let’s get freaky",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44169,"morning habibi 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45080,"my pussy is sore",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47925,"Show it, I rate🍆",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47965,"show me your cum",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51951,"wake uppp love!!",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57484,"Y0uthful Daisy 😇",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22425,"Are you alone? 😈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22450,"are you around?👀",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22451,"are you around?💋",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22468,"Are you awake? 🤔",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22503,"are you busy rn?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23093,"Are you there? 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23198,"Are you with me?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23621,"Baby u there?? 💔",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23812,"Baby, videocall?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24737,"Birthday sext? 🤭",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24771,"Boobs or Ass? 🍒🍑",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24802,"Bored at work? 😏",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25345,"Can we talk? ;))",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29769,"feeling cuddly?😍",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31256,"habibi u there??",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31523,"heeey! you up? 😉",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31953,"Hey baby, wyd? 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32194,"Hey there! Busy?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32234,"Hey what's up? 🙃",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32237,"hey you busy rn?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32423,"Hey, what is up?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32615,"Hi babe! ❤️ wyd?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32719,"hiiii you there?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33552,"how's it goin? 🙈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33688,"hows your day? 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33795,"Hungry for me? 👅",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42103,"Just chilling? 🤔",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43843,"miss me daddy? 👀",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43868,"Miss my smile? 😊",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46351,"Pussy for lunch?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46490,"Ready for bed? 🤭",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48797,"still up babe? 👀",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48798,"still up babe? 😘",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48800,"Still up babe? 🙄",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48802,"Still up babe? 🥰",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48803,"still up babe? 🥺",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48804,"still up babe? 🫣",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48813,"still up baby? 👀",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48814,"still up baby? 😼",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48824,"still up daddyy?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48851,"Still up, babe?🤗",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48854,"Still up, baby?😈",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48916,"Still with me? 😏",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51150,"Tits or pussy? 🥵",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51329,"Top or bottom? 👀",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51387,"Truth or dare? 😏",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51447,"u around babe? 😞",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51543,"u there babe? ❤️",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51759,"Up for a custom?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52052,"Wanna cuddle? 🛏️",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53395,"Want a taste? 👅🍑",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53807,"want to play tn🥰",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57432,"Wyd ? You up ? 😉",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57454,"Wyd right now? 💋",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58374,"You still up? 🍆👅",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58397,"You there, babe?",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+59916,"🍒 Boobs or Ass?🍑",16,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+2085,"What you doing ?",16,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3691,"Did you miss me?",16,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1973,"Still up, babe?😊",16,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2056,"Cum on my face 💦",16,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19921,"Smiling at you🥰😘",16,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+19964,"Happy Tuesday 💜😝",16,0,0.0,50.0,internal,"2025-12-09 12:50:39",VERY_SHORT_NEVER_USED
+20032,"Big energy only.",16,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20101,"Happy mondayyyy!",16,0,0.0,50.0,internal,"2025-12-09 12:51:16",VERY_SHORT_NEVER_USED
+20243,"Wanna get wet? 💦",16,0,0.0,50.0,internal,"2025-12-11 05:09:42",VERY_SHORT_NEVER_USED
+20394,"hi down there :)",16,0,0.0,50.0,internal,"2025-12-12 02:43:02",VERY_SHORT_NEVER_USED
+23033,"are you still up?",17,8,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33455,"How was your day?",17,7,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31552,"Hello?! BABE.. ❤️",17,5,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58392,"You there babe? 👀",17,4,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57554,"You around baby?👀",17,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43219,"Let’s make mess 💦",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22493,"Are you busy now?",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23630,"Baby what's up? 😼",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29819,"Feeling frisky? 😈",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43485,"Looking for me? 😘",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48850,"still up, babe? 🥺",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51254,"too busy for me?🤭",17,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23307,"Babe I'm tipsy af",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25957,"Careful… I bite 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26590,"Cum play with me🥵",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30105,"Focus on me baby🫦",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30535,"Good morning hehe",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30566,"good morning ☺️☺️",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30798,"Goood morning!! 😉",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31249,"habibi i need you",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31260,"habibiii i miss u",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32572,"Heyyy🥰 are u busy",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32872,"Horny 4 you bby 😅",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33955,"I bet you won't 😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34774,"I have a secret 🤭",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34804,"i have an ideaa 🫦",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35803,"I miss you babe 😔",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35821,"I need a coffee 💤",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+36567,"i want companyyyy",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+39138,"Im horny rn baby😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43184,"Let’s get freaky😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43669,"make me cum baby💋",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44168,"morning habibi 💓💓",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44376,"morningggg baby 😘",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46262,"POV: I'm on top 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46415,"Quick question...",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46859,"Rise and shine 🌄😘",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46871,"rise and shine! 😉",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46872,"rise and shine! 😊",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47112,"Send🍆, I’ll judge",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47131,"Sext me I’m bored",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47976,"shower time.... 😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48039,"Slap it for me 🤭🍑",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48420,"Spank Me Sunday 😩",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48443,"spill it for me 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49105,"taking requests 💌",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49113,"Talk to me baby 🥺",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51737,"Unsending it RN 😪",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51861,"VS how it ended 👀",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54759,"what r u up toooo",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+60522,"😈 Let’s cum baby😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22152,"Am I your type? 🤔",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22424,"Are you alone? 👿🥰",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22426,"Are you alone? 🤔😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22449,"Are you around? 😒",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23618,"Baby u still up?💋",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23631,"baby what's uppp?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24900,"Busy with work? 🤔",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31477,"having a break? 👀",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31522,"Heeeey! You up? 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31609,"hey are you busy?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31645,"Hey babe ❤️ wyd?!",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31971,"Hey babyy! Wyd? 😘",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32299,"Hey! what's up? 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32406,"Hey, miss me yet?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32488,"Heyy what's up? 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32938,"how are u babe? 😊",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32943,"how are you babe?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33570,"how's ur sleep? 🥹",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33631,"How's your day? 😊",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33632,"How's your day? 🥰",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+39801,"Is wetter better?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43910,"Missing me yet? 💋",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48472,"Spread me more? 🤭",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48616,"still busy babyy?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48739,"Still there baby?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48806,"still up babe?? 🥺",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48823,"still up daddy? 🥺",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48832,"still up for me?🙈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48849,"Still up, babe? 🙈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48855,"Still up, baby?😉😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48856,"Still up, baby?😉😉",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51585,"u working babe? 😞",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51790,"up for some fun?😈",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51792,"Up for some fun?😉",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53131,"wanna sext babe?🥰",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53160,"Wanna slap it? 🤭🍑",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53248,"Wanna taste me? 👀",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53927,"Watchuuu doing?❤️",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54433,"What for lunch? 😊",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55132,"What you up to? 😘",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55168,"What's for lunch?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55295,"What's up baby? 😏",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55296,"What's up baby? 🥰",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55297,"What's up baby? 🥵",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55300,"What's uppp babe?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55398,"whatcha up to rn?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+56156,"Which hole first?",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+56767,"Works done boo? 🙄",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57565,"You awake, baby?😌",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57602,"you busy babyy? 🤔",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58055,"You like them? 🍒🤭",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58394,"you there babe? 🤔",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+59915,"🍒 Boobs or Ass? 🍑",17,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1117,"hows ur day been💞",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1130,"Congratss omggg 😭",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1577,"good morningggg ✨",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2066,"wyd right now? 💋💗",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2515,"heyyy let's talk!",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3949,"That was hot BAE^",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1764,"are u up rn? wyd?",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2111,"Tip if you like 🥰",17,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+20315,"you owe me a dm 😏",17,0,0.0,50.0,internal,"2025-12-11 05:10:44",VERY_SHORT_NEVER_USED
+19672,"come play w me? 🛝",17,0,0.0,50.0,internal,"2025-12-09 12:43:16",VERY_SHORT_NEVER_USED
+19724,"Blue is my color🦋",17,0,0.0,50.0,internal,"2025-12-09 12:44:22",VERY_SHORT_NEVER_USED
+19920,"Daytime chilling🐰",17,0,0.0,50.0,internal,"2025-12-09 12:50:25",VERY_SHORT_NEVER_USED
+19965,"Thinking of you 🖤",17,0,0.0,50.0,internal,"2025-12-09 12:50:39",VERY_SHORT_NEVER_USED
+20003,"too much for you?",17,0,0.0,50.0,internal,"2025-12-09 12:50:51",VERY_SHORT_NEVER_USED
+20057,"📚 Pop Quiz Time 📚",17,0,0.0,50.0,internal,"2025-12-09 12:51:15",VERY_SHORT_NEVER_USED
+20071,"lemme squat on it",17,0,0.0,50.0,internal,"2025-12-09 12:51:15",VERY_SHORT_NEVER_USED
+20074,"finally fridayyyy",17,0,0.0,50.0,internal,"2025-12-09 12:51:15",VERY_SHORT_NEVER_USED
+20279,"HAPPY SATURDAY 💋💋",17,0,0.0,50.0,internal,"2025-12-11 05:10:08",VERY_SHORT_NEVER_USED
+20290,"HARDER DADDY!! 😫🔞",17,0,0.0,50.0,internal,"2025-12-11 05:10:19",VERY_SHORT_NEVER_USED
+20305,"Do you like it? 🫦",17,0,0.0,50.0,internal,"2025-12-11 05:10:31",VERY_SHORT_NEVER_USED
+51739,"UNSENDING SOON ☝🏼💋",18,4,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30547,"Good morning love😘",18,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23048,"Are you still up?😉",18,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32955,"how are you doing?",18,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43445,"long day, daddy? 💕",18,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43155,"lets get naughty 🙈",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22487,"Are you busy babe?",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22508,"are you busy rn? 🥺",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23332,"Babe u still up? 🥺",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23648,"BABY!! u there? ❤️",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32967,"how are you today?",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33458,"How was your day?💗",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+47133,"sext or sextape? 😈",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51252,"Too busy for me? 😏",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55298,"What's up babyy? 😉",18,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1815,"Good morning baby🥰",18,2,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+21494,"### are you awake😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+21539,"### wake up baby 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22415,"are you alone rn 🫣",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25140,"Can I lick your 🍆😋",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25305,"can u make me cum🥵",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26015,"Caught u looking 🍑",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26315,"Congratss daddyy 🤪",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26556,"Cum in me, daddy 💦",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26587,"Cum play with me 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26589,"Cum play with me 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29657,"Eyes on me daddy 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30015,"filmed this with a",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30187,"fuck i'm so wet rn",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30448,"good morning babe!",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30460,"Good morning babe😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30492,"Good morning baby😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30625,"good morning!!!! 😋",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30779,"goodmorning babe!🥰",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32209,"Hey there, babe! 👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32214,"Hey there, cutie 😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32364,"Hey, good morning!",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32708,"Hiii let's talk :)",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32957,"How are you doingg",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37428,"I'm all yours rn 👅",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+39077,"Im all yours babe😩",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42086,"Just checking in ✨",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42591,"Just wondering...😏",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43189,"Let’s get nasty 👅💦",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43765,"Mess me up, baby 🥵",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43903,"Missed you babyy 😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+44370,"Morning, trouble 😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48127,"Snag it now baby 😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48173,"so horny rn habibi",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51271,"Too hot to sleep 🥵",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51515,"u need this view 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51642,"Undress me babyy 🥵",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54006,"what are doing rn🥹",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22131,"Am I ur favorite?😏",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22259,"any plans today? 😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22260,"Any plans tonight?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22332,"are u home now? ❤️",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22458,"Are you at work? 🤔",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22507,"are you busy rn? 🙈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22629,"are you free rn? 💋",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22710,"are you hard rn? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22711,"Are you hard rn? 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23047,"Are you still up?👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23049,"Are you still up?😏",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23050,"are you still up?😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23556,"Baby are you busy?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23582,"Baby how are youu?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23810,"Baby, u there? ❤️!",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24735,"big plans tonight?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24777,"Booty or curves? 💋",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24853,"breakfast or me? 🙊",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24854,"breakfast or me? 🤪",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24855,"Breakfast or me? 🫦",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25098,"Can I disturb you?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26038,"Chest or thighs? 🤔",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26109,"Coffee or teats? 😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26289,"come warm me up? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26543,"Cum before work? 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+27132,"Did you miss me? 👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+27542,"Do you have a tat?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31232,"Guilty pleasure? 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31559,"Help me stretch? 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32089,"Hey daddyy! wyd? 😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32230,"Hey u there boo? 🥺",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32235,"Hey whats uppp? ❤️",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32303,"hey! you around? 🙊",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32489,"heyy whats uppp? 😍",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32717,"hiiii what's up? 🌸",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33548,"How'd your day go?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33763,"How’s your week? 🙈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+36706,"i want to sext… 💦😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43389,"Liking the view? 👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43877,"Missed me babyy? 😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43878,"Missed me babyy? 😜",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43882,"Missed me, baby? 😘",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45493,"nerdy or slutty? 🫦",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46350,"Pussy for dinner?🥵",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48615,"Still busy babe? 🥹",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48817,"still up babyyy? 😇",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48818,"still up babyyy? 😗",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48831,"Still up for me? 🍆",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48861,"Still up, Daddy? 😏",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+50953,"Thong on or off? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51247,"Too busy babe??? 🤔",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51253,"Too busy for me? 🫦",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51449,"u at work already?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51536,"u still up habibi?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51584,"u working babe? ❤️",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51789,"Up for some fun? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51791,"up for some fun?😈💋",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51807,"up to no good rn?😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52032,"wanna chat babe?❤️",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52601,"Wanna play babe? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52602,"Wanna play babe? 🙈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52603,"Wanna play babe? 🤭",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52860,"Wanna see me rn? 👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52910,"Wanna see more? 👀😉",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54839,"What turns you on?",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54857,"What u doing rn? 👀",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54863,"What u watching? 📺",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57812,"You hard for me? 😈",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58398,"You there, babe? 😓",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58399,"you there, baby? 😞",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+60710,"🟢can we facetime?🟢",18,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1097,"I want to play rn😈",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1382,"As promised babe 🥰",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1832,"Fukin or suckin? 🥵",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2052,"Goodnight loves ♥️",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2118,"How did you rest ?",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3275,"You still awake? 😘",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3388,"Just mine then^^^^",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1976,"Goodnight baby ♥️😘",18,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+19789,"Spread and ready 💦",18,0,0.0,50.0,internal,"2025-12-09 12:49:37",VERY_SHORT_NEVER_USED
+20000,"make my kitty purr",18,0,0.0,50.0,internal,"2025-12-09 12:50:51",VERY_SHORT_NEVER_USED
+20149,"little scientist 🥰",18,0,0.0,50.0,internal,"2025-12-09 12:51:40",VERY_SHORT_NEVER_USED
+20210,"keep staring, bby…",18,0,0.0,50.0,internal,"2025-12-11 05:09:18",VERY_SHORT_NEVER_USED
+20280,"Vip @kelseyxovip 🥰",18,0,0.0,50.0,internal,"2025-12-11 05:10:08",VERY_SHORT_NEVER_USED
+20372,"your new addiction",18,0,0.0,50.0,internal,"2025-12-11 05:10:57",VERY_SHORT_NEVER_USED
+20385,"Fearless and fine.",18,0,0.0,50.0,internal,"2025-12-11 05:11:19",VERY_SHORT_NEVER_USED
+20453,"Your little Mira🙈🌸",18,0,0.0,50.0,internal,"2025-12-12 02:44:29",VERY_SHORT_NEVER_USED
+54183,"What are you up to?",19,11,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43151,"Lets break my bed 😈",19,7,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23078,"are you there babe?",19,5,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23176,"Are you up, baby?😉😉",19,4,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23850,"baby... you there 😘",19,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30517,"good morning habibi",19,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23044,"Are you still up? 🤔",19,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54095,"what are you doing?",19,3,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30560,"good morning to u 😊",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46197,"play time daddyyyy😈",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+59767,"⬆️❗️🎰 YOU WON 🎰❗️⬆️",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22419,"Are you alone rn? 😈",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43054,"Let's be naughty? 😈",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51788,"Up for some fun? ❤️",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51986,"Wanna be nasty??? 😈",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52611,"Wanna play tonight?",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57450,"wyd right now babe?",19,2,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22463,"Are you awake yet 🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22745,"Are you horny babe🤭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25332,"can we play a game🤭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26234,"Come play with me 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26253,"Come see me naked 💯",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26564,"cum lick it daddy 👅",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26588,"Cum play with me 😘💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+26905,"Destroy me, daddy 🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+27274,"Dinner is served 🙊🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+28808,"Dominate me, baby 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+28993,"don’t ignore meee 😭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29388,"entertain me habibi",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29659,"Eyes on me, Daddy 😻",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29699,"feelin dirty habibi",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30138,"found the malibu 😋🙈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30186,"Fuck I want more 🥵🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30272,"Get me wet daddy 👅💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30445,"good morning babe 💋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30447,"Good morning babe 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30470,"Good morning baby 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30474,"Good morning baby 😽",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30536,"Good morning hehe 🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30541,"good morning love 💕",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30551,"Good morning papi 😻",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30781,"Goodmorning baby ☀️",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30801,"Gooood morninggg 👀🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31296,"Happy friday baby 💋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31327,"Happy Sunday baby 🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32151,"Hey morning baby! 😉",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32273,"Hey! Been a while 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32275,"hey! good morning 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32470,"Heyy big dick wyd 🤭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32942,"how are you babe :)",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+34117,"i cant sleep baby 😩",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+35362,"i know ur curious 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37263,"I woke up so lazy 🥲",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+37784,"I'm so bored baby 😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+39190,"Im so wet rn babe🥵💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+42612,"Keep me entertained",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43084,"Let's have some fun",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43096,"Let's make a mess 💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43109,"Let's play a game 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43672,"Make me cum daddy 🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43696,"Make my pussy wet😩💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43875,"miss youuuuu habibi",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43918,"Missing you a bit 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45967,"Only 5 spots open 🙈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46200,"play with me habibi",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51193,"titty pic tuesday😋😋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51316,"took this for you 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51318,"Took this in red ❤️",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51823,"use me till i beg 💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54760,"what r u up toooooo",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22173,"Any custom request?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22322,"Are u bussy babe? 👀",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22350,"are u there babe? 😞",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22420,"Are you alone rn? 😉",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22488,"are you busy babe?👀",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22726,"Are you home alone?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+22732,"Are you home love?😍",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23042,"are you still up? 👀",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23043,"Are you still up? 🙂",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23045,"Are you still up? 🤫",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23046,"are you still up? 🤭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23552,"baby are u there? 💔",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23561,"Baby are you there?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+23583,"Baby how are youu?🙈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24712,"Better on or off? 🤭",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+24894,"Busy at work today?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25202,"Can I sit on you? 😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+25229,"can i suck you dry?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+27393,"Do I turn you on? 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+27478,"do you cum a lot? 💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+29827,"Feeling horny rn? 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30872,"Got any requests? 😉",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+30981,"Grab or squeeze? 😋😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31384,"Have you added me?😍",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31387,"have you cum today?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31521,"Heeeeeey! You busy?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31525,"Heeeyyy! Still up?🤔",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31553,"helloo whats upp? 🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+31644,"Hey babe you there?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32123,"Hey how’s it going?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32258,"Hey you… miss me? 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32568,"Heyyyyy! You there?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32618,"Hi babe, working? 💋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32638,"Hi baby!  u busy? 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32718,"hiiii what's upppp?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32946,"How are you babe? 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+32968,"How are you, baby?🥺",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33264,"How have you been?😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33457,"how was your day? 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33577,"How's work today? 🙂",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33655,"How's your night? 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+33808,"Hungry? I’m tasty 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+36625,"i want to drain u 👅",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+39797,"is ur dick awake? 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43619,"Lunchtime tease? 🍴👅",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43677,"Make me cum?? 🙈🙈🥰🥰💋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+43884,"Missed me, Daddy? 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45425,"need a Hot drink? 🔥",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+45963,"Online rn? me too 😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46439,"r u awake daddyy? 🥹",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46515,"ready for trouble?😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+46569,"Ready to join me? 😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48273,"Solo or Sex Tape? 👀",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48274,"SOLO or SEX TAPE? 💦",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48382,"Soy tu única chica?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48507,"Squeeze or suck? 😋🍒",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48593,"Still around boo? 😒",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48819,"still up babyyy?? 🥺",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48919,"Still working rn? 🥰",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+48976,"Stroke game ready?😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49005,"Suck or squeeze? 🍒🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49006,"Suck or squeeze? 😈🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+49540,"Tell me your kinks😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+50313,"Think you can last?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+50557,"Thirsty Thursday? 😻",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51195,"tittyfuck anyone? 🤤",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51521,"u ready for more? 🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+51965,"Wanna 69 with me? 🥵",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52633,"Wanna play, baby? 😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52793,"wanna see it all? 🫣",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+52852,"wanna see me play?😈",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+53293,"Wanna undress me? 💋",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+54846,"What turns you on?👀",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55416,"whats uppp babee? 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+55429,"What’re you up too?",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57472,"wydddd I wanna talk",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57560,"you at work babe? 😊",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57775,"You free to chat? 😏",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+57814,"You hard rn baby? 🍆",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58217,"you online daddy? 💕",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+58218,"You online, baby? 😘",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+1126,"Good morning baby 🌞",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1392,"Let’s get naughty 😈",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+1930,"How did you sleep ?",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2194,"Thinking of me yet?",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2274,"u want more habibi?",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2361,"Spoil me babyyyy 😈😈",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2912,"Happy Sunday Habibi",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+2934,"Afternoon delight 😎",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3539,"Me n my friend 🍒🍒🍒🍒",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+3850,"fuckkk I'm horny rn",19,1,0.0,0.0,internal,"2025-11-30 07:11:27",VERY_SHORT_NO_EARNINGS
+51064,"Tip for a suprise 🤤",19,1,0.0,0.0,migration_007_import,"2025-12-12 11:44:05",VERY_SHORT_NO_EARNINGS
+20446,"dm if you'd fuck me",19,0,0.0,50.0,internal,"2025-12-12 02:44:17",VERY_SHORT_NEVER_USED
+20496,"tottaly ur type ^_^",19,0,0.0,50.0,scraped,"2025-12-12 03:36:14",VERY_SHORT_NEVER_USED
+19727,"Boring car selfies🤪",19,0,0.0,50.0,internal,"2025-12-09 12:44:22",VERY_SHORT_NEVER_USED
+19891,"Get naked with me 😛",19,0,0.0,50.0,internal,"2025-12-09 12:50:13",VERY_SHORT_NEVER_USED
+20035,"Gorgeous by nature.",19,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20040,"All this is for you",19,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20044,"pull my hair papi 🔥",19,0,0.0,50.0,internal,"2025-12-09 12:51:04",VERY_SHORT_NEVER_USED
+20152,"Life funny moment 😋",19,0,0.0,50.0,internal,"2025-12-09 12:51:40",VERY_SHORT_NEVER_USED
+20387,"Flawless by nature.",19,0,0.0,50.0,internal,"2025-12-11 05:11:19",VERY_SHORT_NEVER_USED

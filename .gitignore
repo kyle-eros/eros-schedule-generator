@@ -1,0 +1,71 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# SQLite runtime files
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Databases (proprietary data)
+*.db
+database/*.db
+
+# CSV data files (proprietary)
+database/reference_tables/
+database/scheduler_assignments/
+docs/active_creator.csv
+
+# Generated outputs and backups
+database/analysis_outputs/
+database/performance/
+database/backups/
+database/archive/
+
+# Build artifacts
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# Generated outputs (local only)
+generated/
+output/
+
+# Planning docs (not tracked)
+planning/
+
+# Legacy directories (prevent accidental recreation)
+schedules/
+analysis/
+audits/
+archive/
+onlyfans_research/
+optimization_plans/
+volume_docs/
+database/*.db.backup*
+database/*.db

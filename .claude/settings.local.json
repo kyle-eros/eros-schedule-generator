@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Skill(eros-schedule-generator)",
+
+      "SlashCommand(/eros:analyze:*)",
+      "SlashCommand(/eros:generate grace_bennett)",
+      "SlashCommand(/eros:generate grace_bennett 2025-12-16)",
+
+      "mcp__eros-db__execute_query",
+      "mcp__eros-db__get_active_creators",
+      "mcp__eros-db__get_audience_targets",
+      "mcp__eros-db__get_best_timing",
+      "mcp__eros-db__get_channels",
+      "mcp__eros-db__get_content_type_rankings",
+      "mcp__eros-db__get_creator_profile",
+      "mcp__eros-db__get_performance_trends",
+      "mcp__eros-db__get_persona_profile",
+      "mcp__eros-db__get_send_type_captions",
+      "mcp__eros-db__get_send_type_details",
+      "mcp__eros-db__get_send_types",
+      "mcp__eros-db__get_top_captions",
+      "mcp__eros-db__get_vault_availability",
+      "mcp__eros-db__get_volume_config",
+      "mcp__eros-db__save_schedule"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enabledMcpjsonServers": [
+    "eros-db"
+  ]
+}

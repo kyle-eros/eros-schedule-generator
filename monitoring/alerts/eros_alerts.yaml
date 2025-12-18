@@ -1,0 +1,418 @@
+# EROS MCP Server Prometheus Alert Rules
+# Version: 2.2.0
+#
+# These alert rules monitor the EROS MCP server for performance degradation,
+# errors, and resource exhaustion. Import into Prometheus AlertManager.
+#
+# Severity levels:
+#   - critical: Immediate action required, service degraded
+#   - warning: Investigation needed, potential issue developing
+#   - info: Notable event, no immediate action required
+
+groups:
+  - name: eros_mcp_requests
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      # Fires when error rate exceeds 5% over 5 minutes
+      - alert: EROSMCPHighErrorRate
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[5m]))
+            /
+            sum(rate(mcp_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server error rate is high"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} over the last 5 minutes.
+            This exceeds the 5% threshold and indicates potential service degradation.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-high-error-rate"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Error Rate Warning
+      # Early warning when error rate exceeds 1%
+      - alert: EROSMCPErrorRateWarning
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[5m]))
+            /
+            sum(rate(mcp_requests_total[5m]))
+          ) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server error rate elevated"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} over the last 5 minutes.
+            This exceeds the 1% warning threshold.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # High Latency Alert (P95 > 500ms)
+      - alert: EROSMCPHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_request_latency_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server latency is high"
+          description: |
+            P95 latency is {{ $value | humanizeDuration }} over the last 5 minutes.
+            This exceeds the 500ms SLO threshold and impacts user experience.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-high-latency"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Latency Warning (P95 > 300ms)
+      - alert: EROSMCPLatencyWarning
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_request_latency_seconds_bucket[5m])) by (le)
+          ) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server latency elevated"
+          description: |
+            P95 latency is {{ $value | humanizeDuration }} over the last 5 minutes.
+            This exceeds the 300ms warning threshold.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # P99 Latency Alert
+      - alert: EROSMCPExtremeLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(mcp_request_latency_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: critical
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server experiencing extreme latency"
+          description: |
+            P99 latency is {{ $value | humanizeDuration }} over the last 5 minutes.
+            Some requests are taking over 2 seconds to complete.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-extreme-latency"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Tool-specific high error rate
+      - alert: EROSMCPToolHighErrorRate
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[5m])) by (tool)
+            /
+            sum(rate(mcp_requests_total[5m])) by (tool)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "High error rate for MCP tool {{ $labels.tool }}"
+          description: |
+            Tool {{ $labels.tool }} has error rate of {{ $value | humanizePercentage }}.
+            This exceeds the 10% per-tool threshold.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # No requests received (service may be down)
+      - alert: EROSMCPNoRequests
+        expr: |
+          sum(rate(mcp_requests_total[5m])) == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP server not receiving requests"
+          description: |
+            No requests received in the last 10 minutes.
+            The MCP server may be down or unreachable.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-no-requests"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+  - name: eros_mcp_database
+    interval: 30s
+    rules:
+      # Database Pool Exhaustion Warning
+      - alert: EROSMCPDBPoolExhaustionWarning
+        expr: |
+          (mcp_db_pool_available / mcp_db_pool_size) < 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP database pool running low"
+          description: |
+            Only {{ $value | humanizePercentage }} of database connections available.
+            Pool is nearing exhaustion ({{ printf "%.0f" (query "mcp_db_pool_available") }} of {{ printf "%.0f" (query "mcp_db_pool_size") }} connections free).
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Database Pool Exhaustion Critical
+      - alert: EROSMCPDBPoolExhausted
+        expr: |
+          mcp_db_pool_available == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP database pool exhausted"
+          description: |
+            No database connections available. All {{ printf "%.0f" (query "mcp_db_pool_size") }} connections in use.
+            New requests will fail or queue indefinitely.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-db-pool-exhausted"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Database Pool Overflow Active
+      - alert: EROSMCPDBPoolOverflow
+        expr: |
+          mcp_db_pool_overflow > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP database using overflow connections"
+          description: |
+            {{ printf "%.0f" $value }} overflow connections created.
+            This indicates the base pool size may be insufficient.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Slow Query Threshold Alert
+      - alert: EROSMCPSlowQueriesHigh
+        expr: |
+          sum(rate(mcp_slow_queries_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP experiencing high slow query rate"
+          description: |
+            {{ $value | humanize }} slow queries per second (>500ms).
+            Query optimization or indexing may be needed.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Slow Query Spike
+      - alert: EROSMCPSlowQuerySpike
+        expr: |
+          sum(increase(mcp_slow_queries_total[5m])) > 10
+        for: 0m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "Spike in slow queries detected"
+          description: |
+            {{ printf "%.0f" $value }} slow queries in the last 5 minutes.
+            Investigate for potential database performance issues.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Query Latency High
+      - alert: EROSMCPQueryLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_query_latency_seconds_bucket[5m])) by (le, query_type)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "High query latency for {{ $labels.query_type }} queries"
+          description: |
+            P95 query latency for {{ $labels.query_type }} is {{ $value | humanizeDuration }}.
+            This exceeds the 500ms threshold.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Database Connection Failures
+      - alert: EROSMCPDBConnectionFailures
+        expr: |
+          sum(rate(mcp_db_connections_failed_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          team: platform
+        annotations:
+          summary: "EROS MCP database connection failures"
+          description: |
+            Database connection attempts are failing at {{ $value | humanize }}/s.
+            Check database health and network connectivity.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-db-connection-failures"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+  - name: eros_mcp_key_tools
+    interval: 30s
+    rules:
+      # get_creator_profile specific monitoring
+      - alert: EROSMCPCreatorProfileSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_request_latency_seconds_bucket{tool="get_creator_profile"}[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          tool: get_creator_profile
+          team: platform
+        annotations:
+          summary: "get_creator_profile latency high"
+          description: |
+            P95 latency for get_creator_profile is {{ $value | humanizeDuration }}.
+            This critical tool is experiencing degraded performance.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # get_top_captions specific monitoring
+      - alert: EROSMCPTopCaptionsSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_request_latency_seconds_bucket{tool="get_top_captions"}[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: eros-mcp
+          tool: get_top_captions
+          team: platform
+        annotations:
+          summary: "get_top_captions latency high"
+          description: |
+            P95 latency for get_top_captions is {{ $value | humanizeDuration }}.
+            Caption queries may need optimization.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # save_schedule failures
+      - alert: EROSMCPSaveScheduleFailures
+        expr: |
+          sum(rate(mcp_requests_total{tool="save_schedule", status="error"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: eros-mcp
+          tool: save_schedule
+          team: platform
+        annotations:
+          summary: "save_schedule experiencing failures"
+          description: |
+            save_schedule failing at {{ $value | humanize }}/s.
+            Schedule generation may be impacted.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-save-schedule-failures"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+  - name: eros_mcp_slo
+    interval: 1m
+    rules:
+      # SLO: 99.9% availability
+      - alert: EROSMCPAvailabilitySLOBreach
+        expr: |
+          (
+            1 - (
+              sum(rate(mcp_requests_total{status="error"}[30m]))
+              /
+              sum(rate(mcp_requests_total[30m]))
+            )
+          ) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          service: eros-mcp
+          slo: availability
+          team: platform
+        annotations:
+          summary: "EROS MCP availability SLO breach"
+          description: |
+            Availability is {{ $value | humanizePercentage }} over 30 minutes.
+            This is below the 99.9% SLO target.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-slo-breach"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # SLO: P95 latency under 500ms
+      - alert: EROSMCPLatencySLOBreach
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mcp_request_latency_seconds_bucket[30m])) by (le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: critical
+          service: eros-mcp
+          slo: latency
+          team: platform
+        annotations:
+          summary: "EROS MCP latency SLO breach"
+          description: |
+            P95 latency is {{ $value | humanizeDuration }} over 30 minutes.
+            This exceeds the 500ms SLO target.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-slo-breach"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Error budget burn rate (fast burn)
+      - alert: EROSMCPErrorBudgetFastBurn
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[1h]))
+            /
+            sum(rate(mcp_requests_total[1h]))
+          ) > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: critical
+          service: eros-mcp
+          slo: error_budget
+          team: platform
+        annotations:
+          summary: "EROS MCP error budget burning fast"
+          description: |
+            Error rate is burning error budget 14.4x faster than sustainable.
+            At this rate, monthly error budget will be exhausted in less than 2 days.
+          runbook_url: "https://docs.eros.io/runbooks/mcp-error-budget"
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"
+
+      # Error budget burn rate (slow burn)
+      - alert: EROSMCPErrorBudgetSlowBurn
+        expr: |
+          (
+            sum(rate(mcp_requests_total{status="error"}[6h]))
+            /
+            sum(rate(mcp_requests_total[6h]))
+          ) > (6 * 0.001)
+        for: 15m
+        labels:
+          severity: warning
+          service: eros-mcp
+          slo: error_budget
+          team: platform
+        annotations:
+          summary: "EROS MCP error budget burning"
+          description: |
+            Error rate is burning error budget 6x faster than sustainable.
+            Investigate to prevent SLO breach.
+          dashboard_url: "https://grafana.eros.io/d/eros-mcp-server"

@@ -1,0 +1,59 @@
+================================================================================
+TONE CLASSIFICATION BACKFILL - BASELINE METRICS
+Phase 1A: Database Preparation & Backup
+================================================================================
+Generated: 2024-12-12 08:10 PST
+Backup File: eros_sd_main_backup_20251212_081008.db
+Database: /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db
+================================================================================
+
+SUMMARY METRICS
+---------------
+Total Captions:                60,670
+Captions WITH Tone:            21,397 (35.3%)
+Captions NEEDING Classification: 39,273 (64.7%)
+
+EXISTING TONE DISTRIBUTION
+--------------------------
+Tone          | Count  | Percentage
+--------------|--------|------------
+NULL          | 39,273 | 64.7%
+seductive     | 10,971 | 18.1%
+aggressive    |  4,213 |  6.9%
+playful       |  3,699 |  6.1%
+submissive    |  1,439 |  2.4%
+dominant      |    693 |  1.1%
+bratty        |    382 |  0.6%
+--------------|--------|------------
+TOTAL         | 60,670 | 100.0%
+
+NOTE: 4 "sultry" values were remapped to "seductive" during this preparation phase.
+
+PERFORMANCE TIER DISTRIBUTION OF NULL TONES
+-------------------------------------------
+Performance Tier | Count  | Percentage of NULLs
+-----------------|--------|--------------------
+Tier 3           | 39,273 | 100.0%
+
+NOTES:
+- All 39,273 captions needing tone classification are in Performance Tier 3
+- This indicates new/unclassified captions are defaulting to Tier 3
+- High priority for classification to improve persona matching coverage
+
+PREPARATION ACTIONS COMPLETED
+-----------------------------
+[X] Backup created: eros_sd_main_backup_20251212_081008.db (60,670 rows verified)
+[X] Index created: idx_tone_null (partial index on NULL tones for query optimization)
+[X] Invalid values remapped: 4 "sultry" -> "seductive"
+[X] Baseline metrics documented
+
+NEXT PHASE
+----------
+Phase 1B: Classification Script Development
+- Build batch classification processor
+- Implement tone detection algorithm
+- Create progress tracking and resumption capability
+
+================================================================================
+END OF BASELINE METRICS REPORT
+================================================================================

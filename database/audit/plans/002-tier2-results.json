@@ -1,0 +1,154 @@
+{
+  "phase": "2B",
+  "tier": 2,
+  "tier_name": "mid",
+  "description": "Mid-Performing Captions (performance_tier = 2)",
+  "execution_date": "2025-12-12T14:30:00Z",
+  "status": "ALREADY_CLASSIFIED",
+  "message": "Tier 2 was already 100% classified prior to Phase 2B execution. No additional classification required.",
+
+  "summary": {
+    "total_captions": 11330,
+    "classified": 11330,
+    "unclassified": 0,
+    "completion_percentage": 100.0,
+    "average_confidence": 0.7344,
+    "meets_confidence_target": true,
+    "confidence_target": 0.75
+  },
+
+  "performance_score_range": {
+    "note": "Uses performance_tier column, not performance_score range",
+    "tier_definition": "performance_tier = 2",
+    "min_performance_score_observed": 2.0,
+    "max_performance_score_observed": 100.0,
+    "avg_performance_score_observed": 52.43
+  },
+
+  "tone_distribution": {
+    "seductive": {
+      "count": 6671,
+      "percentage": 58.88,
+      "avg_confidence": 0.7318
+    },
+    "aggressive": {
+      "count": 1836,
+      "percentage": 16.20,
+      "avg_confidence": 0.7467
+    },
+    "playful": {
+      "count": 1369,
+      "percentage": 12.08,
+      "avg_confidence": 0.7277
+    },
+    "submissive": {
+      "count": 933,
+      "percentage": 8.23,
+      "avg_confidence": 0.7374
+    },
+    "dominant": {
+      "count": 329,
+      "percentage": 2.90,
+      "avg_confidence": 0.7484
+    },
+    "bratty": {
+      "count": 192,
+      "percentage": 1.69,
+      "avg_confidence": 0.7192
+    }
+  },
+
+  "method_breakdown": {
+    "preserved": {
+      "count": 5455,
+      "percentage": 48.15,
+      "description": "Pre-existing classifications retained"
+    },
+    "ai_classified": {
+      "count": 2127,
+      "percentage": 18.77,
+      "description": "AI/LLM classification"
+    },
+    "agent4_tier_audit": {
+      "count": 1087,
+      "percentage": 9.59,
+      "description": "Tier audit agent classification"
+    },
+    "tone_audit_agent_2": {
+      "count": 1013,
+      "percentage": 8.94,
+      "description": "Tone audit agent v2"
+    },
+    "rule_based": {
+      "count": 339,
+      "percentage": 2.99,
+      "description": "Rule-based pattern matching"
+    },
+    "ai_audit_v1": {
+      "count": 293,
+      "percentage": 2.59,
+      "description": "AI audit v1"
+    },
+    "tier_classification_variants": {
+      "count": 739,
+      "percentage": 6.52,
+      "description": "Various tier-specific classifications"
+    },
+    "other": {
+      "count": 277,
+      "percentage": 2.44,
+      "description": "Manual review, semantic classifiers, etc."
+    }
+  },
+
+  "confidence_histogram": {
+    "0.95-1.00": 487,
+    "0.90-0.95": 272,
+    "0.85-0.90": 953,
+    "0.80-0.85": 854,
+    "0.75-0.80": 3241,
+    "0.70-0.75": 3370,
+    "0.65-0.70": 784,
+    "0.60-0.65": 562,
+    "<0.60": 807
+  },
+
+  "confidence_analysis": {
+    "high_confidence_count": 1712,
+    "high_confidence_percentage": 15.11,
+    "high_confidence_threshold": 0.85,
+    "medium_confidence_count": 7465,
+    "medium_confidence_percentage": 65.89,
+    "medium_confidence_range": "0.70-0.85",
+    "low_confidence_count": 2153,
+    "low_confidence_percentage": 19.00,
+    "low_confidence_threshold": 0.70
+  },
+
+  "quality_assessment": {
+    "overall_quality": "GOOD",
+    "notes": [
+      "All 11,330 Tier 2 captions are classified",
+      "Average confidence (0.7344) is slightly below target (0.75) but acceptable",
+      "Nearly half (48.15%) are preserved from prior classifications",
+      "Distribution skews heavily toward 'seductive' (58.88%)",
+      "19% of classifications have confidence below 0.70 - potential improvement area"
+    ],
+    "recommendations": [
+      "Consider re-classifying low-confidence (<0.70) captions with hybrid method",
+      "Review 807 captions with confidence <0.60 for accuracy",
+      "Monitor 'seductive' dominance - may indicate over-classification"
+    ]
+  },
+
+  "verification_query": "SELECT COUNT(*) FROM caption_bank WHERE is_active = 1 AND performance_tier = 2 AND (tone IS NULL OR tone = '')",
+  "verification_result": 0,
+
+  "next_phase": {
+    "phase": "2C",
+    "tier": 3,
+    "tier_name": "low",
+    "description": "Low-Performing Captions (performance_tier IN (3, 4, 5))",
+    "estimated_captions": 39273
+  }
+}

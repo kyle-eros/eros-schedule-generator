@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__eros-db__execute_query",
+      "mcp__eros-db__get_send_types",
+      "mcp__eros-db__get_send_type_details",
+      "mcp__eros-db__get_creator_profile",
+      "mcp__eros-db__get_send_type_captions",
+      "mcp__eros-db__get_active_creators",
+      "mcp__eros-db__get_persona_profile"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "eros-db"
+  ]
+}

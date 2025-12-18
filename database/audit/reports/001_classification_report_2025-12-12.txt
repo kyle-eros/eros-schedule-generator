@@ -1,0 +1,70 @@
+report                                    
+------------------------------------------
+=== CONTENT TYPE CLASSIFICATION REPORT ===
+date                     
+-------------------------
+Date: 2025-12-12 15:07:43
+''
+--
+  
+section                        
+-------------------------------
+--- CLASSIFICATION COVERAGE ---
+metric                   value
+-----------------------  -----
+Total Captions           60670
+Classified               60670
+High Confidence (>=0.7)  57123
+''
+--
+  
+section                     
+----------------------------
+--- TOP 15 CONTENT TYPES ---
+content_type        category       count  percentage
+------------------  -------------  -----  ----------
+teasing             engagement     33124  54.6%     
+boy_girl            explicit       3795   6.26%     
+solo                solo_explicit  2268   3.74%     
+bundle_offer        promotional    2159   3.56%     
+flash_sale          promotional    1932   3.18%     
+renewal_retention   engagement     1733   2.86%     
+pussy_play          solo_explicit  1596   2.63%     
+tip_request         engagement     1135   1.87%     
+tits_play           solo_explicit  1118   1.84%     
+exclusive_content   promotional    985    1.62%     
+implied_pussy_play  teasing        981    1.62%     
+blowjob             explicit       966    1.59%     
+story_roleplay      themed         878    1.45%     
+shower_bath         themed         876    1.44%     
+dom_sub             fetish         765    1.26%     
+''
+--
+  
+section                       
+------------------------------
+--- CLASSIFICATION METHODS ---
+method                 count  percentage  avg_confidence
+---------------------  -----  ----------  --------------
+rule_based_keyword     21366  35.22%      0.817         
+rule_based_pattern_v2  15653  25.8%       0.732         
+preserved              9527   15.7%       0.732         
+ai_classified          4205   6.93%       0.683         
+ai_classified_v2       2023   3.33%       0.745         
+ai_audit_v1            1713   2.82%       0.85          
+rule_based_keyword_v2  1368   2.25%       0.802         
+agent4_tier_audit      1111   1.83%       0.745         
+tone_audit_agent_2     1029   1.7%        0.759         
+rule_based             861    1.42%       0.71          
+''
+--
+  
+section                        
+-------------------------------
+--- CONFIDENCE DISTRIBUTION ---
+tier              count  percentage
+----------------  -----  ----------
+High (0.9-1.0)    5967   9.84%     
+Medium (0.7-0.9)  51156  84.32%    
+Low (0.5-0.7)     2898   4.78%     
+Very Low (<0.5)   649    1.07%     
