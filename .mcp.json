@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "python3",
       "args": [
-        "/Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/mcp/eros_db_server.py"
+        "/Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/mcp/server.py"
       ],
       "env": {
         "EROS_DB_PATH": "/Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db"

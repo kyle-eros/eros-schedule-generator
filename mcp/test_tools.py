@@ -35,36 +35,36 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Import the MCP server functions
-from mcp.eros_db_server import (
-    db_connection,
-    execute_query,
+# Tool functions - organized by domain
+from mcp.tools.creator import (
     get_active_creators,
-    get_audience_targets,
-    get_best_timing,
-    get_channels,
-    get_content_type_rankings,
     get_creator_profile,
-    get_db_connection,
-    get_performance_trends,
     get_persona_profile,
-    get_send_type_captions,
-    get_send_type_details,
-    get_send_types,
-    get_top_captions,
     get_vault_availability,
-    get_volume_assignment,
-    get_volume_config,
-    handle_request,
-    handle_tools_call,
-    handle_tools_list,
-    resolve_creator_id,
-    row_to_dict,
-    rows_to_list,
-    save_schedule,
-    validate_creator_id,
-    validate_key_input,
 )
+from mcp.tools.caption import get_top_captions, get_send_type_captions
+from mcp.tools.performance import (
+    get_best_timing,
+    get_volume_assignment,
+    get_performance_trends,
+    get_content_type_rankings,
+)
+from mcp.tools.send_types import get_send_types, get_send_type_details, get_volume_config
+from mcp.tools.targeting import get_channels, get_audience_targets
+from mcp.tools.schedule import save_schedule
+from mcp.tools.query import execute_query
+
+# Server handler functions
+from mcp.server import handle_request, handle_tools_call, handle_tools_list
+
+# Connection and database helpers
+from mcp.connection import db_connection, get_db_connection
+
+# Utility helpers
+from mcp.utils.helpers import row_to_dict, rows_to_list, resolve_creator_id
+
+# Security validation
+from mcp.utils.security import validate_creator_id, validate_key_input
 
 
 # =============================================================================
@@ -75,7 +75,7 @@ from mcp.eros_db_server import (
 @pytest.fixture
 def mock_db_connection():
     """Create a mock database connection with configurable behavior."""
-    with patch("mcp.eros_db_server.get_db_connection") as mock_get_conn:
+    with patch("mcp.connection.get_db_connection") as mock_get_conn:
         mock_conn = MagicMock(spec=sqlite3.Connection)
         mock_cursor = MagicMock()
 
@@ -270,7 +270,7 @@ class TestGetActiveCreators:
 
         mock_db_connection["cursor"].fetchall.return_value = [mock_row]
 
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -286,7 +286,7 @@ class TestGetActiveCreators:
         """Test filtering by performance tier."""
         mock_db_connection["cursor"].fetchall.return_value = []
 
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -300,7 +300,7 @@ class TestGetActiveCreators:
     @pytest.mark.unit
     def test_get_active_creators_invalid_page_type(self, mock_db_connection):
         """Test invalid page_type returns error."""
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -696,7 +696,7 @@ class TestGetSendTypes:
     @pytest.mark.unit
     def test_get_send_types_invalid_category(self, mock_db_connection):
         """Test invalid category returns error."""
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -709,7 +709,7 @@ class TestGetSendTypes:
     @pytest.mark.unit
     def test_get_send_types_invalid_page_type(self, mock_db_connection):
         """Test invalid page_type returns error."""
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -785,7 +785,7 @@ class TestGetChannels:
         """Test successful channel retrieval."""
         mock_db_connection["cursor"].fetchall.return_value = []
 
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -801,7 +801,7 @@ class TestGetChannels:
         """Test filtering by supports_targeting."""
         mock_db_connection["cursor"].fetchall.return_value = []
 
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )
@@ -823,7 +823,7 @@ class TestGetAudienceTargets:
     @pytest.mark.unit
     def test_get_audience_targets_invalid_page_type(self, mock_db_connection):
         """Test invalid page_type returns error."""
-        with patch("mcp.eros_db_server.db_connection") as mock_ctx:
+        with patch("mcp.connection.db_connection") as mock_ctx:
             mock_ctx.return_value.__enter__ = MagicMock(
                 return_value=mock_db_connection["connection"]
             )

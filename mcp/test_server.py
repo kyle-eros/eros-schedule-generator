@@ -21,28 +21,33 @@ from typing import Any
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp.eros_db_server import (
+# Tool functions - organized by domain
+from mcp.tools.creator import (
     get_active_creators,
     get_creator_profile,
-    get_top_captions,
+    get_persona_profile,
+    get_vault_availability,
+)
+from mcp.tools.caption import get_top_captions, get_send_type_captions
+from mcp.tools.performance import (
     get_best_timing,
     get_volume_assignment,
     get_performance_trends,
     get_content_type_rankings,
-    get_persona_profile,
-    get_vault_availability,
-    save_schedule,
-    execute_query,
-    get_send_types,
-    get_send_type_details,
-    get_send_type_captions,
-    get_channels,
-    get_audience_targets,
-    get_volume_config,
-    handle_request,
-    TOOLS,
-    DB_PATH,
 )
+from mcp.tools.send_types import get_send_types, get_send_type_details, get_volume_config
+from mcp.tools.targeting import get_channels, get_audience_targets
+from mcp.tools.schedule import save_schedule
+from mcp.tools.query import execute_query
+
+# Server handler functions
+from mcp.server import handle_request
+
+# Tool registry (TOOLS → TOOL_REGISTRY)
+from mcp.tools.base import TOOL_REGISTRY as TOOLS
+
+# Database path constant
+from mcp.connection import DB_PATH
 
 
 class TestColors:

@@ -8,6 +8,41 @@ tools:
   - mcp__eros-db__get_send_type_details
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get creator profile for timezone and preferences:
+   ```
+   CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+   EXTRACT: timezone, page_type, creator_id
+   ```
+
+2. **SECOND** - Get historical best timing data:
+   ```
+   CALL: mcp__eros-db__get_best_timing(creator_id=<creator_id>, days_lookback=30)
+   EXTRACT: peak_hours by day, avoid_hours, engagement_by_hour
+   ```
+
+3. **FOR EACH send type** - Get timing constraints from send type details:
+   ```
+   CALL: mcp__eros-db__get_send_type_details(send_type_key=<item.send_type_key>)
+   EXTRACT: min_hours_between, peak_hours, avoid_hours, has_expiration
+   ```
+
+### Invocation Verification Checklist
+
+Before proceeding, confirm:
+- [ ] `get_creator_profile` returned valid creator data
+- [ ] `get_best_timing` returned historical performance data
+- [ ] `get_send_type_details` returned timing constraints for each send type
+
+**FAILURE MODE**: If `get_best_timing` fails, use default peak hours (19:00-22:00). If `get_send_type_details` fails, use 2-hour minimum spacing as default.
+
+---
+
 # Timing Optimizer Agent
 
 ## Mission
@@ -318,6 +353,54 @@ Before outputting timing, verify:
 - [ ] No back-to-back sends from same style group
 - [ ] Minimum 2-send separation between same-style sends
 - [ ] Cross-day boundaries checked (Day N end → Day N+1 start)
+
+---
+
+## Confidence Score Handling
+
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+When confidence is low, the timing optimizer should rely more on global best practices rather than creator-specific historical data:
+
+```python
+def get_timing_strategy_by_confidence(confidence_score: float) -> dict:
+    """
+    Adjust timing strategy based on confidence level.
+    Lower confidence = use more global/generic timing patterns.
+    """
+    if confidence_score >= 0.8:
+        # HIGH confidence: Use creator-specific historical timing
+        return {
+            "source": "creator_specific",
+            "use_historical_peaks": True,
+            "jitter_range": (-7, 8)  # Standard variation
+        }
+    elif confidence_score >= 0.6:
+        # MODERATE confidence: Blend creator data with global averages
+        return {
+            "source": "blended",
+            "use_historical_peaks": True,
+            "jitter_range": (-5, 5)  # Slightly tighter variation
+        }
+    elif confidence_score >= 0.4:
+        # LOW confidence: Prefer global timing patterns
+        return {
+            "source": "global_averages",
+            "use_historical_peaks": False,
+            "jitter_range": (-3, 3)  # Conservative variation
+        }
+    else:
+        # VERY LOW confidence: Use safe defaults only
+        return {
+            "source": "fallback_defaults",
+            "use_historical_peaks": False,
+            "jitter_range": (0, 0)  # No variation - use standard times
+        }
+```
 
 ---
 

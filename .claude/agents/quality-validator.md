@@ -9,6 +9,48 @@ tools:
   - mcp__eros-db__get_volume_config
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get creator profile for page_type validation:
+   ```
+   CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+   EXTRACT: page_type, creator_id, performance_tier
+   ```
+
+2. **SECOND** - Get persona profile for tone validation:
+   ```
+   CALL: mcp__eros-db__get_persona_profile(creator_id=<creator_id>)
+   EXTRACT: tone, archetype, emoji_style, slang_level
+   ```
+
+3. **THIRD** - Get volume config for confidence-based threshold adjustment:
+   ```
+   CALL: mcp__eros-db__get_volume_config(creator_id=<creator_id>)
+   EXTRACT: confidence_score, caption_warnings, calculation_source, adjustments_applied
+   ```
+
+4. **FOR EACH unique send type** - Validate constraints:
+   ```
+   CALL: mcp__eros-db__get_send_type_details(send_type_key=<send_type_key>)
+   EXTRACT: max_per_day, max_per_week, page_type_restriction, requires_media, requires_price
+   ```
+
+### Invocation Verification Checklist
+
+Before approving schedule, confirm:
+- [ ] `get_creator_profile` returned page_type for constraint validation
+- [ ] `get_persona_profile` returned tone data for authenticity checks
+- [ ] `get_volume_config` returned confidence_score for threshold adjustment
+- [ ] `get_send_type_details` returned constraints for all unique send types
+
+**FAILURE MODE**: If `get_creator_profile` fails, abort validation - cannot validate without page_type. If other tools fail, use default thresholds and add warnings to validation report.
+
+---
+
 # Quality Validator Agent
 
 ## Mission
@@ -30,7 +72,7 @@ Perform comprehensive quality validation on generated schedules, **CRITICALLY ve
 ### Warning Criteria (Volume Configuration)
 8. **calculation_source != "optimized"** → WARNING (legacy calculation used, backward compatible)
 9. **caption_warnings contains critical shortages** → NEEDS_REVIEW (caption pool issues)
-10. **confidence_score < 0.3** → WARNING (very new creator, limited historical data)
+10. **confidence_score < 0.4** → WARNING (VERY LOW confidence, flag for manual review)
 
 ### What a Valid Schedule Looks Like
 A properly diverse schedule for a 7-day week should include:
@@ -192,7 +234,13 @@ During quality validation, check:
 
 ### Volume Configuration Checks (NEW)
 
-- [ ] **Confidence score acceptable (>0.5)**: Algorithm confidence indicates sufficient historical data
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+- [ ] **Confidence score acceptable (>= 0.6)**: Algorithm confidence indicates sufficient historical data
 - [ ] **Caption warnings addressed**: No unresolved caption pool shortages
 - [ ] **Full optimization pipeline**: calculation_source == "optimized"
 - [ ] **Core modules applied**: adjustments_applied includes base_tier, multi_horizon_fusion, day_of_week
@@ -366,14 +414,14 @@ def validate_volume_config(schedule, creator_id):
             f"Using legacy calculation: {volume_config.calculation_source}"
         )
 
-    # Check confidence score
-    if volume_config.confidence_score < 0.5:
-        warnings.append(
-            f"Low confidence score ({volume_config.confidence_score:.0%}) - limited data"
-        )
-    if volume_config.confidence_score < 0.3:
+    # Check confidence score (standardized thresholds)
+    if volume_config.confidence_score < 0.4:
         issues.append(
-            f"Very low confidence ({volume_config.confidence_score:.0%}) - consider manual review"
+            f"VERY LOW confidence ({volume_config.confidence_score:.0%}) - flag for manual review"
+        )
+    elif volume_config.confidence_score < 0.6:
+        warnings.append(
+            f"LOW confidence score ({volume_config.confidence_score:.0%}) - apply conservative adjustments"
         )
 
     # Check caption warnings
@@ -582,9 +630,12 @@ def calculate_quality_score(schedule, creator_id, strategy_metadata):
 
     score = 100 - (len(critical_issues) * 10) - (len(warning_issues) * 2)
 
-    # Confidence penalty
-    if volume_validation["metadata"]["confidence_score"] < 0.5:
-        score -= 5  # Minor penalty for low confidence
+    # Confidence penalty (standardized thresholds)
+    confidence = volume_validation["metadata"]["confidence_score"]
+    if confidence < 0.4:
+        score -= 10  # Significant penalty for VERY LOW confidence
+    elif confidence < 0.6:
+        score -= 5   # Minor penalty for LOW confidence
 
     # Strategy diversity penalty
     if not strategy_validation["passed"]:
@@ -610,12 +661,12 @@ def validate_full_volume_result(schedule, volume_metadata):
     warnings = []
     info = []
 
-    # 1. Confidence Score Validation
+    # 1. Confidence Score Validation (standardized thresholds)
     confidence = volume_metadata.get("confidence_score", 0.0)
-    if confidence < 0.3:
-        issues.append(f"VERY_LOW_CONFIDENCE: {confidence:.0%} - Consider manual review")
-    elif confidence < 0.5:
-        warnings.append(f"LOW_CONFIDENCE: {confidence:.0%} - Limited historical data")
+    if confidence < 0.4:
+        issues.append(f"VERY_LOW_CONFIDENCE: {confidence:.0%} - Flag for manual review")
+    elif confidence < 0.6:
+        warnings.append(f"LOW_CONFIDENCE: {confidence:.0%} - Apply conservative adjustments")
     else:
         info.append(f"Confidence: {confidence:.0%} ({classify_confidence(confidence)})")
 
@@ -700,14 +751,21 @@ def validate_full_volume_result(schedule, volume_metadata):
 
 ### Confidence-Adjusted Validation Thresholds
 
-When confidence is low, adjust validation strictness:
+When confidence is low, adjust validation strictness using standardized thresholds:
 
 ```python
 def get_validation_thresholds(confidence_score):
     """
     Lower confidence = more lenient validation (limited data to judge against).
+
+    Uses standardized confidence thresholds:
+    - HIGH (>= 0.8): Full thresholds
+    - MODERATE (0.6 - 0.79): Slightly relaxed
+    - LOW (0.4 - 0.59): Conservative/lenient
+    - VERY LOW (< 0.4): Most lenient, flag for review
     """
     if confidence_score >= 0.8:
+        # HIGH confidence: Full thresholds
         return {
             "min_freshness": 30,
             "min_performance": 40,
@@ -715,21 +773,32 @@ def get_validation_thresholds(confidence_score):
             "spacing_tolerance_minutes": 0,
             "caption_coverage_target": 0.95
         }
-    elif confidence_score >= 0.5:
+    elif confidence_score >= 0.6:
+        # MODERATE confidence: Slightly relaxed
         return {
             "min_freshness": 25,
             "min_performance": 35,
-            "diversity_min": 8,
+            "diversity_min": 9,
             "spacing_tolerance_minutes": 5,
             "caption_coverage_target": 0.90
         }
-    else:
+    elif confidence_score >= 0.4:
+        # LOW confidence: Conservative/lenient
         return {
             "min_freshness": 20,
             "min_performance": 30,
             "diversity_min": 8,
             "spacing_tolerance_minutes": 10,
             "caption_coverage_target": 0.85
+        }
+    else:
+        # VERY LOW confidence: Most lenient, flag for review
+        return {
+            "min_freshness": 15,
+            "min_performance": 25,
+            "diversity_min": 8,
+            "spacing_tolerance_minutes": 15,
+            "caption_coverage_target": 0.80
         }
 
 # Apply during validation
@@ -999,15 +1068,16 @@ The `strategy_metadata` validation result includes:
 
 ### Confidence-Adjusted Status
 
-When confidence is low, adjust status thresholds:
+When confidence is low, adjust status thresholds using standardized confidence levels:
 
-| Confidence | APPROVED Threshold | NEEDS_REVIEW Range | REJECTED Threshold |
-|------------|-------------------|-------------------|-------------------|
-| >= 0.8 | >= 85 | 70-84 | < 70 |
-| 0.5-0.79 | >= 80 | 65-79 | < 65 |
-| < 0.5 | >= 75 | 60-74 | < 60 |
+| Confidence Level | Score Range | APPROVED Threshold | NEEDS_REVIEW Range | REJECTED Threshold |
+|------------------|-------------|-------------------|-------------------|-------------------|
+| HIGH (>= 0.8) | 0.80-1.00 | >= 85 | 70-84 | < 70 |
+| MODERATE (0.6-0.79) | 0.60-0.79 | >= 80 | 65-79 | < 65 |
+| LOW (0.4-0.59) | 0.40-0.59 | >= 75 | 60-74 | < 60 |
+| VERY LOW (< 0.4) | 0.00-0.39 | >= 70 | 55-69 | < 55 |
 
-Low confidence schedules have lower expectations but also lower risk (conservative allocation).
+Low confidence schedules have lower expectations but also lower risk (conservative allocation). VERY LOW confidence schedules are additionally flagged for manual review regardless of score.
 
 ---
 
@@ -1056,11 +1126,36 @@ if unique_types == {"ppv_unlock", "bump_normal"}:
 
 ### Example 4: Confidence-Adjusted Thresholds
 ```python
+# Standardized confidence thresholds:
+# HIGH >= 0.8, MODERATE 0.6-0.79, LOW 0.4-0.59, VERY_LOW < 0.4
+
 # Lower confidence = more lenient validation
-if volume_config.confidence_score < 0.5:
+if volume_config.confidence_score < 0.4:
+    # VERY LOW: Most lenient
     thresholds = {
-        "min_freshness": 20,      # Relaxed from 30
-        "min_performance": 30,    # Relaxed from 40
-        "diversity_min": 8        # Relaxed from 10
+        "min_freshness": 15,
+        "min_performance": 25,
+        "diversity_min": 8
+    }
+elif volume_config.confidence_score < 0.6:
+    # LOW: Conservative/lenient
+    thresholds = {
+        "min_freshness": 20,
+        "min_performance": 30,
+        "diversity_min": 8
+    }
+elif volume_config.confidence_score < 0.8:
+    # MODERATE: Slightly relaxed
+    thresholds = {
+        "min_freshness": 25,
+        "min_performance": 35,
+        "diversity_min": 9
+    }
+else:
+    # HIGH: Full thresholds
+    thresholds = {
+        "min_freshness": 30,
+        "min_performance": 40,
+        "diversity_min": 10
     }
 ```

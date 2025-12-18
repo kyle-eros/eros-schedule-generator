@@ -35,28 +35,30 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp.eros_db_server import (
-    db_connection,
-    execute_query,
+# Tool functions - organized by domain
+from mcp.tools.creator import (
     get_active_creators,
-    get_audience_targets,
-    get_best_timing,
-    get_channels,
-    get_content_type_rankings,
     get_creator_profile,
-    get_db_connection,
-    get_performance_trends,
     get_persona_profile,
-    get_send_type_captions,
-    get_send_type_details,
-    get_send_types,
-    get_top_captions,
     get_vault_availability,
-    get_volume_assignment,
-    get_volume_config,
-    handle_request,
-    save_schedule,
 )
+from mcp.tools.caption import get_top_captions, get_send_type_captions
+from mcp.tools.performance import (
+    get_best_timing,
+    get_volume_assignment,
+    get_performance_trends,
+    get_content_type_rankings,
+)
+from mcp.tools.send_types import get_send_types, get_send_type_details, get_volume_config
+from mcp.tools.targeting import get_channels, get_audience_targets
+from mcp.tools.schedule import save_schedule
+from mcp.tools.query import execute_query
+
+# Server handler functions
+from mcp.server import handle_request
+
+# Connection and database helpers
+from mcp.connection import db_connection, get_db_connection
 
 
 # =============================================================================
@@ -445,7 +447,7 @@ class TestConnectionPooling:
             return original_get_conn()
 
         # Execute multiple operations and count connections
-        with patch("mcp.eros_db_server.get_db_connection", counting_get_conn):
+        with patch("mcp.connection.get_db_connection", counting_get_conn):
             for _ in range(50):
                 result = get_active_creators()
                 assert "error" not in result

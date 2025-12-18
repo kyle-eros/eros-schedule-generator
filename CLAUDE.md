@@ -157,6 +157,54 @@ freshness_score = 100 - (days_since_last_use * 2)
 2. **Fallback**: Expand to lower performance thresholds if needed
 3. **Manual**: Flag for manual selection if all fallbacks exhausted
 
+## Vault Matrix Management
+
+### Overview
+
+The `vault_matrix` table controls which content types each creator can use. It acts as a hard filter during caption selection to ensure only appropriate content is scheduled.
+
+**Architecture**: Hybrid UX approach
+- **User Interface**: Google Sheets (wide format - easy to visualize and bulk edit)
+- **Database Storage**: Normalized table (optimized for MCP queries)
+- **Bridge**: Python import/export script (`database/scripts/vault_matrix_sync.py`)
+
+### Creator Vault Notes
+
+Each creator has a `vault_notes` field for vault-specific restrictions and preferences:
+
+**Examples**:
+- `"Prohibited: Face closeups due to privacy preference"`
+- `"Prefers: Solo content on Mondays, B/G content Wed-Fri"`
+- `"Use flirty tone, avoid explicit language in teasers"`
+- `"New content: POV videos coming Feb 1st - update vault matrix"`
+
+**Access**: Available in `get_creator_profile()` response
+
+### Import/Export Workflow
+
+**Export vault matrix to CSV**:
+```bash
+cd database/scripts
+python3 vault_matrix_sync.py export --output vault_matrix.csv
+```
+
+**Edit in Google Sheets**:
+- Upload CSV to Google Sheets
+- Modify permissions: `1` (allowed), `0` (not allowed)
+- Update `vault_notes` column with creator-specific notes
+- Download as CSV when done
+
+**Import back to database**:
+```bash
+# Dry-run first (preview changes)
+python3 vault_matrix_sync.py import-csv --input vault_matrix_edited.csv --dry-run
+
+# Apply changes
+python3 vault_matrix_sync.py import-csv --input vault_matrix_edited.csv
+```
+
+**Documentation**: See `database/docs/VAULT_MATRIX_WORKFLOW.md` for complete guide
+
 ## Coding Standards
 
 - Use `send_type_key` consistently (never raw `send_type_id` in logic)
@@ -176,4 +224,5 @@ freshness_score = 100 - (days_since_last_use * 2)
 - `docs/SCHEDULE_GENERATOR_BLUEPRINT.md` - Full architecture
 - `docs/USER_GUIDE.md` - End-user documentation
 - `docs/SEND_TYPE_REFERENCE.md` - Complete send type details
+- `database/docs/VAULT_MATRIX_WORKFLOW.md` - Vault matrix import/export guide
 - `database/audit/` - Database quality reports (93/100 score)

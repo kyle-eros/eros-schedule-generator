@@ -37,6 +37,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -68,6 +69,8 @@ from mcp.protocol import (
     ERROR_METHOD_NOT_FOUND,
     ERROR_INVALID_PARAMS,
     ERROR_SERVER,
+    PROTOCOL_VERSION,
+    SERVER_VERSION,
     create_response,
     create_error_response,
 )
@@ -146,6 +149,69 @@ def handle_initialize(request_id: Any) -> dict[str, Any]:
     return create_response(protocol.format_initialize_result(), request_id)
 
 
+def handle_health(request_id: Any) -> dict[str, Any]:
+    """
+    Handle health check requests.
+
+    Returns health status including:
+    - Server version and uptime
+    - Connection pool metrics
+    - Database connectivity test
+    - Overall health status
+
+    Args:
+        request_id: The JSON-RPC request ID.
+
+    Returns:
+        JSON-RPC response with health status.
+    """
+    from mcp.connection import get_pool_health, pooled_connection
+
+    try:
+        # Get connection pool health
+        pool_health = get_pool_health()
+
+        # Test database connectivity
+        try:
+            with pooled_connection() as conn:
+                conn.execute("SELECT 1").fetchone()
+            database_status = "connected"
+        except Exception as db_error:
+            logger.error(f"Database health check failed: {db_error}")
+            database_status = f"error: {str(db_error)}"
+
+        # Get tool registry stats
+        tool_stats = get_tool_stats()
+
+        # Overall health determination
+        overall_status = "healthy"
+        if pool_health["status"] == "unhealthy":
+            overall_status = "unhealthy"
+        elif pool_health["status"] == "degraded" or database_status != "connected":
+            overall_status = "degraded"
+
+        health_response = {
+            "status": overall_status,
+            "version": SERVER_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "database": database_status,
+            "pool_health": pool_health,
+            "tools_registered": tool_stats["total_tools"],
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        }
+
+        return create_response(health_response, request_id)
+
+    except Exception as e:
+        logger.error(f"Health check failed: {e}", exc_info=True)
+        error_response = {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        }
+        return create_error_response(ERROR_SERVER, "Health check failed", request_id)
+
+
 def handle_tools_list(request_id: Any) -> dict[str, Any]:
     """
     Handle the tools/list MCP method.
@@ -207,6 +273,8 @@ def handle_request(request: dict[str, Any]) -> Optional[dict[str, Any]]:
         return handle_tools_list(request_id)
     elif method == "tools/call":
         return handle_tools_call(request_id, params)
+    elif method == "health":
+        return handle_health(request_id)
     elif method == "notifications/initialized":
         # Notification, no response needed
         return None

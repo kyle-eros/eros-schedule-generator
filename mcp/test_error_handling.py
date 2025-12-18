@@ -22,19 +22,24 @@ from typing import Any, Callable
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp.eros_db_server import (
+# Tool functions - organized by domain
+from mcp.tools.creator import (
     get_active_creators,
     get_creator_profile,
-    get_top_captions,
+    get_persona_profile,
+    get_vault_availability,
+)
+from mcp.tools.caption import get_top_captions
+from mcp.tools.performance import (
     get_best_timing,
     get_volume_assignment,
     get_performance_trends,
     get_content_type_rankings,
-    get_persona_profile,
-    get_vault_availability,
-    execute_query,
-    handle_request,
 )
+from mcp.tools.query import execute_query
+
+# Server handler functions
+from mcp.server import handle_request
 
 
 class TestResult:

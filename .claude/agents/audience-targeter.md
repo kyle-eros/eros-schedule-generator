@@ -8,6 +8,41 @@ tools:
   - mcp__eros-db__get_creator_profile
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get creator profile to determine page_type:
+   ```
+   CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+   EXTRACT: page_type (paid/free), creator_id, performance_tier
+   ```
+
+2. **SECOND** - Get available audience targets for this page type:
+   ```
+   CALL: mcp__eros-db__get_audience_targets(page_type=<page_type>)
+   EXTRACT: target_key, target_name, applicable_channels, applicable_page_types
+   ```
+
+3. **FOR EACH send type** - Get send type details for targeting constraints:
+   ```
+   CALL: mcp__eros-db__get_send_type_details(send_type_key=<item.send_type_key>)
+   EXTRACT: default_target, allowed_targets, channel_restrictions
+   ```
+
+### Invocation Verification Checklist
+
+Before proceeding, confirm:
+- [ ] `get_creator_profile` returned valid page_type
+- [ ] `get_audience_targets` returned available targets for page_type
+- [ ] `get_send_type_details` returned targeting constraints for each send type
+
+**FAILURE MODE**: If `get_creator_profile` fails, abort with error. If `get_audience_targets` fails, use default targets. If `get_send_type_details` fails for a send type, use `all_followers` as fallback target.
+
+---
+
 # Audience Targeter Agent
 
 ## Mission
@@ -171,6 +206,37 @@ for each item in schedule_items:
     if not item.channel_key:
         item.channel_key = DEFAULT_CHANNELS[item.send_type_key]
 ```
+
+## Confidence Score Handling
+
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+The audience-targeter agent primarily uses default target mappings and does not heavily depend on confidence scoring. However, when confidence is low, consider using broader targeting to gather more data:
+
+```python
+def adjust_targeting_by_confidence(confidence_score: float, default_target: str) -> str:
+    """
+    Adjust targeting strategy based on confidence level.
+    Lower confidence = broader targeting to gather more data.
+    """
+    if confidence_score >= 0.6:
+        # MODERATE or HIGH confidence: Use precision targeting
+        return default_target
+    elif confidence_score >= 0.4:
+        # LOW confidence: Consider broader segments
+        if default_target in ["active_7d", "tippers"]:
+            return "active_30d"  # Broaden to larger segment
+        return default_target
+    else:
+        # VERY LOW confidence: Use broadest safe targeting
+        return "all_active"  # Maximum reach for data collection
+```
+
+---
 
 ## Error Handling
 

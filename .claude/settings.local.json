@@ -5,8 +5,9 @@
       "Skill(eros-schedule-generator)",
 
       "SlashCommand(/eros:analyze:*)",
-      "SlashCommand(/eros:generate grace_bennett)",
-      "SlashCommand(/eros:generate grace_bennett 2025-12-16)",
+      "SlashCommand(/eros:generate:*)",
+      "SlashCommand(/eros:validate:*)",
+      "SlashCommand(/eros:creators:*)",
 
       "mcp__eros-db__execute_query",
       "mcp__eros-db__get_active_creators",

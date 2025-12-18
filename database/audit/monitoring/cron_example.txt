@@ -1,0 +1,90 @@
+################################################################################
+# EROS Active Creator Validator - Cron Job Examples
+################################################################################
+#
+# Add these entries to your crontab to schedule automatic validation checks.
+# Edit crontab with: crontab -e
+#
+# Important:
+# - Update paths to match your actual installation directory
+# - Ensure python3 is in PATH or use absolute path to python3
+# - Make sure the script is executable: chmod +x active_creator_validator.py
+# - Test the command manually before adding to cron
+################################################################################
+
+# Example 1: Daily validation at 3 AM with JSON output to log file
+# Run every day at 3:00 AM, output JSON format for easy parsing
+0 3 * * * cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --format json --output /var/log/eros/validation_$(date +\%Y\%m\%d).json 2>&1 | tee -a /var/log/eros/validator.log
+
+# Example 2: Hourly validation with text output to rotating log
+# Run every hour, append to daily log file
+0 * * * * cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --output /var/log/eros/validation_$(date +\%Y\%m\%d).txt 2>&1
+
+# Example 3: Weekly HTML report sent via email
+# Run every Monday at 9 AM, generate HTML report and email it
+0 9 * * 1 cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --format html --output /tmp/eros_validation_report.html && mail -s "EROS Weekly Validation Report" admin@example.com < /tmp/eros_validation_report.html
+
+# Example 4: Exit code monitoring for alerting
+# Run every 6 hours and send alert email if validation fails
+0 */6 * * * cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --format json --output /var/log/eros/latest_validation.json || echo "ALERT: EROS validation failed at $(date)" | mail -s "EROS Validation Alert" admin@example.com
+
+# Example 5: Minimal daily check with lower threshold
+# Run daily at midnight with 70% coverage threshold
+0 0 * * * cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --threshold 0.70 >> /var/log/eros/daily_check.log 2>&1
+
+################################################################################
+# Log File Setup (run these commands once)
+################################################################################
+#
+# Create log directory (may require sudo):
+# sudo mkdir -p /var/log/eros
+# sudo chown $(whoami):$(whoami) /var/log/eros
+#
+# Or use a user-accessible directory:
+# mkdir -p ~/logs/eros
+#
+# Then update paths in cron jobs above to use ~/logs/eros instead of /var/log/eros
+################################################################################
+
+################################################################################
+# Testing Your Cron Job
+################################################################################
+#
+# 1. Test the command manually first:
+#    cd /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database
+#    python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db
+#
+# 2. Verify exit code:
+#    echo $?
+#    (should be 0 for success, 1 for validation failure, 2 for error)
+#
+# 3. Test with output file:
+#    python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db --format json --output /tmp/test.json
+#    cat /tmp/test.json
+#
+# 4. Add to cron with a test schedule (every minute for 5 minutes):
+#    * * * * * cd /path/to/database && python3 audit/monitoring/active_creator_validator.py --db eros_sd_main.db >> /tmp/cron_test.log 2>&1
+#
+# 5. Wait 5 minutes, then check log:
+#    cat /tmp/cron_test.log
+#
+# 6. Once confirmed working, update to your desired schedule and remove test entry
+################################################################################
+
+################################################################################
+# Exit Code Handling in Cron
+################################################################################
+#
+# Success (exit 0): Cron runs silently, no email
+# Validation failed (exit 1): Cron sends email with output
+# Error (exit 2): Cron sends error email
+#
+# To suppress emails and log everything:
+#   command >> /var/log/eros/validator.log 2>&1
+#
+# To get emails only on failure:
+#   command || mail -s "EROS Validation Failed" admin@example.com
+#
+# To get emails on any output (not recommended):
+#   command
+################################################################################

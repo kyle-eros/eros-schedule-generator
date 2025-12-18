@@ -40,7 +40,55 @@ logger = logging.getLogger("eros_db_server.connection")
 # Database path configuration - Dynamic path resolution for portability
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 DEFAULT_DB_PATH = str(PROJECT_ROOT / "database" / "eros_sd_main.db")
-DB_PATH = os.environ.get("EROS_DB_PATH", DEFAULT_DB_PATH)
+
+
+def validate_db_path(path: str) -> str:
+    """
+    Validate database path for security and accessibility.
+
+    Prevents path traversal attacks and ensures the database file exists
+    and is readable.
+
+    Args:
+        path: Path to database file.
+
+    Returns:
+        Validated absolute path.
+
+    Raises:
+        FileNotFoundError: If database file does not exist.
+        PermissionError: If database file is not readable.
+        ValueError: If path contains traversal attempts or invalid characters.
+    """
+    # Check for empty path
+    if not path:
+        raise ValueError("Database path cannot be empty")
+
+    # Resolve to absolute path
+    abs_path = os.path.abspath(path)
+
+    # Check path traversal attempts
+    if ".." in path:
+        raise ValueError(f"Path traversal not allowed: {path}")
+
+    # Check file exists
+    if not os.path.exists(abs_path):
+        raise FileNotFoundError(f"Database not found: {abs_path}")
+
+    # Check file is readable
+    if not os.access(abs_path, os.R_OK):
+        raise PermissionError(f"Database not readable: {abs_path}")
+
+    # Check it's a file (not a directory)
+    if not os.path.isfile(abs_path):
+        raise ValueError(f"Database path must be a file: {abs_path}")
+
+    logger.debug(f"Database path validated: {abs_path}")
+    return abs_path
+
+
+# Validate and set database path
+DB_PATH = validate_db_path(os.environ.get("EROS_DB_PATH", DEFAULT_DB_PATH))
 
 # Pool configuration from environment
 POOL_SIZE = int(os.environ.get("EROS_DB_POOL_SIZE", "10"))

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>EROS Active Creator Validation Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header-item {
+            margin: 5px 0;
+            color: #666;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .validation-result {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            background: #fafafa;
+        }
+        .result-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .result-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 3px;
+            color: white;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .metadata {
+            margin: 10px 0;
+            color: #555;
+        }
+        .recommendation {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+        }
+        .conclusion {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 3px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EROS Active Creator Page Name Validation Report</h1>
+
+        <div class="header">
+            <div class="header-item"><strong>Timestamp:</strong> 2025-12-18T05:55:48.949686+00:00</div>
+            <div class="header-item"><strong>Database:</strong> /Users/kylemerriman/Developer/EROS-SD-MAIN-PROJECT/database/eros_sd_main.db</div>
+            <div class="header-item"><strong>Active Creators:</strong> 37</div>
+        </div>
+
+        <div>
+            <span class="status-badge" style="background-color: #28a745;">
+                Overall Status: PASS
+            </span>
+            <span class="status-badge" style="background-color: #28a745;">
+                Quality Grade: A (EXCELLENT)
+            </span>
+        </div>
+
+        <h2>Validation Results</h2>
+
+        <div class="validation-result">
+            <div class="result-header">
+                Active Creator Fragmentation Check
+                <span class="result-status" style="background-color: #28a745;">PASS</span>
+            </div>
+            <div class="metadata"><strong>Status:</strong> No fragmentation detected</div>
+        </div>
+
+        <div class="validation-result">
+            <div class="result-header">
+                Case Consistency Validation
+                <span class="result-status" style="background-color: #28a745;">PASS</span>
+            </div>
+            <div class="metadata"><strong>Status:</strong> All page_names match canonical case</div>
+        </div>
+
+        <div class="validation-result">
+            <div class="result-header">
+                Canonical Name Match
+                <span class="result-status" style="background-color: #28a745;">PASS</span>
+            </div>
+            <div class="metadata"><strong>Status:</strong> All creator_id messages use correct page_name</div>
+        </div>
+
+        <div class="validation-result">
+            <div class="result-header">
+                NULL Page Name Check
+                <span class="result-status" style="background-color: #28a745;">PASS</span>
+            </div>
+            <div class="metadata"><strong>Status:</strong> No NULL page_names for active creators</div>
+        </div>
+
+        <div class="validation-result">
+            <div class="result-header">
+                Coverage Analysis
+                <span class="result-status" style="background-color: #28a745;">PASS</span>
+            </div>
+            <div class="metadata"><strong>Status:</strong> Excellent coverage</div>
+            <div class="metadata"><strong>Affected:</strong> 18585</div>
+            <div class="metadata"><strong>With Creator Id:</strong> 53413</div>
+            <div class="metadata"><strong>Without Creator Id:</strong> 18585</div>
+            <div class="metadata"><strong>Coverage Percentage:</strong> 74.19</div>
+            <div class="metadata"><strong>Threshold Percentage:</strong> 70.0</div>
+        </div>
+
+        <div class="conclusion">
+            <strong>Conclusion:</strong> All active creators have clean, non-fragmented page_name values. No action required.
+        </div>
+    </div>
+</body>
+</html>

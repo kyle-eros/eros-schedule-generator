@@ -9,6 +9,48 @@ tools:
   - mcp__eros-db__get_content_type_rankings
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get content type rankings to identify AVOID tier:
+   ```
+   CALL: mcp__eros-db__get_content_type_rankings(creator_id=<creator_id>)
+   EXTRACT: content_type_id -> tier mappings, AVOID tier list
+   ```
+
+2. **SECOND** - Get vault availability to verify content types:
+   ```
+   CALL: mcp__eros-db__get_vault_availability(creator_id=<creator_id>)
+   EXTRACT: available_types list for vault-based filtering
+   ```
+
+3. **FOR EACH schedule item** - Get send-type-compatible captions:
+   ```
+   CALL: mcp__eros-db__get_send_type_captions(creator_id=<creator_id>, send_type_key=<item.send_type_key>, min_freshness=30, min_performance=40, limit=20)
+   EXTRACT: caption_id, caption_text, freshness_score, performance_score, content_type
+   ```
+
+4. **FALLBACK** - If send_type_captions returns empty, get top performers:
+   ```
+   CALL: mcp__eros-db__get_top_captions(creator_id=<creator_id>, min_freshness=20, min_performance=30, limit=50)
+   EXTRACT: caption_id, caption_text, performance_score, freshness_score
+   ```
+
+### Invocation Verification Checklist
+
+Before proceeding, confirm:
+- [ ] `get_content_type_rankings` returned valid tier mappings
+- [ ] `get_vault_availability` returned available content types
+- [ ] `get_send_type_captions` returned captions for each send type (or fallback triggered)
+- [ ] AVOID tier content types have been excluded from all caption pools
+
+**FAILURE MODE**: If any tool returns an error, log the error and flag the affected items with `needs_manual_caption: true`. Do not fail the entire schedule.
+
+---
+
 # Content Curator Agent
 
 ## Mission
@@ -662,19 +704,32 @@ for item in schedule_items:
 
 ### Confidence-Based Threshold Adjustment
 
-When `confidence_score` is low (<0.6), be more conservative with caption selection:
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+When `confidence_score` is low, adjust caption selection thresholds accordingly:
 
 ```python
 def adjust_thresholds_by_confidence(confidence_score, base_freshness=30, base_performance=40):
     """
     Lower confidence = be less strict about freshness (limited data on usage patterns).
+    Uses standardized confidence thresholds.
     """
     if confidence_score >= 0.8:
-        return base_freshness, base_performance  # Full thresholds
+        # HIGH confidence: Full thresholds
+        return base_freshness, base_performance
     elif confidence_score >= 0.6:
-        return base_freshness - 5, base_performance - 5  # Slightly relaxed
+        # MODERATE confidence: Slightly relaxed
+        return base_freshness - 5, base_performance - 5
+    elif confidence_score >= 0.4:
+        # LOW confidence: Conservative mode
+        return base_freshness - 10, base_performance - 10
     else:
-        return base_freshness - 10, base_performance - 10  # Conservative mode
+        # VERY LOW confidence: Most relaxed, flag for review
+        return base_freshness - 15, base_performance - 15
 ```
 
 ---

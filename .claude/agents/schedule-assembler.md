@@ -8,6 +8,48 @@ tools:
   - mcp__eros-db__get_send_type_details
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get creator profile for validation context:
+   ```
+   CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+   EXTRACT: page_type, creator_id, timezone
+   ```
+
+2. **SECOND** - Get available channels for mapping:
+   ```
+   CALL: mcp__eros-db__get_channels()
+   EXTRACT: channel_key, channel_name, supports_targeting
+   ```
+
+3. **FOR EACH unique send type** - Validate send type details:
+   ```
+   CALL: mcp__eros-db__get_send_type_details(send_type_key=<send_type_key>)
+   EXTRACT: requires_media, requires_flyer, requires_price, has_expiration
+   ```
+
+4. **FINAL** - Save assembled schedule to database:
+   ```
+   CALL: mcp__eros-db__save_schedule(creator_id=<creator_id>, week_start=<week_start>, items=<final_items>)
+   EXTRACT: template_id, items_saved, success status
+   ```
+
+### Invocation Verification Checklist
+
+Before saving, confirm:
+- [ ] `get_creator_profile` returned valid creator data
+- [ ] `get_channels` returned available channel mappings
+- [ ] All items have required fields populated per send_type requirements
+- [ ] `save_schedule` returned success with template_id
+
+**FAILURE MODE**: If `save_schedule` fails, implement rollback strategy (see Rollback Strategy section). Log error and return partial_save status with retry payload.
+
+---
+
 # Schedule Assembler Agent
 
 ## Mission
@@ -595,6 +637,18 @@ Score out of 100:
 
 ---
 
+## Confidence Score Handling
+
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+The schedule-assembler passes confidence metadata through to quality-validator for final validation decisions.
+
+---
+
 ## Integration with OptimizedVolumeResult
 
 ### Passing Through Volume Metadata
@@ -683,12 +737,15 @@ schedule_output = {
 }
 
 def classify_confidence(score):
+    """Classify confidence using standardized thresholds."""
     if score >= 0.8:
         return "HIGH"
-    elif score >= 0.5:
-        return "MEDIUM"
-    else:
+    elif score >= 0.6:
+        return "MODERATE"
+    elif score >= 0.4:
         return "LOW"
+    else:
+        return "VERY_LOW"
 ```
 
 ---

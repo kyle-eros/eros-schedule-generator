@@ -8,6 +8,41 @@ tools:
   - mcp__eros-db__get_volume_config
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get volume config for confidence score (affects followup rate):
+   ```
+   CALL: mcp__eros-db__get_volume_config(creator_id=<creator_id>)
+   EXTRACT: confidence_score, caption_warnings
+   ```
+
+2. **SECOND** - Get ppv_followup send type details for timing constraints:
+   ```
+   CALL: mcp__eros-db__get_send_type_details(send_type_key="ppv_followup")
+   EXTRACT: min_delay_minutes (15), max_delay_minutes (45), optimal_delay (20-30), max_per_day (4)
+   ```
+
+3. **FOR EACH eligible parent item** - Get followup captions:
+   ```
+   CALL: mcp__eros-db__get_send_type_captions(creator_id=<creator_id>, send_type_key="ppv_followup", min_freshness=20, limit=10)
+   EXTRACT: caption_id, caption_text, freshness_score
+   ```
+
+### Invocation Verification Checklist
+
+Before proceeding, confirm:
+- [ ] `get_volume_config` returned confidence_score for followup rate calculation
+- [ ] `get_send_type_details` returned timing window constraints (15-45 min)
+- [ ] `get_send_type_captions` returned ppv_followup captions (or flagged shortage)
+
+**FAILURE MODE**: If `get_volume_config` fails, use confidence_score=0.7 (moderate). If `get_send_type_captions` returns empty, set `needs_manual_caption: true` on followup items.
+
+---
+
 # Follow-up Generator Agent
 
 ## Mission
@@ -258,6 +293,12 @@ def calculate_followup_time(parent_time, confidence_score):
     """
     Calculate optimal followup time based on confidence score.
 
+    Uses standardized confidence thresholds:
+    - HIGH (>= 0.8): 20 min delay (optimal)
+    - MODERATE (0.6 - 0.79): 25 min delay (standard)
+    - LOW (0.4 - 0.59): 30 min delay (conservative)
+    - VERY LOW (< 0.4): 35 min delay (maximum safe)
+
     Args:
         parent_time: Parent send scheduled time (HH:MM format)
         confidence_score: Volume config confidence (0.0-1.0)
@@ -269,15 +310,18 @@ def calculate_followup_time(parent_time, confidence_score):
     MAX_DELAY = 45  # minutes - HARD LIMIT
     OPTIMAL_DELAY = 20  # minutes - preferred baseline
 
-    # Adjust delay based on confidence score
-    if confidence_score < 0.5:
-        # Low confidence: Conservative approach with longer delay
+    # Adjust delay based on confidence score (standardized thresholds)
+    if confidence_score < 0.4:
+        # VERY LOW confidence: Maximum safe delay
+        delay = 35  # Maximum safe window
+    elif confidence_score < 0.6:
+        # LOW confidence: Conservative approach with longer delay
         delay = 30  # Give more time before follow-up
-    elif confidence_score < 0.75:
-        # Medium confidence: Standard delay
+    elif confidence_score < 0.8:
+        # MODERATE confidence: Standard delay
         delay = 25  # Balanced approach
     else:
-        # High confidence: Optimal delay (proven audience)
+        # HIGH confidence: Optimal delay (proven audience)
         delay = 20  # Strike while iron is hot
 
     # ENFORCE HARD LIMITS
@@ -448,11 +492,21 @@ for parent in eligible_items:
 
 ---
 
+## Confidence Score Handling
+
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
+---
+
 ## Integration with OptimizedVolumeResult
 
 ### Confidence-Based Followup Generation
 
-The `confidence_score` from `get_volume_config()` affects how aggressively we generate followups:
+The `confidence_score` from `get_volume_config()` affects how aggressively we generate followups, using standardized thresholds:
 
 ```python
 def get_followup_rate(confidence_score):
@@ -460,14 +514,20 @@ def get_followup_rate(confidence_score):
     Lower confidence = less aggressive followup generation.
     New creators with limited data should have fewer followups
     to avoid over-messaging before we understand their audience.
+
+    Uses standardized confidence thresholds.
     """
     if confidence_score >= 0.8:
-        return 1.0   # Full followup generation (100% of eligible items)
+        # HIGH confidence: Full followup generation
+        return 1.0   # 100% of eligible items
     elif confidence_score >= 0.6:
+        # MODERATE confidence: Standard followups
         return 0.8   # 80% of eligible items get followups
     elif confidence_score >= 0.4:
+        # LOW confidence: Conservative followups
         return 0.5   # 50% of eligible items get followups
     else:
+        # VERY LOW confidence: Minimal followups, flag for review
         return 0.3   # Only 30% get followups (new creator mode)
 
 # Apply during followup generation
@@ -492,14 +552,21 @@ def get_followup_delay(confidence_score, base_delay=20):
     Lower confidence = longer delay before followup.
     Gives audience more time before the close-the-sale message.
 
+    Uses standardized confidence thresholds.
     All delays are constrained to the 15-45 minute timing window.
     """
     if confidence_score >= 0.8:
-        delay = base_delay      # 20 minutes (optimal)
+        # HIGH confidence: Optimal delay
+        delay = base_delay      # 20 minutes
     elif confidence_score >= 0.6:
-        delay = base_delay + 5  # 25 minutes (standard)
+        # MODERATE confidence: Standard delay
+        delay = base_delay + 5  # 25 minutes
+    elif confidence_score >= 0.4:
+        # LOW confidence: Conservative delay
+        delay = base_delay + 10 # 30 minutes
     else:
-        delay = base_delay + 10 # 30 minutes (conservative)
+        # VERY LOW confidence: Maximum safe delay
+        delay = base_delay + 15 # 35 minutes
 
     # Enforce timing window bounds (15-45 minutes)
     MIN_DELAY = 15
@@ -613,14 +680,25 @@ schedule_assembler.assemble(
 
 ### Example 3: Confidence-Based Generation Rate
 ```python
+# Standardized confidence thresholds:
+# HIGH >= 0.8, MODERATE 0.6-0.79, LOW 0.4-0.59, VERY_LOW < 0.4
+
 confidence = volume_config.confidence_score
 
-# New creator (low confidence) - fewer followups
-if confidence < 0.5:
+# VERY LOW confidence - minimal followups, flag for review
+if confidence < 0.4:
     generation_rate = 0.3  # Only 30% of eligible items
 
-# Established creator - full followups
-elif confidence >= 0.8:
+# LOW confidence - conservative followups
+elif confidence < 0.6:
+    generation_rate = 0.5  # 50% of eligible items
+
+# MODERATE confidence - standard followups
+elif confidence < 0.8:
+    generation_rate = 0.8  # 80% of eligible items
+
+# HIGH confidence - full followups
+else:
     generation_rate = 1.0  # 100% of eligible items
 ```
 
@@ -633,3 +711,58 @@ for item in schedule_items:
     if item.send_type_key in FOLLOWUP_ELIGIBLE:
         followup = generate_followup_for_item(item)
 ```
+
+---
+
+## Output Contract (Phase 6 → Phase 7a)
+
+**CRITICAL**: The followup-generator output MUST conform to this contract for schedule-assembler to correctly process followup items.
+
+### Required Fields
+
+Each followup item MUST include:
+
+```json
+{
+  "followup_items": [
+    {
+      "send_type_key": "ppv_followup",
+      "parent_item_id": <INTEGER>,
+      "is_followup": 1,
+      "followup_delay_minutes": <15-45>,
+      "scheduled_date": "YYYY-MM-DD",
+      "scheduled_time": "HH:MM:SS",
+      "channel_key": "targeted_message",
+      "target_key": "ppv_non_purchasers",
+      "caption_id": <INTEGER or null>,
+      "needs_manual_caption": <boolean>
+    }
+  ],
+  "metadata": {
+    "followups_generated": <INTEGER>,
+    "followups_rejected_timing": <INTEGER>,
+    "followups_skipped_for_confidence": <INTEGER>,
+    "followups_skipped_for_limit": <INTEGER>,
+    "confidence_score_used": <FLOAT>,
+    "effective_generation_rate": <FLOAT>
+  }
+}
+```
+
+### Field Constraints
+
+| Field | Type | Constraint | Notes |
+|-------|------|------------|-------|
+| `parent_item_id` | INTEGER | REQUIRED | Must reference valid parent item |
+| `is_followup` | INTEGER | Always 1 | Distinguishes from regular sends |
+| `followup_delay_minutes` | INTEGER | 15-45 | Timing window hard limits |
+| `channel_key` | STRING | Always "targeted_message" | Followups require targeting |
+| `target_key` | STRING | Always "ppv_non_purchasers" | Targets non-buyers |
+
+### Contract Verification
+
+The schedule-assembler MUST verify:
+1. `parent_item_id` references an existing item in the schedule
+2. `followup_delay_minutes` is within 15-45 minute window
+3. `scheduled_time` correctly reflects the delay from parent
+4. `is_followup = 1` is set for all followup items

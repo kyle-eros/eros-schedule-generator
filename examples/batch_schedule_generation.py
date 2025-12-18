@@ -16,7 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 os.environ['EROS_DB_PATH'] = str(PROJECT_ROOT / "database" / "eros_sd_main.db")
 
 # Import MCP server database connection
-from mcp.eros_db_server import get_db_connection
+from mcp.connection import get_db_connection
 
 # Creator batch
 BATCH_1_CREATORS = [

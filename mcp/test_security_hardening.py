@@ -45,7 +45,7 @@ def send_mcp_request(method: str, params: dict[str, Any]) -> dict[str, Any]:
     }
 
     process = subprocess.Popen(
-        ["python3", "eros_db_server.py"],
+        ["python3", "server.py"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

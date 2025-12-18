@@ -8,6 +8,45 @@ tools:
   - mcp__eros-db__get_creator_profile
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get volume configuration:
+```
+CALL: mcp__eros-db__get_volume_config(creator_id=<creator_id>)
+EXTRACT: weekly_distribution, dow_multipliers_used, content_allocations, confidence_score, revenue_per_day, engagement_per_day, retention_per_day
+```
+
+2. **SECOND** - Get creator profile:
+```
+CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+EXTRACT: page_type (CRITICAL for ppv_wall vs tip_goal selection)
+```
+
+3. **THIRD** - Get send types:
+```
+CALL: mcp__eros-db__get_send_types(page_type=<page_type>)
+EXTRACT: Full 22-type taxonomy filtered by page type
+```
+
+### Invocation Verification Checklist
+
+Before proceeding to allocation, confirm:
+- [ ] get_volume_config returned with weekly_distribution populated
+- [ ] get_creator_profile returned page_type ("paid" or "free")
+- [ ] get_send_types returned filtered send type list
+
+**PAGE TYPE VALIDATION**:
+- If page_type is "free": Ensure ppv_wall is INCLUDED, tip_goal is EXCLUDED
+- If page_type is "paid": Ensure tip_goal is INCLUDED, ppv_wall is EXCLUDED
+
+**FAILURE MODE**: If any tool returns an error, log the error and cannot proceed. Do NOT generate allocations without real volume configuration data.
+
+---
+
 # Send Type Allocator Agent
 
 ## Mission
@@ -643,6 +682,12 @@ For each send_type in allocation:
 
 The `confidence_score` from volume_config indicates how reliable the predictions are. New creators with limited history will have lower confidence scores.
 
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
 ```python
 def apply_confidence_adjustments(
     allocation: dict,
@@ -667,22 +712,30 @@ def apply_confidence_adjustments(
         "notes": []
     }
 
-    # Low confidence (< 0.5): New creator or insufficient data
-    if confidence_score < 0.5:
+    # Very low confidence (< 0.4): Insufficient data - flag for manual review
+    if confidence_score < 0.4:
+        confidence_metadata["notes"].append(
+            "VERY LOW CONFIDENCE: Insufficient historical data. Flag for manual review. "
+            "Using fallback defaults."
+        )
+        confidence_metadata["recommendation"] = "fallback_defaults"
+
+    # Low confidence (0.4 - 0.59): Limited data - apply conservative adjustments
+    elif confidence_score < 0.6:
         confidence_metadata["notes"].append(
             "LOW CONFIDENCE: Limited historical data. Predictions may be less accurate. "
-            "Consider manual review of allocation."
+            "Apply conservative adjustments."
         )
         confidence_metadata["recommendation"] = "conservative"
 
-    # Medium confidence (0.5-0.75): Some data, reasonable predictions
-    elif confidence_score < 0.75:
+    # Moderate confidence (0.6 - 0.79): Good data, reasonable predictions
+    elif confidence_score < 0.8:
         confidence_metadata["notes"].append(
-            "MEDIUM CONFIDENCE: Moderate historical data. Predictions are reasonably reliable."
+            "MODERATE CONFIDENCE: Good historical data. Predictions are reasonably reliable."
         )
         confidence_metadata["recommendation"] = "standard"
 
-    # High confidence (>= 0.75): Strong data, reliable predictions
+    # High confidence (>= 0.8): Strong data, reliable predictions
     else:
         confidence_metadata["notes"].append(
             "HIGH CONFIDENCE: Strong historical data. Predictions are highly reliable."
@@ -709,28 +762,36 @@ def apply_confidence_adjustments(
 
 
 def get_confidence_level(score: float) -> str:
-    """Map confidence score to human-readable level."""
-    if score < 0.5:
+    """Map confidence score to human-readable level (standardized thresholds)."""
+    if score < 0.4:
+        return "VERY_LOW"
+    elif score < 0.6:
         return "LOW"
-    elif score < 0.75:
-        return "MEDIUM"
+    elif score < 0.8:
+        return "MODERATE"
     else:
         return "HIGH"
 ```
 
-**Confidence Score Interpretation:**
+**Confidence Score Interpretation (Standardized Thresholds):**
 
 | Score Range | Level | Meaning | Recommended Action |
 |-------------|-------|---------|-------------------|
-| 0.0 - 0.49 | LOW | New creator, limited data | Use conservative allocation, manual review recommended |
-| 0.5 - 0.74 | MEDIUM | Moderate history | Standard allocation with monitoring |
-| 0.75 - 1.0 | HIGH | Strong historical data | Full optimization applied confidently |
+| 0.0 - 0.39 | VERY_LOW | Insufficient data | Flag for manual review, use fallback defaults |
+| 0.4 - 0.59 | LOW | Limited data | Apply conservative adjustments, add warnings |
+| 0.6 - 0.79 | MODERATE | Good history | Standard allocation, proceed with validation |
+| 0.8 - 1.0 | HIGH | Strong historical data | Full optimization applied confidently |
 
-**When Confidence is Low:**
-- The schedule is still valid but may need adjustment after execution
+**When Confidence is VERY LOW (< 0.4):**
+- Flag schedule for manual review before deployment
+- Use fallback default allocations
+- Consider running a test week with reduced volume
+
+**When Confidence is LOW (0.4 - 0.59):**
+- The schedule is valid but apply conservative adjustments
 - Content-aware weighting may be less accurate
 - DOW multipliers are based on global averages rather than creator-specific patterns
-- Consider running a test week and reviewing performance
+- Add warnings to output for operator awareness
 
 ## Page Type Bump Ratios (Gap 3.2)
 

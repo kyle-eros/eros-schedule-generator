@@ -373,6 +373,81 @@ To generate schedules for multiple creators:
 /eros:generate creator_456 2025-12-23
 ```
 
+## Execution Protocol
+
+You MUST execute these phases IN ORDER. After each phase, output a brief checkpoint summary.
+
+### Phase 1: INITIALIZATION
+Execute these MCP calls:
+1. `get_creator_profile(creator_id)` - Extract page_type, performance_tier, fan_count
+2. `get_volume_config(creator_id)` - Extract volume settings, saturation/opportunity scores
+3. `get_performance_trends(creator_id, "7d")` - Get trend data for validation
+4. `get_vault_availability(creator_id)` - Check available content types
+
+**CHECKPOINT 1**: Output creator summary table:
+| Field | Value |
+|-------|-------|
+| Creator | {page_name} |
+| Page Type | {page_type} |
+| Fans | {fan_count} |
+| Saturation | {saturation_score} |
+| Opportunity | {opportunity_score} |
+
+### Phase 2: SEND TYPE ALLOCATION
+1. `get_send_types(page_type)` - Get applicable send types
+2. Distribute send types across 7 days using weekly_distribution from volume_config
+3. Ensure minimum 10 unique send_type_keys for diversity
+
+**CHECKPOINT 2**: Output daily allocation table showing send types per day
+
+### Phase 3: CONTENT CURATION
+For each allocated slot:
+1. `get_send_type_captions(creator_id, send_type_key)` - Get compatible captions
+2. Select caption with highest combined score (freshness 40% + performance 35% + priority 15% + diversity 10%)
+3. Track freshness scores and flag any below 30
+
+**CHECKPOINT 3**: Output caption assignments summary with freshness scores
+
+### Phase 4: AUDIENCE TARGETING
+For each schedule item:
+1. `get_audience_targets(page_type, channel_key)` - Get valid targets
+2. Assign appropriate target based on send type requirements
+3. Validate target is compatible with channel
+
+**CHECKPOINT 4**: Output targeting summary
+
+### Phase 5: TIMING OPTIMIZATION
+1. `get_best_timing(creator_id)` - Get optimal hours/days
+2. Assign times ensuring minimum 45-minute spacing between sends
+3. Apply jitter (+/-5 minutes) to avoid round numbers
+
+**CHECKPOINT 5**: Output daily schedule with times
+
+### Phase 6: FOLLOWUP GENERATION
+For each PPV/revenue send:
+1. Determine if followup needed based on send type
+2. Generate ppv_followup items with 20-45 minute delays
+3. Respect max 4 followups per day
+
+**CHECKPOINT 6**: Output followup items linked to parent PPVs
+
+### Phase 7: ASSEMBLY & SAVE
+1. Combine all components into schedule_items array
+2. `save_schedule(creator_id, week_start, items)` - Persist to database
+3. Report validation results from save_schedule response
+
+**CHECKPOINT 7**: Output final summary:
+- Schedule ID
+- Total items created
+- Diversity validation (pass/fail)
+- Any warnings
+
+## CRITICAL RULES
+- If ANY phase fails, STOP immediately and report the error
+- Do NOT proceed to next phase until current phase checkpoint is output
+- For FREE pages: retention_items_per_day = 0 (no retention send types)
+- Minimum 10 unique send_type_keys required for diversity validation
+
 $ARGUMENTS
 
 @.claude/skills/eros-schedule-generator/SKILL.md

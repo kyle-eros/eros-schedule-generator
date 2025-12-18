@@ -10,6 +10,48 @@ tools:
   - mcp__eros-db__execute_query
 ---
 
+## MANDATORY TOOL CALLS
+
+**CRITICAL**: You MUST execute these MCP tool calls. Do NOT proceed without actual tool invocation.
+
+### Required Sequence (Execute in Order)
+
+1. **FIRST** - Get creator profile:
+```
+CALL: mcp__eros-db__get_creator_profile(creator_id=<creator_id>)
+EXTRACT: page_type, performance_tier, current_active_fans, current_total_earnings
+```
+
+2. **SECOND** - Get performance trends:
+```
+CALL: mcp__eros-db__get_performance_trends(creator_id=<creator_id>, period=<period>)
+EXTRACT: saturation_score, opportunity_score, revenue_trend, engagement_trend
+```
+
+3. **THIRD** - Get content type rankings:
+```
+CALL: mcp__eros-db__get_content_type_rankings(creator_id=<creator_id>)
+EXTRACT: TOP tier types, MID tier types, LOW tier types, AVOID tier types
+```
+
+4. **FOURTH** - Get volume configuration:
+```
+CALL: mcp__eros-db__get_volume_config(creator_id=<creator_id>)
+EXTRACT: confidence_score, fused_saturation, fused_opportunity, weekly_distribution, adjustments_applied
+```
+
+### Invocation Verification Checklist
+
+Before proceeding to analysis, confirm:
+- [ ] get_creator_profile returned valid creator data with page_type
+- [ ] get_performance_trends returned saturation/opportunity scores
+- [ ] get_content_type_rankings returned tier classifications
+- [ ] get_volume_config returned OptimizedVolumeResult with confidence_score
+
+**FAILURE MODE**: If any tool returns an error, log the error and use conservative defaults. Do NOT proceed without attempting ALL tool calls.
+
+---
+
 # Performance Analyst Agent
 
 ## Mission
@@ -72,14 +114,23 @@ metrics = {
 ```
 
 ### Step 2b: Classify Confidence Level
+
+**Standardized Confidence Thresholds:**
+- HIGH (>= 0.8): Full confidence, proceed normally
+- MODERATE (0.6 - 0.79): Good confidence, proceed with standard validation
+- LOW (0.4 - 0.59): Limited data, apply conservative adjustments
+- VERY LOW (< 0.4): Insufficient data, flag for review, use defaults
+
 ```python
 def classify_confidence(confidence_score):
     if confidence_score >= 0.8:
         return "high"       # Algorithm predictions are reliable
-    elif confidence_score >= 0.5:
+    elif confidence_score >= 0.6:
         return "moderate"   # Predictions reasonably reliable
+    elif confidence_score >= 0.4:
+        return "low"        # Limited data - use conservative defaults
     else:
-        return "low"        # New creator, limited data - use conservative defaults
+        return "very_low"   # Insufficient data - flag for manual review
 
 confidence_status = classify_confidence(volume_config.confidence_score)
 ```
@@ -158,11 +209,18 @@ if top_types:
         "reason": "Top performing content"
     })
 
-# NEW: Low confidence warning
-if confidence_score < 0.5:
+# NEW: Low confidence warning (threshold: < 0.6 for LOW, < 0.4 for VERY_LOW)
+if confidence_score < 0.4:
+    recommendations.append({
+        "type": "very_low_confidence_warning",
+        "action": "Flag for manual review, use fallback defaults",
+        "reason": f"Algorithm confidence is {confidence_score:.0%} - insufficient historical data",
+        "impact": "high"
+    })
+elif confidence_score < 0.6:
     recommendations.append({
         "type": "low_confidence_warning",
-        "action": "Use conservative volume settings",
+        "action": "Apply conservative adjustments, add warnings",
         "reason": f"Algorithm confidence is {confidence_score:.0%} - limited historical data",
         "impact": "medium"
     })
@@ -741,7 +799,7 @@ metrics that feed into this calculation, including the new multi-horizon fused s
 |--------------|--------|------------|
 | `saturation_status` | healthy / caution / saturated | 0-1 indicators / 2 / 3+ |
 | `opportunity_status` | maintain / moderate / high | 0 indicators / 1-2 / 3+ |
-| `confidence_status` | low / moderate / high | <0.5 / 0.5-0.79 / >=0.8 |
+| `confidence_status` | very_low / low / moderate / high | <0.4 / 0.4-0.59 / 0.6-0.79 / >=0.8 |
 
 ## Integration with Schedule Generator
 
@@ -1133,8 +1191,15 @@ send_type_allocator.allocate(
 
 ### Example 4: Low Confidence Handling
 ```python
-if analysis.confidence_score < 0.5:
-    # New creator - use conservative allocation
+# Standardized confidence thresholds:
+# HIGH >= 0.8, MODERATE 0.6-0.79, LOW 0.4-0.59, VERY_LOW < 0.4
+
+if analysis.confidence_score < 0.4:
+    # Very new creator - flag for manual review, use defaults
+    volume_adjustment = "fallback_defaults"
+    log.warning(f"Very low confidence ({analysis.confidence_score}) - requires manual review")
+elif analysis.confidence_score < 0.6:
+    # Limited data - use conservative allocation
     volume_adjustment = "conservative"
     log.warning(f"Low confidence ({analysis.confidence_score}) - using conservative settings")
 ```
