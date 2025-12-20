@@ -73,13 +73,13 @@ Generate schedules for all tier 1 creators
 
 ### Multi-Agent Architecture
 
-The system deploys 9 specialized agents across 9 phases:
+The system deploys 22 specialized agents across 14 phases:
 
 | Phase | Agent | Role | Model |
 |-------|-------|------|-------|
 | 1 | **Performance Analyst** | Analyzes trends and saturation signals | Sonnet |
 | 2 | **Send Type Allocator** | Distributes send types across daily slots | Sonnet |
-| 3 | **Content Curator** | Selects and ranks captions | Sonnet |
+| 3 | **Caption Selection Pro** | Selects and ranks captions | Sonnet |
 | 4 | **Timing Optimizer** | Determines optimal posting times | Sonnet |
 | 5 | **Followup Generator** | Auto-generates PPV follow-ups | Sonnet |
 | 6 | **Authenticity Engine** | Anti-AI detection and humanization | Sonnet |

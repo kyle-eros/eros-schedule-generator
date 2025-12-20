@@ -67,7 +67,7 @@ Enhanced 2 existing tools:
 #### 4. Updated Agent Descriptions
 - **Agent 1**: Performance Analyst - Added category-level volume analysis
 - **Agent 2**: Send Type Allocator (NEW) - Plans 21-type allocation
-- **Agent 3**: Content Curator - Enhanced with send type caption matching
+- **Agent 3**: Caption Selection Pro - Enhanced with send type caption matching
 - **Agent 4**: Audience Targeter (NEW) - Assigns channels and targets
 - **Agent 5**: Timing Optimizer - Added send type constraints
 - **Agent 6**: Followup Generator (NEW) - Auto-generates follow-ups

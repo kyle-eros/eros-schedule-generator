@@ -1,13 +1,13 @@
 # EROS Database Schema Reference
 
-**Version**: 2.2.0
+**Version**: 2.4.0
 **Database**: eros_sd_main.db
-**Total Tables**: 74
-**Last Updated**: 2025-12-17
+**Total Tables**: 76
+**Last Updated**: 2025-12-18
 
 ## Overview
 
-Complete schema documentation for all 74 tables in the EROS Schedule Generator database. This document serves as the authoritative reference for database structure, relationships, and usage patterns.
+Complete schema documentation for all 76 tables in the EROS Schedule Generator database. This document serves as the authoritative reference for database structure, relationships, and usage patterns.
 
 **Database Statistics**:
 - **Size**: ~250 MB
@@ -19,11 +19,11 @@ Complete schema documentation for all 74 tables in the EROS Schedule Generator d
 
 ## Table of Contents
 
-1. [Core Entity Tables](#core-entity-tables) (6 tables)
+1. [Core Entity Tables](#core-entity-tables) (7 tables)
 2. [Caption Management](#caption-management) (12 tables)
 3. [Performance & Analytics](#performance--analytics) (8 tables)
 4. [Send Type Configuration](#send-type-configuration) (5 tables)
-5. [Volume Management](#volume-management) (9 tables)
+5. [Volume Management](#volume-management) (10 tables)
 6. [Schedule Operations](#schedule-operations) (4 tables)
 7. [Content & Templates](#content--templates) (7 tables)
 8. [Targeting & Channels](#targeting--channels) (3 tables)
@@ -56,6 +56,7 @@ CREATE TABLE creators (
     current_total_earnings REAL DEFAULT 0,
     performance_tier INTEGER CHECK (performance_tier IN (1,2,3,4)),
     persona_type TEXT,
+    content_category TEXT CHECK (content_category IN ('lifestyle', 'softcore', 'amateur', 'explicit')) DEFAULT 'softcore',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -72,12 +73,14 @@ CREATE TABLE creators (
 | `timezone` | TEXT | Creator timezone (IANA format) |
 | `performance_tier` | INTEGER | Performance classification (1=TOP, 4=LOW) |
 | `persona_type` | TEXT | Persona archetype key (FK to personas) |
+| `content_category` | TEXT | Content category for bump multiplier: 'lifestyle', 'softcore', 'amateur', 'explicit' (v3.0) |
 | `is_active` | INTEGER | Active status (1=active, 0=inactive) |
 
 **Indexes**:
 - `idx_creators_page_name` - Fast lookup by page_name
 - `idx_creators_tier` - Filter by performance_tier
 - `idx_creators_active` - Filter by is_active
+- `idx_creators_content_category` - Filter by content_category (v3.0)
 
 **Referenced By**: personas, vault_matrix, schedule_items, volume_assignments, saturation_analysis, caption_creator_performance, message_performance, wall_posts, mass_messages, and 30+ more tables.
 
@@ -128,7 +131,39 @@ CREATE TABLE personas (
 
 ---
 
-### 3. vault_matrix
+### 3. content_categories (v3.0)
+
+Reference table for content category classifications used in bump multiplier calculation.
+
+**Schema**:
+```sql
+CREATE TABLE content_categories (
+    category_key TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    bump_multiplier REAL NOT NULL DEFAULT 1.0,
+    description TEXT
+);
+```
+
+**Data**:
+| category_key | display_name | bump_multiplier | description |
+|--------------|--------------|-----------------|-------------|
+| `lifestyle` | Lifestyle | 1.0 | Non-explicit baseline - GFE, personal connection |
+| `softcore` | Softcore | 1.5 | Suggestive content - moderate engagement needs |
+| `amateur` | Amateur | 2.0 | Amateur style - authentic appeal, higher engagement |
+| `explicit` | Explicit | 2.67 | Explicit commercial - maximum engagement multiplier |
+
+**Usage Notes**:
+- Referenced by `creators.content_category` column
+- Multipliers applied in Volume Optimization v3.0 bump calculation
+- LOW tier creators: full multiplier applied
+- MID/HIGH/ULTRA tiers: multiplier capped at 1.5x
+
+**Added**: Migration 016 (v2.4.0)
+
+---
+
+### 4. vault_matrix
 
 Creator content inventory tracking for caption filtering.
 
@@ -306,8 +341,8 @@ Detailed caption taxonomy and quality ratings.
 CREATE TABLE caption_classifications (
     caption_id TEXT PRIMARY KEY,
     caption_type TEXT NOT NULL,
-    sub_type TEXT,
-    content_category TEXT,
+    sub_type TEXT,  -- DEPRECATED: Use content_category instead (v3.0)
+    content_category TEXT,  -- Active: Use this for content classification
     quality_tier TEXT CHECK (quality_tier IN ('HIGH', 'MID', 'LOW')),
     has_clickbait INTEGER DEFAULT 0,
     has_urgency INTEGER DEFAULT 0,
@@ -584,7 +619,7 @@ CREATE TABLE send_type_caption_type_map (
 ```
 
 **Usage Notes**:
-- Used by content-curator to find compatible captions
+- Used by caption-selection-pro to find compatible captions
 - `priority` field influences caption ranking
 - Many-to-many relationship: one send type can have multiple caption types
 
@@ -645,7 +680,7 @@ Legacy mapping for deprecated caption type transitions.
 
 ## Volume Management
 
-Volume management uses a sophisticated 8-module dynamic calculation system with multi-horizon fusion, confidence dampening, DOW distribution, and elasticity bounds.
+Volume management uses a sophisticated 10-module dynamic calculation system with multi-horizon fusion, confidence dampening, DOW distribution, elasticity bounds, bump multipliers (v3.0), and followup scaling (v3.0).
 
 ### 26. volume_predictions
 
@@ -712,7 +747,72 @@ CREATE TABLE volume_adjustment_outcomes (
 
 ---
 
-### 29. volume_assignments (deprecated, use volume_predictions)
+### 29. volume_triggers (v3.0)
+
+Performance-based triggers that automatically adjust content type allocations.
+
+**Schema**:
+```sql
+CREATE TABLE volume_triggers (
+    trigger_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creator_id TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    trigger_type TEXT NOT NULL CHECK (trigger_type IN (
+        'HIGH_PERFORMER', 'TRENDING_UP', 'EMERGING_WINNER',
+        'SATURATING', 'AUDIENCE_FATIGUE'
+    )),
+    adjustment_multiplier REAL NOT NULL,
+    reason TEXT NOT NULL,
+    confidence TEXT CHECK (confidence IN ('low', 'moderate', 'high')) DEFAULT 'moderate',
+    metrics_json TEXT,
+    detected_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    applied_count INTEGER DEFAULT 0,
+    FOREIGN KEY (creator_id) REFERENCES creators(creator_id)
+);
+```
+
+**Key Columns**:
+| Column | Type | Description |
+|--------|------|-------------|
+| `trigger_id` | INTEGER | Auto-incrementing primary key |
+| `creator_id` | TEXT | Creator this trigger applies to (FK) |
+| `content_type` | TEXT | Content type being adjusted (e.g., 'b/g_explicit') |
+| `trigger_type` | TEXT | Signal type: HIGH_PERFORMER, TRENDING_UP, EMERGING_WINNER, SATURATING, AUDIENCE_FATIGUE |
+| `adjustment_multiplier` | REAL | Volume multiplier (e.g., 1.20 = +20%, 0.85 = -15%) |
+| `reason` | TEXT | Human-readable explanation (e.g., 'RPS $245, conversion 8.2%') |
+| `confidence` | TEXT | Detection confidence: low, moderate, high |
+| `expires_at` | TEXT | ISO timestamp when trigger expires |
+| `is_active` | INTEGER | Active status (1=active, 0=deactivated) |
+| `applied_count` | INTEGER | Number of times this trigger has been applied |
+
+**Indexes**:
+- `idx_volume_triggers_creator_active` - Partial index on (creator_id) WHERE is_active = 1
+- `idx_volume_triggers_expires` - Expiration filtering
+- `idx_volume_triggers_type` - Filter by trigger_type
+
+**Trigger Types**:
+| Type | Detection Criteria | Typical Adjustment |
+|------|-------------------|-------------------|
+| HIGH_PERFORMER | RPS > $200, conversion > 6% | +20% |
+| TRENDING_UP | WoW RPS increase > 15% | +10% |
+| EMERGING_WINNER | RPS > $150, used < 3 times in 30d | +30% |
+| SATURATING | Declining engagement 3+ days | -15% |
+| AUDIENCE_FATIGUE | Open rate decline > 10% over 7d | -25% |
+
+**Usage Notes**:
+- Detected by `performance-analyst` agent during schedule generation
+- Persisted via `save_volume_triggers` MCP tool
+- Retrieved via `get_active_volume_triggers` MCP tool (auto-filters expired)
+- Applied during `get_volume_config()` calculation
+- Existing active triggers deactivated when new analysis runs
+
+**Added**: Migration 017 (v2.4.0)
+
+---
+
+### 30. volume_assignments (deprecated, use volume_predictions)
 
 Static volume assignments (legacy system).
 

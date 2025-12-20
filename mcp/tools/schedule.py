@@ -2,12 +2,17 @@
 EROS MCP Server Schedule Tools
 
 Tools for saving generated schedules to the database.
+
+Version: 3.0.0
+- Added optional validation_certificate parameter for Four-Layer Defense (v3.1)
+- Phase 1: Certificate is optional with warning logging
+- Phase 2 (future): Certificate will be required
 """
 
 import logging
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 
 from mcp.connection import get_db_connection
 from mcp.tools.base import mcp_tool
@@ -15,6 +20,99 @@ from mcp.utils.helpers import resolve_creator_id
 from mcp.utils.security import validate_creator_id
 
 logger = logging.getLogger("eros_db_server")
+
+
+def _validate_certificate(
+    certificate: Optional[dict[str, Any]],
+    items: list[dict[str, Any]],
+    creator_id: str
+) -> dict[str, Any]:
+    """
+    Validate a ValidationCertificate from quality-validator.
+
+    Phase 1 (Current): Returns validation result but doesn't block.
+    Phase 2 (Future): Will return errors that block save.
+
+    Args:
+        certificate: ValidationCertificate from quality-validator
+        items: Schedule items to validate against
+        creator_id: Creator ID for verification
+
+    Returns:
+        Dict with:
+            - valid: Whether certificate is valid
+            - warnings: List of warning messages
+            - errors: List of error messages (Phase 2)
+    """
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    # 1. Certificate presence check
+    if not certificate:
+        warnings.append("CERTIFICATE_MISSING: No validation_certificate provided. "
+                       "Schedule will be saved but validation cannot be verified. "
+                       "(Phase 1: Warning only)")
+        return {"valid": True, "warnings": warnings, "errors": errors}
+
+    # 2. Certificate freshness (< 5 minutes)
+    try:
+        cert_timestamp = certificate.get("validation_timestamp")
+        if cert_timestamp:
+            # Handle both formats: with and without timezone
+            if cert_timestamp.endswith("Z"):
+                cert_timestamp = cert_timestamp[:-1]  # Remove Z suffix
+            cert_time = datetime.fromisoformat(cert_timestamp)
+            age_seconds = (datetime.now() - cert_time).total_seconds()
+            if age_seconds > 300:  # 5 minutes
+                warnings.append(f"STALE_CERTIFICATE: Certificate is {age_seconds/60:.1f} minutes old. "
+                               "Validation may be outdated.")
+    except (ValueError, TypeError) as e:
+        warnings.append(f"INVALID_TIMESTAMP: Could not parse validation_timestamp: {e}")
+
+    # 3. Validation status check
+    status = certificate.get("validation_status")
+    if status not in ("APPROVED", "NEEDS_REVIEW"):
+        warnings.append(f"INVALID_STATUS: Certificate status '{status}' is not APPROVED or NEEDS_REVIEW")
+
+    # 4. Creator ID match
+    cert_creator = certificate.get("creator_id")
+    if cert_creator and cert_creator != creator_id:
+        warnings.append(f"CREATOR_MISMATCH: Certificate creator '{cert_creator}' != '{creator_id}'")
+
+    # 5. Item count verification
+    cert_items = certificate.get("items_validated", 0)
+    if cert_items != len(items):
+        warnings.append(f"ITEM_COUNT_MISMATCH: Certificate validated {cert_items} items, "
+                       f"but saving {len(items)} items")
+
+    # 6. Violations check
+    violations = certificate.get("violations_found", {})
+    vault_violations = violations.get("vault", 0)
+    avoid_violations = violations.get("avoid_tier", 0)
+
+    if vault_violations > 0:
+        warnings.append(f"VAULT_VIOLATIONS_IN_CERT: Certificate reports {vault_violations} vault violations")
+
+    if avoid_violations > 0:
+        warnings.append(f"AVOID_VIOLATIONS_IN_CERT: Certificate reports {avoid_violations} AVOID tier violations")
+
+    # Log certificate info
+    if certificate:
+        signature = certificate.get("certificate_signature", "unknown")
+        quality_score = certificate.get("quality_score", "unknown")
+        logger.info(f"save_schedule: Certificate received - signature={signature}, "
+                   f"score={quality_score}, status={status}")
+
+    return {
+        "valid": len(errors) == 0,
+        "warnings": warnings,
+        "errors": errors,
+        "certificate_signature": certificate.get("certificate_signature")
+    }
+
+
+# Maximum schedule items to prevent resource exhaustion
+MAX_SCHEDULE_ITEMS = 100
 
 
 @mcp_tool(
@@ -58,6 +156,25 @@ logger = logging.getLogger("eros_db_server")
                     },
                     "required": ["scheduled_date", "scheduled_time", "item_type", "channel"]
                 }
+            },
+            "validation_certificate": {
+                "type": "object",
+                "description": "Optional ValidationCertificate from quality-validator (Four-Layer Defense v3.1). Phase 1: Optional with warning. Phase 2: Will be required.",
+                "properties": {
+                    "certificate_version": {"type": "string"},
+                    "creator_id": {"type": "string"},
+                    "validation_timestamp": {"type": "string"},
+                    "schedule_hash": {"type": "string"},
+                    "avoid_types_hash": {"type": "string"},
+                    "vault_types_hash": {"type": "string"},
+                    "items_validated": {"type": "integer"},
+                    "quality_score": {"type": "number"},
+                    "validation_status": {"type": "string", "enum": ["APPROVED", "NEEDS_REVIEW", "REJECTED"]},
+                    "checks_performed": {"type": "object"},
+                    "violations_found": {"type": "object"},
+                    "upstream_proof_verified": {"type": "boolean"},
+                    "certificate_signature": {"type": "string"}
+                }
             }
         },
         "required": ["creator_id", "week_start", "items"]
@@ -66,7 +183,8 @@ logger = logging.getLogger("eros_db_server")
 def save_schedule(
     creator_id: str,
     week_start: str,
-    items: list[dict[str, Any]]
+    items: list[dict[str, Any]],
+    validation_certificate: Optional[dict[str, Any]] = None
 ) -> dict[str, Any]:
     """
     Save generated schedule to database.
@@ -74,10 +192,15 @@ def save_schedule(
     Creates a schedule_template record and inserts all schedule_items.
     Supports both legacy item_type/channel format and new send_type_key/channel_key format.
 
+    Four-Layer Defense (v3.1):
+        - Layer 4 (this function) validates the ValidationCertificate from quality-validator
+        - Phase 1 (current): Certificate is optional, warnings logged if missing
+        - Phase 2 (future): Certificate will be required, save blocked if invalid
+
     Args:
         creator_id: The creator_id for the schedule.
         week_start: ISO format date for week start (YYYY-MM-DD).
-        items: List of schedule items, each containing:
+        items: List of schedule items (max 100), each containing:
             - scheduled_date: ISO date string (required)
             - scheduled_time: Time string HH:MM (required)
             - item_type: Legacy type of item (e.g., 'ppv', 'bump')
@@ -96,6 +219,9 @@ def save_schedule(
             - media_type: 'none', 'picture', 'gif', 'video', 'flyer'
             - campaign_goal: Revenue goal for the item
             - parent_item_id: Parent item ID for followups
+        validation_certificate: Optional ValidationCertificate from quality-validator.
+            Contains validation proof including vault compliance, AVOID tier exclusion,
+            and quality score. Phase 1: Optional with warning. Phase 2: Required.
 
     Returns:
         Dictionary containing:
@@ -103,7 +229,19 @@ def save_schedule(
             - template_id: ID of created template
             - items_created: Number of items inserted
             - warnings: List of validation warnings (if any)
+            - certificate_validation: Certificate validation result (if provided)
     """
+    # Payload size validation (prevent resource exhaustion)
+    if len(items) > MAX_SCHEDULE_ITEMS:
+        logger.warning(f"save_schedule: Payload exceeds maximum. Received {len(items)} items, max is {MAX_SCHEDULE_ITEMS}")
+        return {"error": f"Schedule exceeds maximum of {MAX_SCHEDULE_ITEMS} items. Received: {len(items)}"}
+
+    # Validate certificate (Phase 1: warnings only)
+    cert_validation = _validate_certificate(validation_certificate, items, creator_id)
+    if cert_validation["warnings"]:
+        for warning in cert_validation["warnings"]:
+            logger.warning(f"save_schedule certificate: {warning}")
+
     # Input validation
     is_valid, error_msg = validate_creator_id(creator_id)
     if not is_valid:
@@ -241,6 +379,9 @@ def save_schedule(
 
         conn.commit()
 
+        # Combine item warnings with certificate warnings
+        all_warnings = warnings + cert_validation.get("warnings", [])
+
         result: dict[str, Any] = {
             "success": True,
             "template_id": template_id,
@@ -248,8 +389,22 @@ def save_schedule(
             "week_start": week_start,
             "week_end": week_end
         }
-        if warnings:
-            result["warnings"] = warnings
+        if all_warnings:
+            result["warnings"] = all_warnings
+
+        # Include certificate validation info if certificate was provided
+        if validation_certificate:
+            result["certificate_validation"] = {
+                "valid": cert_validation["valid"],
+                "signature": cert_validation.get("certificate_signature"),
+                "quality_score": validation_certificate.get("quality_score"),
+                "status": validation_certificate.get("validation_status")
+            }
+        else:
+            result["certificate_validation"] = {
+                "valid": True,  # Phase 1: No certificate is valid (with warning)
+                "phase_1_warning": "No certificate provided - schedule saved without validation proof"
+            }
 
         return result
     except sqlite3.Error as e:

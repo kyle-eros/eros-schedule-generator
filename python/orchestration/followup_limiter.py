@@ -5,19 +5,25 @@ This module enforces the maximum daily followup limit using multi-factor
 prioritization to prevent audience saturation while maximizing revenue potential.
 
 Key Features:
-- Maximum 4 followups per day to prevent subscriber fatigue
+- Maximum followups per day (default 4, dynamic via MCP) to prevent subscriber fatigue
 - Multi-factor prioritization based on revenue, recency, and engagement
 - In-place schedule modification with detailed audit trail
 - Graceful handling of missing data with sensible defaults
 
 Wave 3 Specification Implementation:
-- Rule: Maximum 4 followups per day to prevent saturation
+- Rule: Maximum followups per day to prevent saturation (dynamic via MCP)
 - Prioritization: By parent PPV estimated revenue (and other factors)
 
 Algorithm Details:
 - Revenue weight (50%): Prioritizes high-value parent PPVs
 - Recency weight (30%): Favors recently sent parent PPVs
 - Engagement weight (20%): Considers historical engagement rates
+
+DEPRECATION NOTICE (v3.0):
+The fixed MAX_FOLLOWUPS_PER_DAY constant (4) is maintained for backward compatibility
+but should be replaced with dynamic values from get_volume_config() MCP tool.
+Use volume_config.followup_volume_scaled for the dynamically calculated limit.
+Hard cap of 5 followups/day is enforced in bump_multiplier.py.
 """
 
 from datetime import datetime
@@ -29,7 +35,11 @@ from typing import Any, TypedDict
 # =============================================================================
 
 
-MAX_FOLLOWUPS_PER_DAY: int = 4
+# DEPRECATED (v3.0): Use volume_config.followup_volume_scaled from MCP instead
+# This constant is maintained for backward compatibility only.
+# Dynamic limit from get_volume_config() should be preferred.
+# Hard cap of 5 followups/day is enforced in bump_multiplier.py.
+MAX_FOLLOWUPS_PER_DAY: int = 4  # Legacy default, prefer MCP dynamic value
 
 # Multi-factor weights for followup prioritization
 FOLLOWUP_WEIGHTS: dict[str, float] = {

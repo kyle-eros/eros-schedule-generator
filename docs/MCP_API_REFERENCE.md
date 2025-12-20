@@ -29,7 +29,7 @@ Comprehensive technical documentation for the EROS Database Server MCP (Model Co
 
 ## Overview
 
-The EROS MCP Server provides 17 tools for interacting with the EROS Schedule Generator database. All tools follow a consistent pattern:
+The EROS MCP Server provides 18 tools for interacting with the EROS Schedule Generator database. All tools follow a consistent pattern:
 
 - **Input Validation**: All parameters validated before database operations
 - **Error Handling**: Consistent error response format

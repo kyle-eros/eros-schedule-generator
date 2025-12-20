@@ -2,6 +2,8 @@
 EROS MCP Server Send Types Tools
 
 Tools for retrieving send type definitions and volume configuration.
+
+Version: 3.0.0
 """
 
 import logging
@@ -224,13 +226,52 @@ def get_volume_config(creator_id: str) -> dict[str, Any]:
     Get extended volume configuration for a creator using dynamic calculation.
 
     Calculates volume based on fan count, saturation/opportunity scores,
-    and performance trends instead of static assignments.
+    and performance trends instead of static assignments. Includes Volume
+    Optimization v3.0 Wave 2 fields for bump multipliers and followup scaling.
 
     Args:
         creator_id: The creator_id or page_name.
 
     Returns:
-        Dictionary containing volume configuration with calculation metadata.
+        Dictionary containing volume configuration with calculation metadata:
+            - volume_level: Tier classification (Low/Mid/High/Ultra)
+            - ppv_per_day: Legacy field (revenue items per day)
+            - bump_per_day: Legacy field (engagement items per day)
+            - revenue_items_per_day: Revenue sends per day
+            - engagement_items_per_day: Engagement sends per day
+            - retention_items_per_day: Retention sends per day
+            - bundle_per_week: Bundle sends per week
+            - game_per_week: Game sends per week
+            - followup_per_day: Followup sends per day (tier-based cap)
+            - weekly_distribution: Dict mapping day index (0-6) to volume
+            - content_allocations: Dict mapping content type to volume
+            - confidence_score: Calculation confidence (0.0-1.0)
+            - elasticity_capped: Whether elasticity cap was applied
+            - caption_warnings: List of caption shortage warnings
+            - dow_multipliers_used: Day-of-week multipliers applied
+            - adjustments_applied: List of adjustment names applied
+            - fused_saturation: Saturation after multi-horizon fusion
+            - fused_opportunity: Opportunity after multi-horizon fusion
+            - prediction_id: Database ID for prediction tracking
+            - divergence_detected: Multi-horizon divergence flag
+            - message_count: Messages analyzed for confidence
+            - total_weekly_volume: Sum of weekly distribution
+            - has_warnings: Whether caption warnings exist
+            - is_high_confidence: Whether confidence >= 0.6
+            - bump_multiplier: Content category multiplier (1.0-2.67x)
+            - bump_adjusted_engagement: Engagement after bump applied
+            - content_category: lifestyle/softcore/amateur/explicit
+            - bump_capped: Whether multiplier was tier-capped
+            - followup_volume_scaled: Scaled followup count
+            - followup_rate_used: Rate applied (default 0.80)
+            - calculation_source: "optimized" or "dynamic" (fallback)
+            - fan_count: Creator's fan count
+            - page_type: "paid" or "free"
+            - saturation_score: Original saturation (before fusion)
+            - opportunity_score: Original opportunity (before fusion)
+            - revenue_trend: Revenue trend percentage
+            - data_source: Source of performance data
+            - tracking_date: Date of performance tracking
     """
     # Import here to avoid circular imports
     from python.volume.dynamic_calculator import (
@@ -360,6 +401,14 @@ def get_volume_config(creator_id: str) -> dict[str, Any]:
                 "total_weekly_volume": result.total_weekly_volume,
                 "has_warnings": result.has_warnings,
                 "is_high_confidence": result.is_high_confidence,
+
+                # Volume Optimization v3.0 Wave 2 fields
+                "bump_multiplier": result.bump_multiplier,
+                "bump_adjusted_engagement": result.bump_adjusted_engagement,
+                "content_category": result.content_category,
+                "bump_capped": result.bump_capped,
+                "followup_volume_scaled": result.followup_volume_scaled,
+                "followup_rate_used": result.followup_rate_used,
 
                 # Metadata
                 "calculation_source": "optimized",

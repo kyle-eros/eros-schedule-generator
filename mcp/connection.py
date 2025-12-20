@@ -17,8 +17,10 @@ Configuration via environment variables:
 """
 
 import asyncio
+import functools
 import logging
 import os
+import random
 import sqlite3
 import sys
 import threading
@@ -27,7 +29,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import Queue, Empty, Full
-from typing import Generator, Optional, Set
+from typing import Callable, Generator, Optional, Set, TypeVar
+
+T = TypeVar('T')
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +44,64 @@ logger = logging.getLogger("eros_db_server.connection")
 # Database path configuration - Dynamic path resolution for portability
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 DEFAULT_DB_PATH = str(PROJECT_ROOT / "database" / "eros_sd_main.db")
+
+
+def with_retry(
+    max_attempts: int = 3,
+    base_delay: float = 0.5,
+    max_delay: float = 10.0,
+    backoff_factor: float = 2.0,
+    jitter: float = 0.1,
+    retryable_exceptions: tuple = (sqlite3.OperationalError, sqlite3.InterfaceError)
+):
+    """
+    Decorator for exponential backoff retry on transient database errors.
+
+    Args:
+        max_attempts: Maximum number of retry attempts (default: 3)
+        base_delay: Initial delay in seconds (default: 0.5s)
+        max_delay: Maximum delay cap (default: 10s)
+        backoff_factor: Multiplier for each retry (default: 2.0)
+        jitter: Random jitter factor 0-1 (default: 0.1)
+        retryable_exceptions: Tuple of exceptions that trigger retry
+
+    Example:
+        @with_retry(max_attempts=3, backoff_factor=2)
+        def get_db_connection():
+            ...
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            last_exception = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except retryable_exceptions as e:
+                    last_exception = e
+
+                    if attempt == max_attempts:
+                        logger.error(
+                            f"All {max_attempts} retry attempts exhausted for {func.__name__}: {e}"
+                        )
+                        raise
+
+                    # Calculate delay with exponential backoff and jitter
+                    delay = min(base_delay * (backoff_factor ** (attempt - 1)), max_delay)
+                    delay_with_jitter = delay * (1 + random.uniform(-jitter, jitter))
+
+                    logger.warning(
+                        f"Retry {attempt}/{max_attempts} for {func.__name__} "
+                        f"after {delay_with_jitter:.2f}s: {e}"
+                    )
+
+                    time.sleep(delay_with_jitter)
+
+            raise last_exception  # Should never reach here
+
+        return wrapper
+    return decorator
 
 
 def validate_db_path(path: str) -> str:
@@ -221,6 +283,7 @@ class ConnectionPool:
             except Exception as e:
                 logger.warning(f"Failed to pre-populate pool: {e}")
 
+    @with_retry(max_attempts=3, backoff_factor=2.0)
     def _create_connection(self) -> PooledConnection:
         """
         Create a new pooled connection with security pragmas.
@@ -554,6 +617,7 @@ def get_db_path() -> str:
     return DB_PATH
 
 
+@with_retry(max_attempts=3, backoff_factor=2.0)
 def get_db_connection() -> sqlite3.Connection:
     """
     Create a database connection with row factory for dict-like access.

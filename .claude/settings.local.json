@@ -1,14 +1,15 @@
 {
+  "cleanupPeriodDays": 30,
+  "spinnerTipsEnabled": false,
+  "alwaysThinkingEnabled": true,
   "permissions": {
     "allow": [
       "WebSearch",
       "Skill(eros-schedule-generator)",
-
       "SlashCommand(/eros:analyze:*)",
       "SlashCommand(/eros:generate:*)",
       "SlashCommand(/eros:validate:*)",
       "SlashCommand(/eros:creators:*)",
-
       "mcp__eros-db__execute_query",
       "mcp__eros-db__get_active_creators",
       "mcp__eros-db__get_best_timing",
@@ -22,8 +23,26 @@
       "mcp__eros-db__get_send_types",
       "mcp__eros-db__get_top_captions",
       "mcp__eros-db__get_vault_availability",
+      "mcp__eros-db__get_volume_assignment",
       "mcp__eros-db__get_volume_config",
-      "mcp__eros-db__save_schedule"
+      "mcp__eros-db__save_schedule",
+      "mcp__eros-db__get_active_volume_triggers",
+      "mcp__eros-db__save_volume_triggers",
+      "mcp__eros-db__get_caption_predictions",
+      "mcp__eros-db__save_caption_prediction",
+      "mcp__eros-db__record_prediction_outcome",
+      "mcp__eros-db__get_prediction_weights",
+      "mcp__eros-db__update_prediction_weights",
+      "mcp__eros-db__get_churn_risk_scores",
+      "mcp__eros-db__get_win_back_candidates",
+      "mcp__eros-db__get_active_experiments",
+      "mcp__eros-db__save_experiment_results",
+      "mcp__eros-db__update_experiment_allocation",
+      "mcp__eros-db__get_attention_metrics",
+      "mcp__eros-db__get_caption_attention_scores",
+      "mcp__eros-db__get_content_type_earnings_ranking",
+      "mcp__eros-db__get_top_captions_by_earnings",
+      "mcp__eros-db__validate_caption_structure"
     ],
     "deny": [],
     "ask": []

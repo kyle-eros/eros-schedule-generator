@@ -2,7 +2,7 @@
 
 > Migration system documentation for the EROS Schedule Generator database schema. All migrations are designed to be idempotent and can be safely run multiple times.
 
-**Version:** 2.3.0 | **Updated:** 2025-12-18
+**Version:** 3.0.0 | **Updated:** 2025-12-19
 
 ---
 
@@ -262,6 +262,63 @@ sqlite3 database/eros_sd_main.db < database/migrations/wave6_fix_caption_require
 
 ---
 
+### Pipeline Supercharge Migrations (v3.0)
+
+#### 018_pipeline_supercharge.sql
+**Purpose**: Create infrastructure for 14-phase pipeline with ML predictions, churn analysis, A/B testing, and attention scoring
+**Created**: 2025-12-19
+**Version**: 3.0.0
+
+**Tables Added** (9 total):
+
+| Table | Purpose |
+|-------|---------|
+| `caption_predictions` | ML-style caption performance predictions (RPS, open rate, conversion) |
+| `prediction_outcomes` | Actual vs predicted for feedback loop learning |
+| `prediction_weights` | Feature weights for self-improving prediction model (12 initial features) |
+| `churn_risk_scores` | Subscriber churn risk analysis by segment (LOW/MODERATE/HIGH/CRITICAL) |
+| `win_back_campaigns` | Win-back campaign tracking for lapsed subscribers |
+| `ab_experiments` | A/B experiment definitions (5 experiment types) |
+| `experiment_variants` | Experiment variant configurations and allocation |
+| `experiment_results` | Experiment outcome metrics with statistical significance |
+| `caption_attention_scores` | Attention quality scores per caption (hook, depth, CTA, emotion) |
+
+**Indexes Created**: 19 indexes for optimal query performance
+
+**Initial Data**:
+- 12 prediction weight features seeded across 4 categories:
+  - Structural: caption_length, emoji_count, hook_strength, cta_strength
+  - Performance: historical_rps, conversion_rate, content_tier
+  - Temporal: day_of_week, time_of_day, recency_score
+  - Creator: persona_match, voice_consistency
+
+**Run Command**:
+```bash
+sqlite3 database/eros_sd_main.db < database/migrations/018_pipeline_supercharge.sql
+```
+
+**Rollback**:
+```bash
+sqlite3 database/eros_sd_main.db < database/migrations/018_rollback.sql
+```
+
+**Dependencies**: Requires migration 017 (volume_triggers)
+
+**Verification**:
+```sql
+-- Verify all 9 tables created
+SELECT name FROM sqlite_master
+WHERE type='table'
+AND name IN ('caption_predictions', 'prediction_outcomes', 'prediction_weights',
+             'churn_risk_scores', 'win_back_campaigns', 'ab_experiments',
+             'experiment_variants', 'experiment_results', 'caption_attention_scores');
+
+-- Verify prediction weights seeded
+SELECT COUNT(*) FROM prediction_weights;  -- Should be 12
+```
+
+---
+
 ## Execution Order
 
 For a fresh database or complete rebuild, run migrations in this order:
@@ -284,6 +341,9 @@ sqlite3 database/eros_sd_main.db < database/migrations/008_schedule_items_enhanc
 sqlite3 database/eros_sd_main.db < database/migrations/009_caption_bank_missing_columns.sql
 sqlite3 database/eros_sd_main.db < database/migrations/010_wave6_update_confidence.sql
 sqlite3 database/eros_sd_main.db < database/migrations/wave6_fix_caption_requirements.sql
+
+# Pipeline Supercharge (v3.0)
+sqlite3 database/eros_sd_main.db < database/migrations/018_pipeline_supercharge.sql
 ```
 
 ### Single Command Execution
@@ -305,7 +365,8 @@ for migration in \
   008_schedule_items_enhancement.sql \
   009_caption_bank_missing_columns.sql \
   010_wave6_update_confidence.sql \
-  wave6_fix_caption_requirements.sql
+  wave6_fix_caption_requirements.sql \
+  018_pipeline_supercharge.sql
 do
   echo "Running migration: $migration"
   sqlite3 database/eros_sd_main.db < database/migrations/$migration
@@ -330,6 +391,7 @@ Some migrations include rollback scripts:
 
 - `007_rollback.sql` - Rollback schedule generator enhancements
 - `008_rollback.sql` - Rollback send type system enhancements
+- `018_rollback.sql` - Rollback pipeline supercharge tables (9 tables)
 
 ### Rollback Execution
 
@@ -339,6 +401,9 @@ sqlite3 database/eros_sd_main.db < database/migrations/007_rollback.sql
 
 # Rollback migration 008
 sqlite3 database/eros_sd_main.db < database/migrations/008_rollback.sql
+
+# Rollback migration 018 (Pipeline Supercharge)
+sqlite3 database/eros_sd_main.db < database/migrations/018_rollback.sql
 ```
 
 ### Manual Rollback
@@ -521,4 +586,4 @@ VALUES ('XXX', 'Migration description');
 
 ---
 
-*Version 2.3.0 | Last Updated: 2025-12-18*
+*Version 3.0.0 | Last Updated: 2025-12-19*

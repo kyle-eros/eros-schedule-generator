@@ -845,8 +845,8 @@ class TestMCPProtocol:
         assert response["id"] == 1
         assert "result" in response
         assert "tools" in response["result"]
-        # Should have 16 tools (get_audience_targets removed in v2.3.0)
-        assert len(response["result"]["tools"]) == 16
+        # Should have 18 tools (16 original + 2 volume_triggers tools added)
+        assert len(response["result"]["tools"]) == 18
 
     @pytest.mark.unit
     def test_handle_tools_call_unknown_tool(self):

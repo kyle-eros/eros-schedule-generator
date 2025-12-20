@@ -47,6 +47,16 @@ from python.volume.tier_config import (
     SATURATION_THRESHOLDS,
     OPPORTUNITY_THRESHOLDS,
 )
+from python.volume.bump_multiplier import (
+    BumpMultiplierResult,
+    FollowupVolumeResult,
+    calculate_bump_multiplier,
+    calculate_followup_volume,
+    get_creator_content_category,
+    apply_bump_to_engagement,
+    BUMP_MULTIPLIERS,
+    DEFAULT_CONTENT_CATEGORY,
+)
 
 # Module logger with structured output
 logger = get_logger(__name__)
@@ -561,6 +571,14 @@ class OptimizedVolumeResult:
     divergence_detected: bool = False
     dow_multipliers_used: dict[int, float] = field(default_factory=dict)
     message_count: int = 0
+    # Bump multiplier fields (Volume Optimization v3.0)
+    bump_multiplier: float = 1.0
+    bump_adjusted_engagement: int = 0
+    content_category: str = "softcore"
+    bump_capped: bool = False
+    # Followup scaling fields
+    followup_volume_scaled: int = 0
+    followup_rate_used: float = 0.80
 
     @property
     def total_weekly_volume(self) -> int:
@@ -797,6 +815,97 @@ def calculate_optimized_volume(
 
     except Exception as e:
         logger.warning(f"Confidence adjustment failed: {e}")
+
+    # -------------------------------------------------------------------------
+    # Step 3.5: Bump multiplier for engagement (Volume Optimization v3.0)
+    # -------------------------------------------------------------------------
+    bump_multiplier = 1.0
+    bump_adjusted_engagement = fused_config.engagement_per_day
+    content_category = DEFAULT_CONTENT_CATEGORY
+    bump_capped = False
+
+    try:
+        # Get content category from database
+        conn = sqlite3.connect(db_path)
+        try:
+            content_category = get_creator_content_category(conn, creator_id)
+        finally:
+            conn.close()
+
+        # Calculate bump multiplier
+        bump_result = calculate_bump_multiplier(
+            content_category=content_category,
+            tier=fused_config.tier,
+            page_type=context.page_type,
+        )
+
+        bump_multiplier = bump_result.multiplier
+        bump_capped = bump_result.capped
+
+        # Apply bump to engagement
+        bump_adjusted_engagement = apply_bump_to_engagement(
+            base_engagement=fused_config.engagement_per_day,
+            bump_multiplier=bump_multiplier,
+        )
+
+        # Update fused_config with adjusted engagement
+        if bump_adjusted_engagement != fused_config.engagement_per_day:
+            fused_config = VolumeConfig(
+                tier=fused_config.tier,
+                revenue_per_day=fused_config.revenue_per_day,
+                engagement_per_day=bump_adjusted_engagement,
+                retention_per_day=fused_config.retention_per_day,
+                fan_count=context.fan_count,
+                page_type=context.page_type,
+            )
+            adjustments_applied.append("bump_multiplier")
+            logger.info(
+                "Applied bump multiplier",
+                extra={
+                    "content_category": content_category,
+                    "bump_multiplier": bump_multiplier,
+                    "original_engagement": fused_config.engagement_per_day,
+                    "adjusted_engagement": bump_adjusted_engagement,
+                    "bump_capped": bump_capped,
+                }
+            )
+
+    except Exception as e:
+        logger.warning(f"Bump multiplier calculation failed: {e}")
+
+    # -------------------------------------------------------------------------
+    # Step 3.6: Followup volume scaling (Volume Optimization v3.0)
+    # -------------------------------------------------------------------------
+    followup_volume_scaled = 0
+    followup_rate_used = 0.80
+
+    try:
+        # Estimate PPV count from revenue allocation
+        estimated_ppv_count = fused_config.revenue_per_day
+
+        # Calculate scaled followup volume
+        followup_result = calculate_followup_volume(
+            ppv_count=estimated_ppv_count,
+            tier_max=5,  # Hard cap from send_type constraint
+            confidence_score=confidence_score,
+        )
+
+        followup_volume_scaled = followup_result.followup_count
+        followup_rate_used = followup_result.followup_rate
+
+        adjustments_applied.append("followup_scaling")
+        logger.info(
+            "Calculated scaled followup volume",
+            extra={
+                "ppv_count": estimated_ppv_count,
+                "followup_volume": followup_volume_scaled,
+                "rate_used": followup_rate_used,
+            }
+        )
+
+    except Exception as e:
+        logger.warning(f"Followup volume calculation failed: {e}")
+        followup_volume_scaled = min(fused_config.revenue_per_day, 4)  # Fallback
 
     # -------------------------------------------------------------------------
     # Step 4: Day-of-week multipliers
@@ -1052,6 +1161,13 @@ def calculate_optimized_volume(
         divergence_detected=divergence_detected,
         dow_multipliers_used=dow_multipliers,
         message_count=message_count,
+        # New fields for Volume Optimization v3.0
+        bump_multiplier=bump_multiplier,
+        bump_adjusted_engagement=bump_adjusted_engagement,
+        content_category=content_category,
+        bump_capped=bump_capped,
+        followup_volume_scaled=followup_volume_scaled,
+        followup_rate_used=followup_rate_used,
     )
 
     logger.info(
@@ -1087,4 +1203,7 @@ __all__ = [
     "_apply_bounds",
     "_round_volume",
     "_apply_new_creator_defaults",
+    # Bump multiplier integration (Volume Optimization v3.0)
+    "BumpMultiplierResult",
+    "FollowupVolumeResult",
 ]

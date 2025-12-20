@@ -1,7 +1,7 @@
 ---
 name: helpers
 description: Shared helper functions and constants used across all EROS schedule generator agents
-version: 2.2.0
+version: 3.0.0
 last_updated: 2025-12-17
 ---
 
@@ -2108,7 +2108,7 @@ score = calculate_anti_pattern_score(
 | **schedule-assembler** | `calculate_price()`, `calculate_price_with_confidence()`, `calculate_bundle_value_framing()`, `calculate_first_to_tip_amount()`, `determine_media_type()`, `calculate_expiration()`, `group_by()`, `classify_confidence()`, `validate_time_uniqueness()`, `validate_pattern_uniqueness()`, `validate_strategy_diversity()` |
 | **send-type-allocator** | `weighted_select()`, `weighted_random_select()`, `interleave_categories()`, `group_by()`, `calculate_first_to_tip_amount()`, `get_weekly_first_to_tip_variety()` |
 | **quality-validator** | `count_items_by_day()`, `count_by_type()`, `count_by_type_and_date()`, `classify_confidence()`, `group_by()`, `apply_confidence_dampening()` |
-| **content-curator** | `calculate_score()`, `calculate_freshness_score()`, `calculate_performance()` |
+| **caption-selection-pro** | `calculate_score()`, `calculate_freshness_score()`, `calculate_performance()` |
 | **followup-generator** | `calculate_followup_time()`, `add_minutes()`, `parse_time()` |
 | **timing-optimizer** | `group_by()`, `hours_between()`, `parse_time()` |
 | **performance-analyst** | `classify_confidence()`, `count_true_indicators()` |
@@ -2303,4 +2303,4 @@ item["suggested_price"] = price
 
 ---
 
-*This helper library ensures consistency across all 8 specialized agents and provides production-ready implementations for common operations in the EROS schedule generation pipeline.*
+*This helper library ensures consistency across all 22 specialized agents and provides production-ready implementations for common operations in the EROS schedule generation pipeline.*

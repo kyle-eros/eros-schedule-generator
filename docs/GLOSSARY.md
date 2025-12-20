@@ -12,7 +12,7 @@
 A creator with `is_active = 1` in the database who is currently scheduling content and has at least one active subscription page.
 
 **Agent**
-A specialized AI component with a specific role in the schedule generation pipeline. The system uses 9 agents: performance-analyst, send-type-allocator, content-curator, timing-optimizer, followup-generator, authenticity-engine, schedule-assembler, revenue-optimizer, and quality-validator.
+A specialized AI component with a specific role in the schedule generation pipeline. The system uses 9 agents: performance-analyst, send-type-allocator, caption-selection-pro, timing-optimizer, followup-generator, authenticity-engine, schedule-assembler, revenue-optimizer, and quality-validator.
 
 **Algorithm Version**
 The version identifier of the scheduling algorithm used to generate a template, stored in `schedule_templates.algorithm_version` (e.g., `multi_agent_v1`).
@@ -443,7 +443,7 @@ Premium subscription tier promoted via tip campaigns ($200+). Send type: `vip_pr
 Frequency of sends per day/week.
 
 **Volume Assignment**
-Creator-specific send frequency configuration. Stored in `volume_assignments` table.
+Creator-specific send frequency configuration. DEPRECATED: The `volume_assignments` table is deprecated as of v3.0. Use `get_volume_config()` MCP tool for dynamic volume calculation based on real-time performance metrics.
 
 **Volume Config**
 Settings controlling daily message frequency by category (revenue/engagement/retention).

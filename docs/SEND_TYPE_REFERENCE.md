@@ -8,9 +8,9 @@
 
 1. [Quick Reference](#quick-reference)
 2. [Send Types by Category](#send-types-by-category)
-   - [Revenue Types (7)](#revenue-types-7)
+   - [Revenue Types (9)](#revenue-types-9)
    - [Engagement Types (9)](#engagement-types-9)
-   - [Retention Types (5)](#retention-types-5)
+   - [Retention Types (4)](#retention-types-4)
 3. [Detailed Send Type Profiles](#detailed-send-type-profiles)
 4. [Caption Type Mappings Summary](#caption-type-mappings-summary)
 5. [Usage Guidelines by Category](#usage-guidelines-by-category)
@@ -968,7 +968,7 @@ Send types focused on subscriber retention, renewal, and re-engagement.
 1. Check `max_per_day` column in `send_types` table
 2. Reduce quantity of that send type in schedule
 3. Distribute across more days
-4. Adjust volume configuration in `volume_assignments` table
+4. Adjust volume configuration via `get_volume_config()` MCP tool (NOTE: `volume_assignments` table is DEPRECATED - use dynamic calculation)
 
 ---
 
@@ -984,5 +984,5 @@ Send types focused on subscriber retention, renewal, and re-engagement.
 
 ---
 
-*Version 2.1.0 | Last Updated: 2025-12-16*
+*Version 2.2.0 | Last Updated: 2025-12-19*
 *Total Send Types: 22 (21 active + 1 deprecated) | Categories: 3 | Channels: 5 | Audience Targets: 10*

@@ -1,11 +1,11 @@
 # EROS Schedule Generator
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![Claude Code](https://img.shields.io/badge/claude--code-2025-purple)
 ![Status](https://img.shields.io/badge/status-production-brightgreen)
 
-AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 9 specialized agents across 9 phases to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
+AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates 22 specialized agents across 14 phases to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
 
 ## Overview
 
@@ -13,7 +13,7 @@ EROS (Engagement and Revenue Optimization System) is an intelligent scheduling p
 
 ## Key Features
 
-- **9 Specialized AI Agents Working in Concert** - Multi-agent pipeline with performance analysis, content curation, timing optimization, authenticity engine, and quality validation
+- **22 Specialized AI Agents Working in Concert** - Multi-agent pipeline with performance analysis, content curation, timing optimization, authenticity engine, and quality validation
 - **22 Distinct Send Types Across 3 Categories** - Revenue (9 types), Engagement (9 types), Retention (4 types)
 - **Anti-AI Humanization** - Authenticity engine ensures captions pass platform AI detection while maintaining persona consistency
 - **ML-Optimized Timing Recommendations** - Historical analysis of 71,998+ messages to identify peak engagement windows
@@ -27,7 +27,7 @@ EROS (Engagement and Revenue Optimization System) is an intelligent scheduling p
 
 - Claude Code MAX subscription
 - Python 3.11+
-- SQLite database (included: 250MB, 59 tables)
+- SQLite database (included: 250MB, 85 tables)
 
 ### Basic Usage
 
@@ -66,31 +66,55 @@ Generate schedule for alexia using only revenue types
 
 ## System Architecture
 
-### 9-Phase Pipeline
+### 14-Phase Pipeline
 
-1. **Performance Analysis** - Saturation/opportunity scoring from volume performance tracking
-2. **Send Type Allocation** - Category-based distribution with constraint validation
-3. **Content Curation** - Caption selection with freshness and performance scoring
-4. **Timing Optimization** - Historical analysis for optimal posting windows
-5. **Followup Generation** - Auto-generate PPV followups with delay rules
-6. **Authenticity Engine** - Anti-AI humanization and persona consistency
-7. **Schedule Assembly** - Final schedule structure creation
-8. **Revenue Optimization** - Pricing and positioning optimization
-9. **Quality Validation** - Final approval with comprehensive checks
+**Pre-Pipeline Validation (Phase 0-0.5)**
+- Phase 0: **Preflight Check** - Validate creator readiness
+- Phase 0.5: **Retention Risk Analysis** - Churn analysis and retention recommendations
 
-### 9 Specialized Agents
+**Core Pipeline (Phase 1-9.5)**
+- Phase 1: **Performance Analysis** - Saturation/opportunity scoring
+- Phase 2: **Send Type Allocation** - Category-based distribution
+- Phase 2.5: **Variety Enforcement** - Content diversity enforcement
+- Phase 2.75: **Performance Prediction** - ML-style predictions
+- Phase 3: **Content Curation** - Caption selection with freshness scoring
+- Phase 4: **Timing Optimization** - Optimal posting windows
+- Phase 5: **Followup Generation** - Auto-generate PPV followups
+- Phase 5.5: **Followup Timing** - Dynamic followup delays
+- Phase 6: **Authenticity Engine** - Anti-AI humanization
+- Phase 7: **Schedule Assembly** - Final schedule structure creation
+- Phase 7.5: **Funnel Flow** - Engagement-to-conversion optimization
+- Phase 8: **Revenue Optimization** - Pricing and positioning
+- Phase 8.5: **Price & Review** - PPV pricing + schedule critic
+- Phase 9: **Quality Validation** - FINAL GATE with vault compliance
+- Phase 9.5: **Anomaly Detection** - Statistical anomaly detection
+
+### 22 Specialized Agents
 
 | Agent | Model | Phase | Responsibility |
 |-------|-------|-------|----------------|
-| performance-analyst | Sonnet | 1 | Volume calibration and saturation detection |
-| send-type-allocator | Sonnet | 2 | Daily send type distribution |
-| content-curator | Sonnet | 3 | Caption selection with freshness scoring |
-| timing-optimizer | Sonnet | 4 | Optimal posting time calculation |
-| followup-generator | Sonnet | 5 | PPV followup automation |
-| authenticity-engine | Opus | 6 | Anti-AI humanization [NEW] |
-| schedule-assembler | Sonnet | 7 | Final schedule assembly |
-| revenue-optimizer | Sonnet | 8 | Pricing optimization [NEW] |
-| quality-validator | Sonnet | 9 | Requirements validation |
+| preflight-checker | Haiku | 0 | Validate creator readiness (BLOCK) |
+| retention-risk-analyzer | Opus | 0.5 | Churn analysis |
+| performance-analyst | Sonnet | 1 | Volume calibration |
+| send-type-allocator | Haiku | 2 | Daily distribution |
+| variety-enforcer | Sonnet | 2.5 | Diversity enforcement |
+| content-performance-predictor | Opus | 2.75 | ML predictions |
+| caption-selection-pro | Sonnet | 3 | Caption selection (VAULT GATE) |
+| attention-quality-scorer | Sonnet | 3 | Attention scoring (parallel) |
+| timing-optimizer | Haiku | 4 | Posting times |
+| followup-generator | Haiku | 5 | PPV followups |
+| followup-timing-optimizer | Haiku | 5.5 | Followup timing |
+| authenticity-engine | Sonnet | 6 | Anti-AI humanization |
+| schedule-assembler | Haiku | 7 | Schedule assembly |
+| funnel-flow-optimizer | Sonnet | 7.5 | Funnel optimization |
+| revenue-optimizer | Sonnet | 8 | Revenue optimization |
+| ppv-price-optimizer | Opus | 8.5 | Dynamic PPV pricing |
+| schedule-critic | Opus | 8.5 | Strategic review (BLOCK) |
+| quality-validator | Sonnet | 9 | FINAL GATE validation |
+| anomaly-detector | Haiku | 9.5 | Anomaly detection |
+| ab-testing-orchestrator | Opus | Parallel | A/B experiments |
+| win-back-specialist | Sonnet | Async | Win-back campaigns |
+| caption-optimizer | Sonnet | Utility | On-demand optimization |
 
 ## Documentation
 
@@ -98,7 +122,7 @@ Generate schedule for alexia using only revenue types
 |----------|-------------|
 | [Getting Started](docs/GETTING_STARTED.md) | Step-by-step onboarding guide |
 | [User Guide](docs/USER_GUIDE.md) | Comprehensive user documentation |
-| [API Reference](docs/API_REFERENCE.md) | Complete MCP tool documentation (16 tools) |
+| [API Reference](docs/API_REFERENCE.md) | Complete MCP tool documentation (18 tools) |
 | [Send Type Reference](docs/SEND_TYPE_REFERENCE.md) | All 22 send types with examples |
 | [Architecture Blueprint](docs/SCHEDULE_GENERATOR_BLUEPRINT.md) | System design and technical details |
 | [Enhanced Send Type System](docs/ENHANCED_SEND_TYPE_ARCHITECTURE.md) | v2.0 send type implementation |
@@ -109,9 +133,9 @@ Generate schedule for alexia using only revenue types
 EROS-SD-MAIN-PROJECT/
 ├── .claude/
 │   ├── skills/eros-schedule-generator/    # Main skill entry point
-│   └── agents/                             # 9 specialized agent definitions
+│   └── agents/                             # 22 specialized agent definitions
 ├── mcp/
-│   └── eros_db_server.py                   # MCP server (16 database tools)
+│   └── eros_db_server.py                   # MCP server (18 database tools)
 ├── python/
 │   ├── analytics/                          # Performance scoring algorithms
 │   ├── caption/                            # Caption selection logic
@@ -125,7 +149,7 @@ EROS-SD-MAIN-PROJECT/
 ## Database
 
 **Size**: 250MB
-**Tables**: 59 (37 active)
+**Tables**: 85 (37 active)
 **Creators**: 37 active
 **Captions**: 58,763
 **Mass Messages**: 71,998
@@ -165,11 +189,11 @@ EROS-SD-MAIN-PROJECT/
 
 ## Version History
 
-### v2.3.0 (Current)
+### v3.0.0 (Current)
 - Removed audience targeting system (manual in OnlyFans platform)
 - Added authenticity-engine agent (Phase 6) for anti-AI humanization
 - Added revenue-optimizer agent (Phase 8) for pricing optimization
-- Expanded pipeline from 7 to 9 phases
+- Expanded pipeline to 14 phases with 22 specialized agents
 - Consolidated from 17 to 16 MCP tools
 - Documentation sync and version alignment
 
@@ -205,4 +229,4 @@ This is a proprietary system. Contributions are managed internally by the EROS D
 
 ---
 
-**Built with Claude Code MAX** | **Powered by Anthropic Sonnet 4.5** | **Version 2.3.0**
+**Built with Claude Code MAX** | **Powered by Anthropic Sonnet 4.5** | **Version 3.0.0**

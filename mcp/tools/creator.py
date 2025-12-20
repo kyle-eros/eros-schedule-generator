@@ -3,6 +3,8 @@ EROS MCP Server Creator Tools
 
 Tools for retrieving creator profiles, active creators, persona profiles,
 and vault availability information.
+
+Version: 3.0.0
 """
 
 import logging

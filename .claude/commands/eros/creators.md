@@ -1,4 +1,6 @@
 ---
+name: eros-creators
+model: haiku
 description: List all active creators with performance metrics and tier classification. Use to find valid creator IDs before running other commands.
 allowed-tools:
   - mcp__eros-db__get_active_creators

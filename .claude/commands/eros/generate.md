@@ -1,4 +1,6 @@
 ---
+name: eros-generate
+model: sonnet
 description: Generate an optimized weekly schedule for a creator. Use PROACTIVELY when user mentions schedules, content planning, or PPV optimization.
 allowed-tools:
   - mcp__eros-db__get_creator_profile
@@ -16,7 +18,7 @@ argument-hint: <creator_id_or_name> [week_start] (e.g., "grace_bennett", "2025-1
 
 # Generate Schedule Command
 
-Generate an optimized weekly schedule for the specified creator using the full 9-phase orchestration pipeline.
+Generate an optimized weekly schedule for the specified creator using the full 14-phase orchestration pipeline.
 
 ## Arguments
 
@@ -42,11 +44,11 @@ Generate an optimized weekly schedule for the specified creator using the full 9
 
 ## Execution
 
-Invoke the eros-schedule-generator skill to orchestrate the complete 9-phase schedule generation pipeline:
+Invoke the eros-schedule-generator skill to orchestrate the complete 14-phase schedule generation pipeline:
 
 1. **Performance Analysis** - Assess saturation/opportunity scores (performance-analyst)
 2. **Send Type Allocation** - Distribute 22 send types across the week (send-type-allocator)
-3. **Content Curation** - Select type-appropriate captions with freshness scoring (content-curator)
+3. **Content Curation** - Select type-appropriate captions with freshness scoring (caption-selection-pro)
 4. **Timing Optimization** - Calculate optimal posting times (timing-optimizer)
 5. **Followup Generation** - Auto-generate PPV followups (followup-generator)
 6. **Authenticity Engine** - Apply anti-AI humanization and persona consistency (authenticity-engine) [NEW]
@@ -323,7 +325,7 @@ Resolution: Add vault_matrix entries for creator's content types.
 
 | Metric | Typical Value | Notes |
 |--------|---------------|-------|
-| Execution Time | 20-50 seconds | Full 9-phase pipeline |
+| Execution Time | 20-50 seconds | Full 14-phase pipeline |
 | Database Queries | 25-35 | Multiple tools across all phases |
 | Memory Usage | Moderate | Caches caption pool and send types |
 
@@ -341,7 +343,7 @@ Resolution: Add vault_matrix entries for creator's content types.
 |-------|-------|------------------|
 | 1 | performance-analyst | 2-4 seconds |
 | 2 | send-type-allocator | 1-2 seconds |
-| 3 | content-curator | 5-10 seconds |
+| 3 | caption-selection-pro | 5-10 seconds |
 | 4 | timing-optimizer | 2-3 seconds |
 | 5 | followup-generator | 1-2 seconds |
 | 6 | authenticity-engine [NEW] | 1 second |
@@ -384,7 +386,7 @@ To generate schedules for multiple creators:
 |-------|-------|----------------|---------------|
 | 1 | performance-analyst | get_creator_profile, get_volume_config, get_performance_trends, get_vault_availability | 4 |
 | 2 | send-type-allocator | get_send_types | 1 |
-| 3 | content-curator | get_send_type_captions (per item) | 7+ |
+| 3 | caption-selection-pro | get_send_type_captions (per item) | 7+ |
 | 4 | timing-optimizer | get_best_timing | 1 |
 | 5 | followup-generator | (computation only) | 0 |
 | 6 | authenticity-engine | get_persona_profile | 1 |

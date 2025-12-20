@@ -6,7 +6,7 @@ content distribution, timing, and revenue generation through data-driven
 algorithms and machine learning.
 """
 
-__version__ = "2.2.0"
+__version__ = "3.0.0"
 __author__ = "EROS Team"
 
 # Domain model exports (Wave 3)

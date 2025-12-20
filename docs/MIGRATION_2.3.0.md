@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This migration transitions the EROS Schedule Generator from an 8-agent/7-phase architecture to a 9-agent/9-phase architecture. The primary changes are:
+This migration transitions the EROS Schedule Generator from a 9-agent/9-phase architecture to a 22-agent/14-phase architecture. The primary changes are:
 
 1. **Removal**: `audience-targeter` agent (Phase 4) - targeting now done manually in OnlyFans
 2. **Addition**: `authenticity-engine` agent - persona-driven caption adaptation
@@ -16,8 +16,8 @@ This migration transitions the EROS Schedule Generator from an 8-agent/7-phase a
 ## Current State Snapshot (v2.2.0)
 
 ### Architecture
-- **Agents**: 8 specialized agents
-- **Phases**: 7-phase pipeline
+- **Agents**: 22 specialized agents
+- **Phases**: 14-phase pipeline
 - **Database**: SQLite (297MB, 59 tables, 37 active creators)
 - **Send Types**: 22-type taxonomy
 
@@ -26,7 +26,7 @@ This migration transitions the EROS Schedule Generator from an 8-agent/7-phase a
 |-------|-------|---------|
 | 1 | performance-analyst | Saturation/opportunity analysis |
 | 2 | send-type-allocator | Daily send type distribution |
-| 3 | content-curator | Caption selection with freshness scoring |
+| 3 | caption-selection-pro | Caption selection with freshness scoring |
 | 4 | audience-targeter | Audience segment assignment |
 | 5 | timing-optimizer | Optimal posting time calculation |
 | 6 | followup-generator | Auto-generate PPV followups |
@@ -41,8 +41,8 @@ This migration transitions the EROS Schedule Generator from an 8-agent/7-phase a
 ## Target State (v2.3.0)
 
 ### Architecture
-- **Agents**: 9 specialized agents
-- **Phases**: 9-phase pipeline
+- **Agents**: 22 specialized agents
+- **Phases**: 14-phase pipeline
 - **Database**: SQLite (reduced after audience_targets removal)
 - **Send Types**: 22-type taxonomy (unchanged)
 
@@ -51,7 +51,7 @@ This migration transitions the EROS Schedule Generator from an 8-agent/7-phase a
 |-------|-------|---------|
 | 1 | performance-analyst | Saturation/opportunity analysis |
 | 2 | send-type-allocator | Daily send type distribution |
-| 3 | content-curator | Caption selection with freshness scoring |
+| 3 | caption-selection-pro | Caption selection with freshness scoring |
 | 4 | authenticity-engine | Persona-driven caption adaptation |
 | 5 | timing-optimizer | Optimal posting time calculation |
 | 6 | followup-generator | Auto-generate PPV followups |

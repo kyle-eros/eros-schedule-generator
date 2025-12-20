@@ -186,6 +186,23 @@ from python.volume.campaign_frequency import (
     get_campaign_types,
     get_monthly_targets,
 )
+from python.volume.bump_multiplier import (
+    BumpMultiplierResult,
+    FollowupVolumeResult,
+    BUMP_MULTIPLIERS,
+    DEFAULT_CONTENT_CATEGORY,
+    FOLLOWUP_BASE_RATE,
+    MAX_FOLLOWUPS_PER_DAY,
+    HIGH_TIER_MULTIPLIER_CAP,
+    FREE_PAGE_BUMP_BONUS,
+    calculate_bump_multiplier,
+    calculate_followup_volume,
+    get_creator_content_category,
+    apply_bump_to_engagement,
+    get_bump_multiplier_for_category,
+    get_all_content_categories,
+    calculate_effective_engagement,
+)
 
 __all__ = [
     # Domain models (re-exported from python.models.volume)
@@ -331,4 +348,20 @@ __all__ = [
     "get_frequency_rules",
     "get_campaign_types",
     "get_monthly_targets",
+    # Bump multiplier for engagement volume optimization
+    "BumpMultiplierResult",
+    "FollowupVolumeResult",
+    "BUMP_MULTIPLIERS",
+    "DEFAULT_CONTENT_CATEGORY",
+    "FOLLOWUP_BASE_RATE",
+    "MAX_FOLLOWUPS_PER_DAY",
+    "HIGH_TIER_MULTIPLIER_CAP",
+    "FREE_PAGE_BUMP_BONUS",
+    "calculate_bump_multiplier",
+    "calculate_followup_volume",
+    "get_creator_content_category",
+    "apply_bump_to_engagement",
+    "get_bump_multiplier_for_category",
+    "get_all_content_categories",
+    "calculate_effective_engagement",
 ]

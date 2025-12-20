@@ -9,6 +9,9 @@ Features:
 - Integrated Prometheus metrics collection
 - Structured request/response logging
 - Request tracing with unique IDs
+- Rate limiting (token bucket algorithm)
+
+Version: 3.0.0
 """
 
 import json
@@ -91,6 +94,32 @@ def mcp_tool(
             except ImportError:
                 logging_available = False
                 SLOW_QUERY_THRESHOLD_MS = 500
+
+            # Rate limiting check
+            try:
+                from mcp.rate_limiter import check_rate_limit, RateLimitExceeded
+                rate_limiting_available = True
+            except ImportError:
+                rate_limiting_available = False
+                RateLimitExceeded = Exception  # Fallback
+
+            # Check rate limit before processing
+            if rate_limiting_available:
+                try:
+                    check_rate_limit(name)
+                except RateLimitExceeded as e:
+                    # Log rate limit hit
+                    if logging_available:
+                        request_id = mcp_logger.log_request(name, kwargs)
+                        mcp_logger.log_error(request_id, e)
+                        clear_current_request_id()
+
+                    # Update metrics
+                    if metrics_available:
+                        REQUEST_COUNT.labels(tool=name, status='rate_limited').inc()
+
+                    # Re-raise with structured error
+                    raise
 
             # Start timing
             start_time = time.perf_counter()

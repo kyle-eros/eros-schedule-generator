@@ -24,7 +24,7 @@
 
 ## Executive Summary
 
-This blueprint designs a **production-grade, multi-agent schedule generation system** that leverages Claude Code MAX 20X to create optimized, revenue-maximizing schedules for all 37 active creators with 9 specialized agents across 9 phases. The system combines:
+This blueprint designs a **production-grade, multi-agent schedule generation system** that leverages Claude Code MAX 20X to create optimized, revenue-maximizing schedules for all 37 active creators with 22 specialized agents across 14 phases. The system combines:
 
 - **Multi-Agent Orchestration**: Specialized agents working in parallel for analysis, optimization, and generation
 - **Claude Code Skill Package**: Reusable capability for on-demand schedule generation
@@ -48,7 +48,7 @@ After deep research, the optimal architecture is a **hybrid approach**:
 ### Why This Hybrid Approach?
 
 1. **Skill for Discovery**: Claude automatically invokes the skill when users mention "schedule", "generate", "optimize content timing", etc.
-2. **Multi-Agent for Scale**: 37 creators analyzed in parallel with 9 specialized agents across 9 phases (performance, allocation, curation, timing, followups, authenticity, assembly, revenue optimization, validation)
+2. **Multi-Agent for Scale**: 37 creators analyzed in parallel with 22 specialized agents across 14 phases (preflight, retention risk, performance, allocation, variety, prediction, curation, timing, followups, followup timing, authenticity, assembly, funnel flow, revenue, pricing, review, validation, anomaly detection)
 3. **MCP for Data**: Type-safe, performant database access without context bloat
 4. **Adaptive Learning**: Volume performance tracking feeds back into optimization
 
@@ -70,7 +70,7 @@ After deep research, the optimal architecture is a **hybrid approach**:
               │              MASTER ORCHESTRATOR AGENT               │
               │           (Opus 4.5 - Complex Coordination)          │
               │                                                      │
-              │  • Decomposes request into 9-phase pipeline          │
+              │  • Decomposes request into 14-phase pipeline         │
               │  • Manages agent lifecycle and dependencies          │
               │  • Synthesizes results into final schedules          │
               │  • Handles errors and retries                        │
@@ -818,15 +818,18 @@ TOOLS = [
 
 def get_active_creators(tier: int = None, page_type: str = None) -> dict:
     conn = get_connection()
+    # DEPRECATED (v3.0): volume_assignments table is deprecated.
+    # Use get_volume_config() MCP tool for dynamic volume calculation.
+    # This query is maintained for backward compatibility only.
     query = """
         SELECT
             c.creator_id, c.page_name, c.display_name, c.page_type,
             c.performance_tier, c.current_active_fans, c.current_total_earnings,
             c.timezone,
-            va.volume_level, va.ppv_per_day, va.bump_per_day,
+            va.volume_level, va.ppv_per_day, va.bump_per_day,  -- DEPRECATED: Use get_volume_config() MCP tool
             cp.primary_tone, cp.emoji_frequency
         FROM creators c
-        LEFT JOIN volume_assignments va ON c.creator_id = va.creator_id AND va.is_active = 1
+        LEFT JOIN volume_assignments va ON c.creator_id = va.creator_id AND va.is_active = 1  -- DEPRECATED
         LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
         WHERE c.is_active = 1
     """
@@ -864,8 +867,9 @@ def get_creator_profile(creator_id: str) -> dict:
     """, (cid,)).fetchone()
 
     # Get volume assignment
+    # DEPRECATED (v3.0): Use get_volume_config() MCP tool for dynamic calculation
     volume = conn.execute("""
-        SELECT * FROM volume_assignments
+        SELECT * FROM volume_assignments  -- DEPRECATED: Use get_volume_config() MCP tool
         WHERE creator_id = ? AND is_active = 1
     """, (cid,)).fetchone()
 
@@ -1326,7 +1330,7 @@ Responsibilities:
 - Apply send type constraints (max_per_day, min_hours_between)
 - Generate send type schedule framework
 
-### Agent 3: Content Curator
+### Agent 3: Caption Selection Pro
 **Model**: Sonnet | **Tools**: get_send_type_captions, get_top_captions, get_vault_availability
 
 Responsibilities:
@@ -1407,7 +1411,7 @@ Responsibilities:
 2. PARALLEL ANALYSIS (Agents 1-3)
    ├── Performance Analyst: Get trends, saturation, opportunity
    ├── Persona Matcher: Load persona, voice samples
-   └── Content Curator: Get top captions by type
+   └── Caption Selection Pro: Get top captions by type
 
 3. TIMING OPTIMIZATION (Agent 4)
    - Calculate optimal time slots
@@ -1690,17 +1694,17 @@ Threshold: Minimum 65 for inclusion
 ```
 ```
 
-### File: `.claude/agents/content-curator.md`
+### File: `.claude/agents/caption-selection-pro.md`
 
 ```markdown
 ---
-name: content-curator
+name: caption-selection-pro
 description: Curate and rank captions for scheduling based on performance, freshness, and diversity. Use when building content plans.
 tools: mcp__eros-db__get_top_captions, mcp__eros-db__get_vault_availability, mcp__eros-db__get_content_type_rankings
 model: sonnet
 ---
 
-# Content Curator Agent
+# Caption Selection Pro Agent
 
 You are an expert content strategist specializing in OnlyFans caption curation.
 
@@ -2055,6 +2059,8 @@ CREATE TABLE IF NOT EXISTS schedule_generation_queue (
 CREATE INDEX idx_sgq_status_priority ON schedule_generation_queue(status, priority DESC, requested_at);
 
 -- View for schedule generation readiness
+-- DEPRECATED (v3.0): This view uses volume_assignments table which is deprecated.
+-- Use get_volume_config() MCP tool for dynamic volume calculation instead.
 CREATE VIEW IF NOT EXISTS v_schedule_ready_creators AS
 SELECT
     c.creator_id,
@@ -2062,9 +2068,9 @@ SELECT
     c.display_name,
     c.performance_tier,
     c.current_active_fans,
-    va.volume_level,
-    va.ppv_per_day,
-    va.bump_per_day,
+    va.volume_level,  -- DEPRECATED: Use get_volume_config() MCP tool
+    va.ppv_per_day,   -- DEPRECATED: Use get_volume_config() MCP tool
+    va.bump_per_day,  -- DEPRECATED: Use get_volume_config() MCP tool
     cp.primary_tone,
     cp.emoji_frequency,
     COALESCE(caption_count.cnt, 0) as available_captions,
@@ -2075,7 +2081,7 @@ SELECT
         ELSE 'insufficient'
     END as caption_readiness
 FROM creators c
-LEFT JOIN volume_assignments va ON c.creator_id = va.creator_id AND va.is_active = 1
+LEFT JOIN volume_assignments va ON c.creator_id = va.creator_id AND va.is_active = 1  -- DEPRECATED
 LEFT JOIN creator_personas cp ON c.creator_id = cp.creator_id
 LEFT JOIN (
     SELECT creator_id, COUNT(*) as cnt
@@ -2422,7 +2428,7 @@ python3 mcp/eros_db_server.py --test
 |------|-------|-------|-------|
 | `~/.claude/agents/performance-analyst.md` | command-architect | Sonnet | MCP db tools |
 | `~/.claude/agents/persona-matcher.md` | command-architect | Sonnet | MCP db tools |
-| `~/.claude/agents/content-curator.md` | command-architect | Sonnet | MCP db tools |
+| `~/.claude/agents/caption-selection-pro.md` | command-architect | Sonnet | MCP db tools |
 | `~/.claude/agents/timing-optimizer.md` | command-architect | Haiku | MCP db tools |
 | `~/.claude/agents/schedule-assembler.md` | command-architect | Sonnet | MCP db tools |
 | `~/.claude/agents/quality-validator.md` | command-architect | Sonnet | MCP db tools |
@@ -2431,7 +2437,7 @@ python3 mcp/eros_db_server.py --test
 ```
 1. [ ] Create performance-analyst.md
 2. [ ] Create persona-matcher.md
-3. [ ] Create content-curator.md
+3. [ ] Create caption-selection-pro.md
 4. [ ] Create timing-optimizer.md
 5. [ ] Create schedule-assembler.md
 6. [ ] Create quality-validator.md

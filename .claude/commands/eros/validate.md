@@ -1,4 +1,6 @@
 ---
+name: eros-validate
+model: sonnet
 description: Validate captions for character length, PPV structure, emoji blending, and price-length interaction. Use when reviewing caption quality after schedule generation.
 allowed-tools:
   - mcp__eros-db__get_top_captions

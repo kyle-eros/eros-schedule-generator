@@ -3,6 +3,8 @@ EROS MCP Server Performance Tools
 
 Tools for retrieving performance trends, optimal timing, content type rankings,
 and volume assignments.
+
+Version: 3.0.0
 """
 
 import logging
@@ -66,7 +68,7 @@ def get_best_timing(
         )
         row = cursor.fetchone()
         if not row:
-            return {"error": f"Creator not found: {creator_id}"}
+            raise ValueError(f"Creator not found: {creator_id}")
 
         resolved_creator_id = row["creator_id"]
         timezone = row["timezone"] or "America/Los_Angeles"
@@ -132,7 +134,7 @@ def get_best_timing(
 
 @mcp_tool(
     name="get_volume_assignment",
-    description="Get current volume assignment for a creator (volume_level, ppv_per_day, bump_per_day).",
+    description="[DEPRECATED] Get current volume assignment for a creator (volume_level, ppv_per_day, bump_per_day). Use get_volume_config() instead.",
     schema={
         "type": "object",
         "properties": {
@@ -157,6 +159,11 @@ def get_volume_assignment(creator_id: str) -> dict[str, Any]:
     Returns:
         Dictionary with volume assignment (dynamically calculated).
     """
+    logger.warning(
+        f"get_volume_assignment() is deprecated as of v3.0.0 and will be removed in v4.0.0. "
+        f"Use get_volume_config() instead for dynamic calculation with full metadata."
+    )
+
     # Import here to avoid circular imports
     from mcp.tools.send_types import get_volume_config
 
@@ -174,6 +181,8 @@ def get_volume_assignment(creator_id: str) -> dict[str, Any]:
         "assigned_by": "dynamic_calculation",
         "assigned_reason": "fan_count_bracket",
         "_deprecated": True,
+        "_deprecation_version": "3.0.0",
+        "_removal_version": "4.0.0",
         "_message": "get_volume_assignment is deprecated. Use get_volume_config() for dynamic calculation with full metadata."
     }
 

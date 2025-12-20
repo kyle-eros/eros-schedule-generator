@@ -62,7 +62,7 @@ from mcp.tools.targeting import (
 )
 from mcp.tools.query import execute_query
 
-__version__ = "2.3.0"
+__version__ = "3.0.0"
 __all__ = [
     # Main entry point
     "main",

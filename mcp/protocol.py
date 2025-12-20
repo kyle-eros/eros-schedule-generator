@@ -14,7 +14,7 @@ logger = logging.getLogger("eros_db_server")
 # MCP Protocol Version
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "eros-db-server"
-SERVER_VERSION = "2.3.0"
+SERVER_VERSION = "3.0.0"
 
 # JSON-RPC Error Codes
 ERROR_PARSE = -32700

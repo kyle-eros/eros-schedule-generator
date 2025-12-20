@@ -2,6 +2,11 @@
 """
 Wave 0 Phase 0.1 - Batch Schedule Generation (Batch 1)
 Generate sample schedules for first 10 creators to establish baseline.
+
+DEPRECATION NOTICE (v3.0):
+This example uses the legacy volume_assignments table which is DEPRECATED.
+For production use, call get_volume_config() MCP tool instead, which provides
+dynamic volume calculation based on real-time performance metrics.
 """
 
 import json
@@ -63,10 +68,16 @@ def get_creator_data(conn, page_name):
 
 
 def get_volume_config(conn, creator_id):
-    """Get volume configuration for creator."""
+    """Get volume configuration for creator.
+
+    DEPRECATED (v3.0): This function uses the legacy volume_assignments table.
+    For production use, call get_volume_config() MCP tool instead, which provides
+    dynamic volume calculation based on real-time performance metrics.
+    """
     cursor = conn.cursor()
 
-    # Get volume assignment
+    # DEPRECATED: Direct volume_assignments query
+    # Use get_volume_config() MCP tool for dynamic calculation
     cursor.execute("""
         SELECT
             volume_level,

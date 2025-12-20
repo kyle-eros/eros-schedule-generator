@@ -5,7 +5,7 @@ EROS Database MCP Server - Main Entry Point
 A Model Context Protocol (MCP) server providing database access tools for the
 EROS schedule generation system. Implements JSON-RPC 2.0 protocol over stdin/stdout.
 
-This server exposes 16 tools for:
+This server exposes 33 tools for:
 - Creator profile and performance data retrieval
 - Caption selection with freshness scoring
 - Optimal timing analysis
@@ -26,15 +26,19 @@ Configuration:
 - EROS_METRICS_PORT: Prometheus metrics port (default: 9090)
 - EROS_LOG_LEVEL: Log level (DEBUG, INFO, WARNING, ERROR)
 - EROS_LOG_FORMAT: Log format (json, text)
+- EROS_STDIN_TIMEOUT: Stdin read timeout in seconds (default: 300)
+- EROS_REQUEST_TIMEOUT: Request execution timeout in seconds (default: 30)
+- EROS_MAX_REQUEST_SIZE: Maximum request size in bytes (default: 1MB)
 
 Author: EROS Development Team
-Version: 2.3.0
+Version: 3.0.0
 """
 
 import atexit
 import json
 import logging
 import os
+import select
 import signal
 import sys
 import time
@@ -78,6 +82,11 @@ from mcp.tools import get_all_tools, dispatch_tool
 from mcp.tools.base import format_tool_result, get_tool_stats
 from mcp.connection import close_pool, get_pool
 
+# Request timeout configuration
+STDIN_TIMEOUT = float(os.environ.get("EROS_STDIN_TIMEOUT", "300"))  # 5 minutes
+REQUEST_TIMEOUT = float(os.environ.get("EROS_REQUEST_TIMEOUT", "30"))  # 30 seconds
+MAX_REQUEST_SIZE = int(os.environ.get("EROS_MAX_REQUEST_SIZE", str(1024 * 1024)))  # 1MB
+
 
 def initialize_server() -> None:
     """
@@ -86,7 +95,7 @@ def initialize_server() -> None:
     Starts metrics server, initializes connection pool, and registers
     shutdown handlers.
     """
-    logger.info("Initializing EROS MCP Server v2.3.0")
+    logger.info("Initializing EROS MCP Server v3.0.0")
 
     # Start Prometheus metrics server
     if METRICS_AVAILABLE:
@@ -299,6 +308,76 @@ def handle_signal(signum: int, frame: Any) -> None:
     sys.exit(0)
 
 
+def run_server() -> None:
+    """
+    Main server loop with stdin timeout.
+
+    Implements timeout-aware stdin reading to prevent indefinite blocking.
+    Handles parent process termination detection and request size validation.
+    """
+    protocol = MCPProtocol()
+    mcp_logger = get_mcp_logger()
+
+    logger.info("MCP Server ready, listening for requests on stdin")
+
+    while True:
+        # Use select to implement stdin read timeout
+        ready, _, _ = select.select([sys.stdin], [], [], STDIN_TIMEOUT)
+
+        if not ready:
+            # Timeout - check if parent process is still alive
+            if os.getppid() == 1:  # Init process (parent died)
+                logger.info("Parent process terminated, shutting down")
+                shutdown_server()
+                sys.exit(0)
+            continue
+
+        try:
+            line = sys.stdin.readline()
+            if not line:  # EOF
+                logger.info("Received EOF, shutting down gracefully")
+                shutdown_server()
+                sys.exit(0)
+
+            line = line.strip()
+            if not line:
+                continue
+
+            # Validate request size
+            if len(line) > MAX_REQUEST_SIZE:
+                error_response = create_error_response(
+                    ERROR_SERVER,
+                    f"Request exceeds maximum size of {MAX_REQUEST_SIZE} bytes",
+                    None
+                )
+                print(json.dumps(error_response), flush=True)
+                continue
+
+            # Process request with existing logic
+            request = protocol.parse_request(line)
+            response = handle_request(request)
+
+            if response is not None:
+                print(json.dumps(response), flush=True)
+
+        except KeyboardInterrupt:
+            logger.info("Received interrupt, shutting down")
+            shutdown_server()
+            sys.exit(0)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON received: {e}")
+            error_response = create_error_response(
+                ERROR_PARSE, str(e), None
+            )
+            print(json.dumps(error_response), flush=True)
+        except Exception as e:
+            logger.exception(f"Unexpected error processing request: {e}")
+            error_response = create_error_response(
+                ERROR_SERVER, str(e), None
+            )
+            print(json.dumps(error_response), flush=True)
+
+
 def main() -> None:
     """
     Main entry point for the MCP server.
@@ -315,32 +394,8 @@ def main() -> None:
     # Disable output buffering for immediate responses
     sys.stdout.reconfigure(line_buffering=True)
 
-    protocol = MCPProtocol()
-    mcp_logger = get_mcp_logger()
-
-    logger.info("MCP Server ready, listening for requests on stdin")
-
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
-
-        try:
-            request = protocol.parse_request(line)
-            response = handle_request(request)
-
-            # Only output if there's a response (notifications don't get responses)
-            if response is not None:
-                print(json.dumps(response), flush=True)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            error_response = create_error_response(
-                ERROR_PARSE,
-                f"Parse error: {str(e)}",
-                None
-            )
-            print(json.dumps(error_response), flush=True)
+    # Run the main server loop with timeout support
+    run_server()
 
 
 if __name__ == "__main__":

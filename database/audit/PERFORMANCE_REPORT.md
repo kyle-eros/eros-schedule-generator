@@ -257,20 +257,28 @@ ORDER BY cb.performance_score DESC;
 
 #### `get_volume_config`
 
-**Query Pattern:**
+**DEPRECATION NOTICE (v3.0):** The static volume_assignments query below is DEPRECATED.
+The current `get_volume_config()` MCP tool now uses dynamic calculation based on
+real-time performance metrics instead of static table lookups.
+
+**Legacy Query Pattern (DEPRECATED):**
 ```sql
+-- DEPRECATED: Static volume_assignments lookup replaced with dynamic calculation
 SELECT va.volume_level, va.ppv_per_day, va.bump_per_day
 FROM volume_assignments va
 WHERE va.creator_id = ? AND va.is_active = 1;
 ```
 
-**Performance:**
-- Execution Time: **<1ms**
-- Index: `idx_va_creator_active` (composite)
-- Rows Returned: 1 per creator
-- Scalability: Excellent (direct index lookup)
+**Current Implementation:** Dynamic volume calculation using `python/volume/dynamic_calculator.py`
+with 8 integrated modules (Base Tier, Multi-Horizon Fusion, Confidence Dampening, DOW Distribution,
+Elasticity Bounds, Content Weighting, Caption Pool Check, Prediction Tracking).
 
-**Verdict:** ✅ **OPTIMAL**
+**Performance:**
+- Execution Time: **<5ms** (dynamic calculation)
+- Returns: Full `OptimizedVolumeResult` with metadata
+- Scalability: Excellent (cached per-creator calculation)
+
+**Verdict:** ✅ **OPTIMAL** (now dynamic)
 
 ---
 

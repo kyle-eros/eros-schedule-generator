@@ -1,0 +1,172 @@
+{
+  "rate_limiting": {
+    "enabled": true,
+    "global": {
+      "requests_per_minute": 500,
+      "burst_capacity": 600,
+      "description": "Global rate limit across all tools (allows bursts)"
+    },
+    "tools": {
+      "get_top_captions": {
+        "requests_per_minute": 100,
+        "burst_capacity": 120,
+        "category": "high_frequency_read"
+      },
+      "get_send_type_captions": {
+        "requests_per_minute": 100,
+        "burst_capacity": 120,
+        "category": "high_frequency_read"
+      },
+      "get_vault_availability": {
+        "requests_per_minute": 100,
+        "burst_capacity": 120,
+        "category": "high_frequency_read"
+      },
+      "get_creator_profile": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_volume_config": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_performance_trends": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_content_type_rankings": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_best_timing": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_persona_profile": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_send_types": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_send_type_details": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_channels": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_active_creators": {
+        "requests_per_minute": 50,
+        "burst_capacity": 60,
+        "category": "medium_frequency_read"
+      },
+      "get_caption_predictions": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_churn_risk_scores": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_win_back_candidates": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_attention_metrics": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_caption_attention_scores": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_active_experiments": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_active_volume_triggers": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_prediction_weights": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_content_type_earnings_ranking": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "get_top_captions_by_earnings": {
+        "requests_per_minute": 40,
+        "burst_capacity": 50,
+        "category": "analytics_read"
+      },
+      "validate_caption_structure": {
+        "requests_per_minute": 30,
+        "burst_capacity": 40,
+        "category": "low_frequency_read"
+      },
+      "execute_query": {
+        "requests_per_minute": 30,
+        "burst_capacity": 40,
+        "category": "low_frequency_read"
+      },
+      "save_volume_triggers": {
+        "requests_per_minute": 20,
+        "burst_capacity": 25,
+        "category": "medium_write"
+      },
+      "save_caption_prediction": {
+        "requests_per_minute": 20,
+        "burst_capacity": 25,
+        "category": "medium_write"
+      },
+      "record_prediction_outcome": {
+        "requests_per_minute": 20,
+        "burst_capacity": 25,
+        "category": "medium_write"
+      },
+      "save_experiment_results": {
+        "requests_per_minute": 20,
+        "burst_capacity": 25,
+        "category": "medium_write"
+      },
+      "update_experiment_allocation": {
+        "requests_per_minute": 20,
+        "burst_capacity": 25,
+        "category": "medium_write"
+      },
+      "save_schedule": {
+        "requests_per_minute": 10,
+        "burst_capacity": 12,
+        "category": "low_write"
+      },
+      "update_prediction_weights": {
+        "requests_per_minute": 5,
+        "burst_capacity": 6,
+        "category": "critical_write"
+      }
+    }
+  }
+}

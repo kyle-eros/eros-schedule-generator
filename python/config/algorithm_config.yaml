@@ -156,6 +156,64 @@ multipliers:
         multiplier: 1.2
 
 # =============================================================================
+# BUMP MULTIPLIERS (Volume Optimization v3.0)
+# =============================================================================
+# Content category-based engagement multipliers
+# Higher multipliers for explicit content to compensate for platform competition
+bump:
+  # Base multipliers by content category
+  multipliers:
+    lifestyle: 1.0    # GFE, personal connection focus (baseline)
+    softcore: 1.5     # Suggestive content, moderate engagement
+    amateur: 2.0      # Authentic appeal, higher engagement
+    explicit: 2.67    # Commercial explicit, maximum engagement
+
+  # Tier-based caps (prevent over-engagement at scale)
+  # At LOW tier, full multiplier is applied
+  # At MID+ tiers, multiplier is capped to prevent audience fatigue
+  tier_caps:
+    LOW: null         # No cap - apply full multiplier
+    MID: 1.5          # Cap at 1.5x
+    HIGH: 1.5         # Cap at 1.5x
+    ULTRA: 1.5        # Cap at 1.5x
+
+  # Page type adjustments
+  # Free pages may need slightly higher engagement for conversion
+  page_type_boost:
+    free: 1.1         # 10% boost for free pages
+    paid: 1.0         # No boost for paid pages
+
+  # Default category when not specified
+  default_category: softcore
+
+# =============================================================================
+# FOLLOWUP SCALING (Volume Optimization v3.0)
+# =============================================================================
+# PPV followup volume now scales with actual PPV count
+# Previously fixed at tier max (4), now dynamic
+followup:
+  # Enable PPV-count-based scaling (vs fixed tier max)
+  scale_with_ppv: true
+
+  # Base followup rate - percentage of PPVs that get followups
+  base_rate: 0.80     # 80% of PPVs get a followup
+
+  # Hard cap regardless of PPV count (send_type constraint)
+  max_per_day: 5
+
+  # Confidence-based rate reduction
+  # When confidence is low, reduce followup rate to prevent spam
+  confidence_rates:
+    high: 1.0         # >= 0.8 confidence: full rate
+    moderate: 0.8     # 0.6-0.79 confidence: 80% of rate
+    low: 0.5          # 0.4-0.59 confidence: 50% of rate
+    very_low: 0.3     # < 0.4 confidence: 30% of rate
+
+  # Timing constraints (for followup-generator agent)
+  min_delay_minutes: 15
+  max_delay_minutes: 45
+
+# =============================================================================
 # TREND THRESHOLDS
 # =============================================================================
 trends:

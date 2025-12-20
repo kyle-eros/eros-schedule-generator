@@ -1,4 +1,6 @@
 ---
+name: eros-analyze
+model: sonnet
 description: Analyze creator performance trends, saturation signals, and optimization opportunities. Use PROACTIVELY before generating schedules to inform volume decisions.
 allowed-tools:
   - mcp__eros-db__get_creator_profile

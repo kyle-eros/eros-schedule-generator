@@ -143,9 +143,9 @@ When the schedule generation pipeline selects captions:
 - Caption pool: 59,405 total captions
 - Filtered pool: Only captions tagged as `solo` or `boy_girl` (anal blocked)
 
-### Phase 3: Content Curator
+### Phase 3: Caption Selection Pro
 
-The content-curator agent relies on vault_matrix filtering:
+The caption-selection-pro agent relies on vault_matrix filtering:
 
 ```python
 # Agent doesn't manually filter - MCP handles it
@@ -403,7 +403,7 @@ syncer.import_from_csv('vault_edited.csv', dry_run=False)
 - `CLAUDE.md` - Main project documentation
 - `database/migrations/013_vault_notes.sql` - Migration that added vault_notes column
 - `mcp/eros_db_server.py` - MCP queries that use vault_matrix filtering
-- `.claude/agents/content-curator.md` - Agent that relies on vault filtering
+- `.claude/agents/caption-selection-pro.md` - Agent that relies on vault filtering
 
 ## Support
 

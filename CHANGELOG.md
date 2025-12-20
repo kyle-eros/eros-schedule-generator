@@ -7,9 +7,170 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - Wave 5: Advanced Features & Quality (Planned)
+## [3.0.0] - Pipeline Supercharge Release - 2025-12-19
 
-> **Status**: Wave 5 features in progress. Will be released as 2.3.0 when complete.
+### Summary
+
+This major release transforms the EROS scheduling pipeline from a 9-phase system to a **14-phase self-improving, retention-focused, revenue-optimized scheduling engine** with **12 NEW specialized agents**, **12 NEW MCP tools**, and **9 NEW database tables**.
+
+**Version 3.0.0 Focus**: Pipeline Supercharge - ML Predictions, Churn Analysis, A/B Testing, Strategic Review
+
+---
+
+### Pipeline Expansion (9 → 14 Phases)
+
+| Metric | Previous | v3.0.0 |
+|--------|----------|--------|
+| Pipeline Phases | 9 | 14 |
+| Total Agents | 10 | 22 |
+| MCP Tools | 18 | 30 |
+| Database Tables | 76 | 85 |
+
+---
+
+### New Agents (12 Total)
+
+#### Pre-Pipeline Validation (BLOCKING)
+1. **preflight-checker** (haiku) - Phase 0 - Verify creator readiness, BLOCK if data missing
+2. **retention-risk-analyzer** (opus) - Phase 0.5 - Churn risk analysis, retention recommendations
+
+#### Core Pipeline Additions
+3. **variety-enforcer** (sonnet) - Phase 2.5 - Content diversity enforcement (12+ unique types)
+4. **content-performance-predictor** (opus) - Phase 2.75 - ML-style RPS/conversion predictions
+5. **attention-quality-scorer** (sonnet) - Phase 3 - Caption attention quality scoring
+6. **followup-timing-optimizer** (haiku) - Phase 5.5 - Dynamic followup delay optimization
+
+#### Post-Schedule Optimization
+7. **funnel-flow-optimizer** (sonnet) - Phase 7.5 - Engagement-to-conversion flow optimization
+8. **ppv-price-optimizer** (opus) - Phase 8.5 - Dynamic PPV pricing with predictions
+9. **schedule-critic** (opus) - Phase 8.5 - Strategic review with BLOCK authority
+10. **anomaly-detector** (haiku) - Phase 9.5 - Statistical anomaly detection
+
+#### Parallel/Async Agents
+11. **ab-testing-orchestrator** (opus) - A/B experiment management (parallel)
+12. **win-back-specialist** (sonnet) - Win-back campaign generation (async)
+
+---
+
+### New MCP Tools (12 Total)
+
+#### Prediction & ML (5 tools)
+- `get_caption_predictions` - ML-style predictions for caption performance
+- `save_caption_prediction` - Save prediction for outcome tracking
+- `record_prediction_outcome` - Record actual performance for learning
+- `get_prediction_weights` - Get current feature weights
+- `update_prediction_weights` - Update weights based on outcomes
+
+#### Churn & Win-Back (2 tools)
+- `get_churn_risk_scores` - Churn risk by subscriber segment
+- `get_win_back_candidates` - Eligible subscribers for win-back
+
+#### Attention Scoring (2 tools)
+- `get_attention_metrics` - Raw attention engagement metrics
+- `get_caption_attention_scores` - Pre-computed attention scores
+
+#### A/B Experiments (3 tools)
+- `get_active_experiments` - Active A/B experiments for creator
+- `save_experiment_results` - Save experiment outcome metrics
+- `update_experiment_allocation` - Update traffic allocation
+
+---
+
+### New Database Tables (9 Total)
+
+| Table | Purpose |
+|-------|---------|
+| `caption_predictions` | ML-style caption performance predictions |
+| `prediction_outcomes` | Actual vs predicted for feedback loop |
+| `prediction_weights` | Feature weights for prediction model |
+| `churn_risk_scores` | Subscriber churn risk analysis |
+| `win_back_campaigns` | Win-back campaign tracking |
+| `ab_experiments` | A/B experiment definitions |
+| `experiment_variants` | Experiment variant configurations |
+| `experiment_results` | Experiment outcome metrics |
+| `caption_attention_scores` | Attention quality scores per caption |
+
+**Migration**: `database/migrations/018_pipeline_supercharge.sql`
+
+---
+
+### New Validation Rules
+
+#### Preflight Validation (Phase 0) - BLOCKING
+- Creator active check
+- Vault entries exist
+- Minimum 50 captions
+- Persona defined
+
+#### Variety Enforcement (Phase 2.5)
+- Minimum 12 unique send types per week
+- No send type > 20% of weekly total
+- No content type > 25% of PPV slots
+- Variety score >= 75
+
+#### Schedule Critic Review (Phase 8.5) - BLOCKING
+- Revenue aggressiveness < 80
+- Subscriber health score > 40
+- Brand consistency score > 50
+- < 3 major strategic concerns
+
+#### Anomaly Detection (Phase 9.5)
+- Price within 3σ of mean
+- Volume within 2x normal
+- No unknown content types
+
+---
+
+### Documentation Updates
+
+- **SKILL.md** - Updated to v3.0.0 with 14-phase pipeline and 22 agents
+- **ORCHESTRATION.md** - Complete 14-phase flow diagram and agent inventory
+- **CLAUDE.md** - Updated version, agent count, 30 MCP tools documented
+- **VALIDATION_RULES.md** - Added v3.0 validation rules for new agents
+- **database/migrations/README.md** - Documented migration 018
+
+---
+
+### Expected Impact
+
+| Metric | Target Improvement |
+|--------|-------------------|
+| PPV unlock rate | +40% (5% → 7%) |
+| Average PPV price | +17% ($18 → $21) |
+| Weekly revenue/creator | +25% |
+| Subscriber churn rate | -37% (8%/mo → 5%/mo) |
+| Failed generation rate | -80% (5% → <1%) |
+| Schedule quality score | +13% (78 → 88) |
+
+---
+
+### Migration Guide
+
+```bash
+# 1. Backup database
+cp database/eros_sd_main.db database/backups/eros_sd_main_pre_v3.db
+
+# 2. Run migration
+sqlite3 database/eros_sd_main.db < database/migrations/018_pipeline_supercharge.sql
+
+# 3. Verify tables created
+sqlite3 database/eros_sd_main.db "SELECT COUNT(*) FROM prediction_weights;" # Should be 12
+```
+
+**Rollback**:
+```bash
+sqlite3 database/eros_sd_main.db < database/migrations/018_rollback.sql
+```
+
+---
+
+**Version 3.0.0 Status**: COMPLETE
+
+---
+
+## [Unreleased] - Wave 5: Advanced Features & Quality (Previously Planned)
+
+> **Status**: Wave 5 features completed and merged into v2.4.0.
 
 ### Summary
 
@@ -924,9 +1085,9 @@ All 8 agents now have explicit proactive triggers with phase context:
 |-------|-------|---------------------|
 | `performance-analyst` | Phase 1 | "Use PROACTIVELY in Phase 1 as the FIRST agent" |
 | `send-type-allocator` | Phase 2 | "Use PROACTIVELY in Phase 2 AFTER performance-analyst" |
-| `content-curator` | Phase 3 | "Use PROACTIVELY in Phase 3 AFTER send-type-allocator" |
-| `audience-targeter` | Phase 4 | "Use PROACTIVELY in Phase 4 AFTER content-curator" |
-| `timing-optimizer` | Phase 5 | "Use PROACTIVELY in Phase 5 AFTER content-curator and audience-targeter" |
+| `caption-selection-pro` | Phase 3 | "Use PROACTIVELY in Phase 3 AFTER send-type-allocator" |
+| `audience-targeter` | Phase 4 | "Use PROACTIVELY in Phase 4 AFTER caption-selection-pro" |
+| `timing-optimizer` | Phase 5 | "Use PROACTIVELY in Phase 5 AFTER caption-selection-pro and audience-targeter" |
 | `followup-generator` | Phase 6 | "Use PROACTIVELY in Phase 6 AFTER timing-optimizer" |
 | `schedule-assembler` | Phase 7 | "Use PROACTIVELY in Phase 7 AFTER followup-generator" |
 | `quality-validator` | Phase 8 | "Use PROACTIVELY in Phase 8 as FINAL approval gate" |
@@ -994,7 +1155,7 @@ All 8 agents now include role-specific "Reasoning Process" sections:
 |-------|------------------------|
 | `performance-analyst` | Performance state, content effectiveness, risk assessment |
 | `send-type-allocator` | Volume config, page type constraints, weekly limits |
-| `content-curator` | Send type requirements, persona consistency, diversity |
+| `caption-selection-pro` | Send type requirements, persona consistency, diversity |
 | `audience-targeter` | Page type compatibility, channel capabilities |
 | `timing-optimizer` | Historical performance, spacing constraints, avoid hours |
 | `followup-generator` | Eligibility, daily limits, parent linkage |
@@ -1016,7 +1177,7 @@ Added detailed phase transition checkpoints to `ORCHESTRATION.md`:
 |------|---------|
 | `.claude/agents/performance-analyst.md` | Model: sonnet, proactive trigger, reasoning process |
 | `.claude/agents/send-type-allocator.md` | Proactive trigger, reasoning process |
-| `.claude/agents/content-curator.md` | Proactive trigger, reasoning process |
+| `.claude/agents/caption-selection-pro.md` | Proactive trigger, reasoning process |
 | `.claude/agents/audience-targeter.md` | Proactive trigger, reasoning process |
 | `.claude/agents/timing-optimizer.md` | Model: haiku→sonnet, proactive trigger, reasoning process |
 | `.claude/agents/followup-generator.md` | Model: haiku→sonnet, proactive trigger, reasoning process |
@@ -1902,7 +2063,7 @@ This release represents a complete overhaul of the schedule generation system, e
 
 #### Agent Modifications
 - **Performance Analyst** - Now analyzes volume by category
-- **Content Curator** - Enhanced to use send type caption mappings
+- **Caption Selection Pro** - Enhanced to use send type caption mappings
 - **Timing Optimizer** - Respects send type min_hours_between constraints
 - **Schedule Assembler** - Validates send type requirements and page type restrictions
 - **Quality Validator** - Checks send type business rules and follow-up linkage
@@ -2058,7 +2219,7 @@ WHERE target_id IS NULL;
 
 ### Added
 - Multi-agent schedule generation system
-- 6 specialized agents (Performance Analyst, Persona Matcher, Content Curator, Timing Optimizer, Schedule Assembler, Quality Validator)
+- 6 specialized agents (Performance Analyst, Persona Matcher, Caption Selection Pro, Timing Optimizer, Schedule Assembler, Quality Validator)
 - MCP database server with 11 tools
 - Claude Code skill package
 - Support for 37 active creators

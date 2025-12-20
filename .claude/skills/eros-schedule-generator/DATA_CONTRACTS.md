@@ -1,8 +1,8 @@
 ---
 title: Data Contracts - EROS Schedule Generator Pipeline
-version: 2.3.0
+version: 3.0.0
 created: 2025-12-17
-description: Explicit JSON schemas for all data flowing between agents in the 9-phase schedule generation pipeline
+description: Explicit JSON schemas for all data flowing between agents in the 14-phase schedule generation pipeline
 status: authoritative
 ---
 
@@ -10,20 +10,28 @@ status: authoritative
 
 ## Overview
 
-This document defines the **explicit data contracts** for all data flowing between agents in the EROS Schedule Generator's 9-phase pipeline. Each agent transition specifies required fields, optional fields, validation rules, and example payloads.
+This document defines the **explicit data contracts** for all data flowing between agents in the EROS Schedule Generator's 14-phase pipeline. Each agent transition specifies required fields, optional fields, validation rules, and example payloads.
 
 ### Pipeline Flow
 
 ```
+Phase 0: preflight-checker → creator_validation
+Phase 0.5: retention-risk-analyzer → churn_analysis
 Phase 1: performance-analyst → performance_metrics
 Phase 2: send-type-allocator → allocation + strategy_metadata
-Phase 3: content-curator → caption_assignments
+Phase 2.5: variety-enforcer → diversity_validation
+Phase 2.75: content-performance-predictor → predictions
+Phase 3: caption-selection-pro → caption_assignments
 Phase 4: timing-optimizer → timing_assignments
 Phase 5: followup-generator → followup_items
-Phase 6: authenticity-engine → humanized_items [NEW]
+Phase 5.5: followup-timing-optimizer → followup_timing
+Phase 6: authenticity-engine → humanized_items
 Phase 7: schedule-assembler → assembled_schedule
-Phase 8: revenue-optimizer → priced_schedule [NEW]
+Phase 7.5: funnel-flow-optimizer → funnel_optimized
+Phase 8: revenue-optimizer → priced_schedule
+Phase 8.5: ppv-price-optimizer + schedule-critic → reviewed_schedule
 Phase 9: quality-validator → validation_result
+Phase 9.5: anomaly-detector → anomaly_report
 ```
 
 **Critical Note**: The `strategy_metadata` output from Phase 2 MUST be preserved through all downstream phases and passed to quality-validator for diversity validation.
@@ -539,11 +547,11 @@ interface DailyStrategy {
 
 ## Phase 3: CONTENT CURATION → Caption Assignments
 
-### Agent: content-curator
+### Agent: caption-selection-pro
 
 **Inputs**:
 ```typescript
-interface ContentCuratorInput {
+interface CaptionSelectionInput {
   schedule_items: AllocationItem[];      // From send-type-allocator
   creator_id: string;                    // Required
   used_caption_ids: Set<number>;         // Track duplicates across week
@@ -675,7 +683,7 @@ interface ManualCaptionItem {
 **Inputs**:
 ```typescript
 interface TimingOptimizerInput {
-  schedule_items: CaptionAssignedItem[];  // From content-curator
+  schedule_items: CaptionAssignedItem[];  // From caption-selection-pro
   creator_id: string;                     // For get_best_timing()
   volume_config: OptimizedVolumeResult;   // For dow_multipliers_used
 }
@@ -992,7 +1000,7 @@ interface HumanizedItem extends TimedItem {
 ```typescript
 interface ScheduleAssemblerInput {
   allocation: AllocationResult;          // From send-type-allocator (includes strategy_metadata)
-  captions: CaptionAssignmentResult;     // From content-curator
+  captions: CaptionAssignmentResult;     // From caption-selection-pro
   channels: ChannelAssignment;           // Derived from send type configuration
   timing: TimingAssignmentResult;        // From timing-optimizer
   followups: FollowupGenerationResult;   // From followup-generator
@@ -1513,6 +1521,437 @@ interface StrategyMetadataValidation extends ValidationCategory {
 
 ---
 
+## ValidationCertificate v2.0
+
+### Purpose
+
+The ValidationCertificate is a comprehensive quality assurance document generated after quality validation completes. It provides detailed scoring across multiple quality dimensions, predictive performance metrics, and consensus validation between standard and expert validators.
+
+### Schema
+
+```typescript
+interface ValidationCertificate {
+  // Core certification fields
+  certificate_version: "2.0";
+  validation_timestamp: ISODateTime;        // When validation completed
+  quality_score: number;                    // 0-100 (overall quality)
+  items_validated: number;                  // Total schedule items validated
+  status: ValidationStatus;                 // "APPROVED" | "NEEDS_REVIEW" | "REJECTED"
+
+  // Multi-dimensional quality scoring
+  quality_dimensions: {
+    compliance_score: number;               // 0-100 (vault, AVOID, page type constraints)
+    revenue_potential_score: number;        // 0-100 (pricing, positioning, conversion likelihood)
+    authenticity_score: number;             // 0-100 (human-like variation, anti-pattern)
+    engagement_score: number;               // 0-100 (timing, content diversity, attention quality)
+    retention_score: number;                // 0-100 (followup quality, renewal reminders, win-back)
+  };
+
+  // Predictive impact analysis
+  predictive_impact: {
+    predicted_weekly_revenue: string;       // e.g., "$1,245" (formatted USD)
+    predicted_open_rate: string;            // e.g., "23.4%" (engagement prediction)
+    predicted_conversion_rate: string;      // e.g., "4.2%" (revenue conversion)
+    confidence_level: ConfidenceLevel;      // "LOW" | "MEDIUM" | "HIGH"
+    prediction_basis: string[];             // Data sources used (e.g., ["historical_rps", "ml_model", "content_performance"])
+  };
+
+  // Consensus validation (dual validator approach)
+  consensus_validation: {
+    primary_validator: string;              // "quality-validator (sonnet)"
+    expert_validator: string | null;        // "quality-validator-expert (opus)" or null if not used
+    agreement_level: "FULL_CONSENSUS"       // Agreement status between validators
+                   | "PARTIAL_AGREEMENT"
+                   | "REQUIRES_REVIEW"
+                   | "SINGLE_VALIDATOR";    // Only primary validator used
+    divergence_notes: string[];             // Reasons for disagreement (empty if full consensus)
+    expert_triggered: boolean;              // True if expert validator was invoked
+    trigger_reason?: string;                // Why expert was needed (e.g., "quality_score < 75")
+  };
+
+  // Actionable recommendations
+  recommendations: Array<{
+    type: "OPPORTUNITY"                     // Recommendation category
+        | "WARNING"
+        | "OPTIMIZATION"
+        | "COMPLIANCE";
+    target: string;                         // Specific schedule item or aspect
+    suggestion: string;                     // Human-readable recommendation
+    expected_impact: string;                // Quantified benefit (e.g., "+5% RPS", "reduce churn risk")
+    priority: "LOW" | "MEDIUM" | "HIGH";    // Urgency of recommendation
+  }>;
+
+  // Audit trail and traceability
+  audit_trail: {
+    prediction_id: number | null;           // Links to prediction tracking
+    volume_config_snapshot: string;         // Hash or ID of volume config used
+    generator_version: string;              // Pipeline version (e.g., "3.0.0")
+    validation_duration_ms: number;         // Time taken to validate
+    agents_invoked: string[];               // List of agents that processed schedule
+  };
+
+  // Warnings and issues (from quality-validator)
+  warnings: string[];                       // Non-blocking concerns
+  critical_issues: string[];                // Blocking issues (empty if APPROVED)
+
+  // Pass-through metadata for downstream processing
+  volume_metadata: {
+    confidence_score: number;
+    fused_saturation: number;
+    fused_opportunity: number;
+    content_allocations: {[content_type: string]: number};
+  };
+}
+```
+
+### Quality Dimensions Explained
+
+The `quality_dimensions` field provides multi-dimensional quality scoring:
+
+```typescript
+interface QualityDimensions {
+  compliance_score: number;        // 0-100: Vault/AVOID/diversity
+  revenue_potential_score: number; // 0-100: Predicted RPS performance
+  authenticity_score: number;      // 0-100: Human-like patterns
+  engagement_score: number;        // 0-100: Predicted engagement
+  retention_score: number;         // 0-100: Churn mitigation
+}
+```
+
+#### Dimension Scoring Criteria
+
+| Dimension | Weight | Scoring Criteria |
+|-----------|--------|------------------|
+| **compliance_score** | 30% | Vault matrix compliance (40%), AVOID tier exclusion (30%), send type diversity ≥12 (20%), page type rules (10%) |
+| **revenue_potential_score** | 25% | Predicted RPS vs baseline (40%), high-performer content allocation (25%), pricing confidence (20%), PPV followup coverage (15%) |
+| **authenticity_score** | 20% | Timing variance (30%), strategy diversity (25%), anti-templating (25%), persona alignment (20%) |
+| **engagement_score** | 15% | Hook strength (30%), CTA effectiveness (25%), attention scores (25%), optimal timing alignment (20%) |
+| **retention_score** | 10% | Churn mitigation (35%), win-back presence (25%), renewal timing (20%), funnel balance (20%) |
+
+#### Overall Quality Score Calculation
+
+**Weighting for Composite:**
+```
+quality_score = (
+  compliance_score * 0.30 +    # Hard constraints are most critical
+  revenue_score * 0.25 +       # Revenue is primary goal
+  authenticity_score * 0.20 +  # Human-like is important
+  engagement_score * 0.15 +    # Engagement drives opens
+  retention_score * 0.10       # Retention prevents churn
+)
+```
+
+#### Dimension Thresholds
+
+Different dimensions have different thresholds for APPROVED/NEEDS_REVIEW/REJECTED:
+
+| Dimension | APPROVED | NEEDS_REVIEW | REJECTED |
+|-----------|----------|--------------|----------|
+| Compliance | ≥95 | 80-94 | <80 |
+| Revenue | ≥75 | 60-74 | <60 |
+| Authenticity | ≥70 | 55-69 | <55 |
+| Engagement | ≥70 | 55-69 | <55 |
+| Retention | ≥65 | 50-64 | <50 |
+
+**Critical Rule:** A REJECTED in compliance always results in schedule REJECTION regardless of other scores.
+
+#### Usage Example
+
+```python
+# Low compliance = immediate rejection
+if dimensions.compliance_score < 80:
+    return REJECTED
+
+# Calculate weighted composite
+quality_score = (
+    dimensions.compliance_score * 0.30 +
+    dimensions.revenue_potential_score * 0.25 +
+    dimensions.authenticity_score * 0.20 +
+    dimensions.engagement_score * 0.15 +
+    dimensions.retention_score * 0.10
+)
+```
+
+### Consensus Validation Flow
+
+The consensus validation system uses a dual-validator approach for critical schedules:
+
+```
+┌─────────────────────────────────────────────────┐
+│         Primary Validator (Sonnet)              │
+│  - Standard validation (Phases 1-9)             │
+│  - Quality score calculation                    │
+│  - Initial recommendations                      │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+          Quality Score < 75?
+          OR Critical Creator?
+          OR High Churn Risk?
+                 │
+        ┌────────┴────────┐
+        │ YES             │ NO
+        ▼                 ▼
+┌─────────────────┐  ┌──────────────────────┐
+│ Expert Validator│  │ Single Validator     │
+│ (Opus)          │  │ Certificate Issued   │
+│ - Deep analysis │  │                      │
+│ - Second opinion│  └──────────────────────┘
+└────────┬────────┘
+         │
+         ▼
+   Compare Results
+         │
+    ┌────┴────┐
+    │Agreement│
+    │  Level  │
+    └────┬────┘
+         │
+         ▼
+┌─────────────────────┐
+│ Consensus           │
+│ Certificate Issued  │
+└─────────────────────┘
+```
+
+**Agreement Levels**:
+- **FULL_CONSENSUS**: Both validators agree on status and quality score (±5 points)
+- **PARTIAL_AGREEMENT**: Validators agree on APPROVED/NEEDS_REVIEW but differ on specific issues
+- **REQUIRES_REVIEW**: Validators disagree on status (one APPROVED, one REJECTED)
+- **SINGLE_VALIDATOR**: Only primary validator used (low-risk schedule)
+
+### Predictive Impact Methodology
+
+Predictive metrics are calculated using:
+
+1. **Historical Performance**: 30-day RPS, conversion rates, open rates
+2. **Content Type Predictions**: ML-style predictions from `get_caption_predictions()`
+3. **Volume Optimization**: Fused saturation/opportunity scores
+4. **Pricing Analysis**: Optimized pricing vs. historical averages
+5. **Timing Optimization**: Predicted lift from optimal posting times
+
+**Confidence Level Determination**:
+```
+confidence_level = {
+  HIGH:   confidence_score >= 0.8 AND message_count >= 100,
+  MEDIUM: confidence_score >= 0.5 OR message_count >= 50,
+  LOW:    confidence_score < 0.5 OR message_count < 50
+}
+```
+
+### Example Payload
+
+```json
+{
+  "certificate_version": "2.0",
+  "validation_timestamp": "2025-12-20T10:00:00Z",
+  "quality_score": 92,
+  "items_validated": 42,
+  "status": "APPROVED",
+
+  "quality_dimensions": {
+    "compliance_score": 100,
+    "revenue_potential_score": 88,
+    "authenticity_score": 95,
+    "engagement_score": 91,
+    "retention_score": 85
+  },
+
+  "predictive_impact": {
+    "predicted_weekly_revenue": "$1,245",
+    "predicted_open_rate": "23.4%",
+    "predicted_conversion_rate": "4.2%",
+    "confidence_level": "HIGH",
+    "prediction_basis": ["historical_rps", "content_performance_predictor", "volume_optimization"]
+  },
+
+  "consensus_validation": {
+    "primary_validator": "quality-validator (sonnet)",
+    "expert_validator": null,
+    "agreement_level": "SINGLE_VALIDATOR",
+    "divergence_notes": [],
+    "expert_triggered": false
+  },
+
+  "recommendations": [
+    {
+      "type": "OPPORTUNITY",
+      "target": "Monday morning PPV (2025-12-16 09:15:00)",
+      "suggestion": "Consider higher pricing based on historical performance - solo content has 15% higher RPS on Monday mornings",
+      "expected_impact": "+$45 weekly (+5% RPS)",
+      "priority": "MEDIUM"
+    },
+    {
+      "type": "OPTIMIZATION",
+      "target": "Thursday evening bump cluster",
+      "suggestion": "Spread bump_normal sends by 20 minutes to avoid clustering at 19:00-20:00",
+      "expected_impact": "+2% engagement rate",
+      "priority": "LOW"
+    }
+  ],
+
+  "audit_trail": {
+    "prediction_id": 12345,
+    "volume_config_snapshot": "vol_xyz789",
+    "generator_version": "3.0.0",
+    "validation_duration_ms": 1850,
+    "agents_invoked": [
+      "preflight-checker",
+      "retention-risk-analyzer",
+      "performance-analyst",
+      "send-type-allocator",
+      "variety-enforcer",
+      "content-performance-predictor",
+      "caption-selection-pro",
+      "timing-optimizer",
+      "followup-generator",
+      "authenticity-engine",
+      "schedule-assembler",
+      "revenue-optimizer",
+      "quality-validator"
+    ]
+  },
+
+  "warnings": [
+    "2 items need manual captions (vip_program, snapchat_bundle)"
+  ],
+  "critical_issues": [],
+
+  "volume_metadata": {
+    "confidence_score": 0.85,
+    "fused_saturation": 43.5,
+    "fused_opportunity": 64.2,
+    "content_allocations": {
+      "solo": 3,
+      "lingerie": 2,
+      "tease": 2
+    }
+  }
+}
+```
+
+### Validation Rules
+
+- `certificate_version` must be "2.0"
+- `quality_score` must be 0-100
+- All `quality_dimensions` scores must be 0-100
+- `status` must match quality score thresholds:
+  - APPROVED: quality_score >= 85 (or >= 80 for MEDIUM confidence, >= 75 for LOW confidence)
+  - NEEDS_REVIEW: quality_score 70-84 (or 65-79 for MEDIUM, 60-74 for LOW)
+  - REJECTED: quality_score < 70 (or < 65 for MEDIUM, < 60 for LOW)
+- If `expert_triggered` is true, `expert_validator` must be non-null
+- `consensus_validation.agreement_level` must be "SINGLE_VALIDATOR" if `expert_validator` is null
+- `critical_issues` must be empty if status is "APPROVED"
+- `recommendations` should contain at least 1 item if status is "NEEDS_REVIEW"
+- All predictive metrics must include units (%, $)
+
+### Integration Points
+
+1. **quality-validator** (Phase 9): Generates the ValidationCertificate after validation completes
+2. **schedule-critic** (Phase 8.5): May trigger expert validator if quality concerns detected
+3. **save_schedule** tool: Requires ValidationCertificate to persist schedule (Phase 1: optional, Phase 2: mandatory)
+4. **Performance tracking**: Links prediction_id to actual outcomes for learning
+5. **Reporting**: Certificate provides executive summary of schedule quality
+
+### Usage Example
+
+```python
+# In quality-validator agent
+def generate_validation_certificate(
+    validation_result: ValidationResult,
+    schedule: AssembledSchedule,
+    volume_config: OptimizedVolumeResult
+) -> ValidationCertificate:
+    """
+    Generate comprehensive validation certificate.
+
+    Args:
+        validation_result: Output from quality validation
+        schedule: Assembled schedule with all items
+        volume_config: Volume optimization metadata
+
+    Returns:
+        ValidationCertificate with all quality dimensions and predictions
+    """
+    # Calculate quality dimensions
+    quality_dimensions = calculate_quality_dimensions(
+        validation_result=validation_result,
+        schedule=schedule
+    )
+
+    # Calculate overall quality score (weighted average)
+    quality_score = (
+        quality_dimensions["compliance_score"] * 0.25 +
+        quality_dimensions["revenue_potential_score"] * 0.25 +
+        quality_dimensions["authenticity_score"] * 0.20 +
+        quality_dimensions["engagement_score"] * 0.20 +
+        quality_dimensions["retention_score"] * 0.10
+    )
+
+    # Generate predictive impact
+    predictive_impact = calculate_predictive_impact(
+        schedule=schedule,
+        volume_config=volume_config
+    )
+
+    # Determine if expert validator needed
+    expert_needed = (
+        quality_score < 75 or
+        is_critical_creator(schedule.creator_id) or
+        has_high_churn_risk(schedule.creator_id)
+    )
+
+    # Invoke expert validator if needed
+    consensus_validation = {
+        "primary_validator": "quality-validator (sonnet)",
+        "expert_validator": None,
+        "agreement_level": "SINGLE_VALIDATOR",
+        "divergence_notes": [],
+        "expert_triggered": False
+    }
+
+    if expert_needed:
+        expert_result = invoke_expert_validator(schedule, validation_result)
+        consensus_validation = compare_validation_results(
+            primary=validation_result,
+            expert=expert_result
+        )
+
+    # Generate recommendations
+    recommendations = generate_recommendations(
+        validation_result=validation_result,
+        schedule=schedule,
+        quality_dimensions=quality_dimensions
+    )
+
+    # Build audit trail
+    audit_trail = {
+        "prediction_id": volume_config.get("prediction_id"),
+        "volume_config_snapshot": hash_volume_config(volume_config),
+        "generator_version": "3.0.0",
+        "validation_duration_ms": calculate_duration(),
+        "agents_invoked": extract_agent_list(schedule)
+    }
+
+    return ValidationCertificate(
+        certificate_version="2.0",
+        validation_timestamp=datetime.now(UTC).isoformat(),
+        quality_score=quality_score,
+        items_validated=len(schedule.items),
+        status=determine_status(quality_score, volume_config),
+        quality_dimensions=quality_dimensions,
+        predictive_impact=predictive_impact,
+        consensus_validation=consensus_validation,
+        recommendations=recommendations,
+        audit_trail=audit_trail,
+        warnings=validation_result.get("warnings", []),
+        critical_issues=validation_result.get("critical_issues", []),
+        volume_metadata=extract_volume_metadata(volume_config)
+    )
+```
+
+---
+
 ## Error Response Schema
 
 All agents should return errors in this standardized format:
@@ -1719,7 +2158,7 @@ def update_history(history: list, new_structure: str) -> list:
 ### Integration Points
 
 - **timing-optimizer**: Calls `track_ppv_rotation()` before timing assignment to get current structure preference
-- **content-curator**: Uses structure state to filter captions matching current PPV approach style
+- **caption-selection-pro**: Uses structure state to filter captions matching current PPV approach style
 - **schedule-assembler**: Updates rotation state after schedule finalization
 - **quality-validator**: Validates that PPV structure variety is maintained across the week
 
@@ -1766,7 +2205,9 @@ ON CONFLICT(creator_id) DO NOTHING;
 
 | Version | Date       | Changes |
 |---------|------------|---------|
-| 2.3.0   | 2025-12-18 | Updated to 9-phase pipeline: added Phase 6 (authenticity-engine) and Phase 8 (revenue-optimizer) contracts |
+| 3.0.1   | 2025-12-20 | Added ValidationCertificate v2.0 with quality dimensions, predictive impact, and consensus validation |
+| 3.0.0   | 2025-12-20 | Updated to 14-phase/22-agent pipeline with comprehensive agent coverage |
+| 2.3.0   | 2025-12-18 | Updated to 14-phase pipeline: added Phase 6 (authenticity-engine) and Phase 8 (revenue-optimizer) contracts |
 | 2.2.1   | 2025-12-17 | Added ppv_structure_rotation_state table documentation (proposed) |
 | 2.2.0   | 2025-12-17 | Initial comprehensive data contracts documentation with full OptimizedVolumeResult integration |
 

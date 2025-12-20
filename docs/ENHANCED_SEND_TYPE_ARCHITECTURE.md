@@ -660,9 +660,17 @@ def save_schedule(creator_id: str, week_start: str, items: list) -> dict:
 
 ## 7. Volume Assignment Enhancement
 
-### Updated Volume Configuration
+> **DEPRECATION NOTICE (v3.0)**: The `volume_assignments` table is DEPRECATED.
+> Use `get_volume_config()` MCP tool instead, which provides dynamic volume calculation
+> based on real-time performance metrics. The static table schema below is maintained
+> for historical reference only.
+
+### Updated Volume Configuration (DEPRECATED)
 
 ```sql
+-- DEPRECATED (v3.0): Use get_volume_config() MCP tool for dynamic calculation
+-- The volume_assignments table schema is maintained for historical reference only
+
 -- Enhanced volume_assignments to support send type categories
 ALTER TABLE volume_assignments ADD COLUMN revenue_items_per_day INTEGER DEFAULT 3;
 ALTER TABLE volume_assignments ADD COLUMN engagement_items_per_day INTEGER DEFAULT 4;
@@ -677,7 +685,7 @@ ALTER TABLE volume_assignments ADD COLUMN link_drop_per_day INTEGER DEFAULT 2;
 ALTER TABLE volume_assignments ADD COLUMN dm_farm_per_day INTEGER DEFAULT 1;
 ```
 
-### Volume Tier Defaults
+### Volume Tier Defaults (DEPRECATED - Dynamic Calculation Preferred)
 
 | Tier | PPV/Day | Bundles/Week | Games/Week | Bumps/Day | Link Drops/Day | Retention/Day |
 |------|---------|--------------|------------|-----------|----------------|---------------|
@@ -772,7 +780,7 @@ ALTER TABLE volume_assignments ADD COLUMN dm_farm_per_day INTEGER DEFAULT 1;
 ### Phase 4: Pipeline Updates
 1. Update skill definition with new phases
 2. Create send type allocation agent
-3. Update content curator for send type matching
+3. Update caption-selection-pro for send type matching
 4. Add follow-up generation logic
 
 ### Phase 5: Validation

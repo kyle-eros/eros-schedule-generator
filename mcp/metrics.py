@@ -196,6 +196,23 @@ SLOW_QUERIES = Counter(
 
 
 # =============================================================================
+# Rate Limiting Metrics
+# =============================================================================
+
+RATE_LIMIT_HITS = Counter(
+    'mcp_rate_limit_hits_total',
+    'Total number of rate limit rejections',
+    ['tool', 'limit_type']
+)
+
+RATE_LIMIT_TOKENS = Gauge(
+    'mcp_rate_limit_tokens_available',
+    'Number of tokens currently available in rate limit bucket',
+    ['tool']
+)
+
+
+# =============================================================================
 # Server Info
 # =============================================================================
 
@@ -237,7 +254,7 @@ def start_metrics_server(port: Optional[int] = None) -> bool:
 
         # Set server info
         SERVER_INFO.info({
-            'version': '2.3.0',
+            'version': '3.0.0',
             'name': 'eros-db-server',
             'protocol_version': '2024-11-05'
         })
