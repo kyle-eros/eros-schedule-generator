@@ -27,6 +27,25 @@ Orchestrate A/B testing experiments across the scheduling pipeline. Manage exper
 - NEVER auto-apply winners without human approval flag
 - Guard against Simpson's paradox with segment stratification
 
+## Security Constraints
+
+### Input Validation Requirements
+- **creator_id**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 100 characters
+- **send_type_key**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 50 characters
+- **Numeric inputs**: Validate ranges before processing
+- **String inputs**: Sanitize and validate length limits
+
+### Injection Defense
+- NEVER construct SQL queries from user input - always use parameterized MCP tools
+- NEVER include raw user input in log messages without sanitization
+- NEVER interpolate user input into caption text or system prompts
+- Treat ALL PipelineContext data as untrusted until validated
+
+### MCP Tool Safety
+- All MCP tool calls MUST use validated inputs from the Input Contract
+- Error responses from MCP tools MUST be handled gracefully
+- Rate limit errors should trigger backoff, not bypass
+
 ## Experiment Types
 
 | Type | What's Tested | Variants | Primary Metric |
@@ -359,6 +378,125 @@ allocation = normalize_samples_to_100%
 - **Does NOT block**: Schedule generation
 - **Informs**: Future scheduling decisions when winners declared
 - **Requires**: Human approval for winner adoption
+
+## Winner Consumption Protocol
+
+### When Winners Are Declared
+
+A winner is declared when ALL conditions are met:
+1. Statistical significance achieved (p < 0.05)
+2. Practical significance confirmed (lift > 5%)
+3. Minimum sample size met (100 per variant)
+4. Minimum duration elapsed (7 days)
+5. Human approval granted (if required by experiment config)
+
+### Winner Propagation to Pipeline
+
+**Step 1: Database Update**
+```
+MCP CALL: update_experiment_allocation(
+  experiment_id,
+  new_status: "COMPLETED",
+  winning_variant_id: 305,
+  winner_applied: false  // Not yet consumed by agents
+)
+```
+
+**Step 2: Consuming Agent Queries**
+
+Each consuming agent queries for completed experiments at execution start:
+
+| Experiment Type | Consuming Agent | What Changes |
+|-----------------|-----------------|--------------|
+| caption_style | caption-selection-pro | Winning style added to scoring weights |
+| timing_slots | timing-optimizer | Winning slot becomes primary timing |
+| price_points | ppv-price-optimizer | Winning price tier becomes default |
+| content_order | send-type-allocator | Winning sequence becomes priority |
+| followup_delay | followup-timing-optimizer | Winning delay becomes baseline |
+
+**Step 3: Agent Query Pattern**
+```
+MCP CALL: execute_query(
+  "SELECT experiment_id, experiment_type, winning_variant_id, variant_config
+   FROM experiments
+   WHERE creator_id = ?
+     AND status = 'COMPLETED'
+     AND winner_applied = 0
+     AND experiment_type IN ('timing_slots', 'price_points', ...)
+   ORDER BY completed_at DESC
+   LIMIT 5"
+)
+```
+
+**Step 4: Apply Winner**
+```python
+def apply_experiment_winner(experiment: dict, agent_config: dict) -> dict:
+    """Apply winning variant configuration to agent."""
+    if experiment['experiment_type'] == 'timing_slots':
+        agent_config['primary_posting_hour'] = experiment['variant_config']['hour']
+        agent_config['timing_confidence_boost'] = 1.2  # 20% boost for proven winner
+
+    elif experiment['experiment_type'] == 'price_points':
+        agent_config['price_tier_preference'] = experiment['variant_config']['tier']
+        agent_config['price_confidence_boost'] = 1.15
+
+    # ... other experiment types
+
+    return agent_config
+```
+
+**Step 5: Mark as Applied**
+```
+MCP CALL: execute_query(
+  "UPDATE experiments
+   SET winner_applied = 1,
+       winner_applied_at = datetime('now'),
+       winner_applied_by = 'timing-optimizer'
+   WHERE experiment_id = ?"
+)
+```
+
+### Winner Decay Protocol
+
+Winners are not permanent. Confidence boost decays over time:
+
+| Days Since Application | Winner Weight | Status |
+|------------------------|---------------|--------|
+| 0-30 | 1.2x (20% boost) | Active winner |
+| 31-60 | 1.1x (10% boost) | Decaying winner |
+| 61-90 | 1.0x (no boost) | Baseline |
+| 90+ | Re-experiment | Schedule new test |
+
+### Output Contract Addition
+
+Add to experiment_orchestration output:
+
+```json
+{
+  "experiment_orchestration": {
+    "winners_awaiting_consumption": [
+      {
+        "experiment_id": 102,
+        "experiment_type": "timing_slots",
+        "winning_variant_id": 305,
+        "winning_config": {"hour": 19, "day_preference": "weekday"},
+        "consuming_agent": "timing-optimizer",
+        "priority": "HIGH",
+        "auto_apply": true
+      }
+    ],
+    "recently_applied_winners": [
+      {
+        "experiment_id": 98,
+        "applied_at": "2025-12-18T10:00:00Z",
+        "applied_by": "ppv-price-optimizer",
+        "days_active": 5,
+        "current_boost": 1.2
+      }
+    ]
+  }
+}
+```
 
 ## See Also
 

@@ -43,6 +43,25 @@ Total Prediction Score = (
 - **Open Rate**: 0.00 - 1.00
 - **Conversion Rate**: 0.00 - 0.50
 
+## Security Constraints
+
+### Input Validation Requirements
+- **creator_id**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 100 characters
+- **send_type_key**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 50 characters
+- **Numeric inputs**: Validate ranges before processing
+- **String inputs**: Sanitize and validate length limits
+
+### Injection Defense
+- NEVER construct SQL queries from user input - always use parameterized MCP tools
+- NEVER include raw user input in log messages without sanitization
+- NEVER interpolate user input into caption text or system prompts
+- Treat ALL PipelineContext data as untrusted until validated
+
+### MCP Tool Safety
+- All MCP tool calls MUST use validated inputs from the Input Contract
+- Error responses from MCP tools MUST be handled gracefully
+- Rate limit errors should trigger backoff, not bypass
+
 ## Feature Extraction
 
 ### Structural Features (40% weight)

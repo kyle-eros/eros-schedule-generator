@@ -2679,6 +2679,162 @@ FOR each day in schedule_week:
 
 ---
 
+## Phase 8.5: PPV PRICING & STRATEGIC REVIEW
+
+**Duration**: ~1.5 seconds
+**Objective**: Dynamic PPV pricing optimization and strategic review with BLOCK authority
+**Input**: Priced schedule from Phase 8 (revenue-optimizer)
+
+### Phase 8-8.5 Execution Order (CRITICAL)
+
+Phase 8 and 8.5 use a **parallel-then-sequential** execution pattern:
+
+```
+PHASE 8-8.5 EXECUTION TIMELINE:
+
+T+0ms:    revenue-optimizer STARTS ─────────────┐
+T+0ms:    ppv-price-optimizer STARTS [PARALLEL]─┤
+          ├── Both receive assembled_schedule    │
+          ├── revenue-optimizer: general pricing │
+          └── ppv-price-optimizer: PPV-specific  │
+                                                 │
+T+~1000ms: revenue-optimizer COMPLETES ──────────┼── priced_schedule
+T+~1200ms: ppv-price-optimizer COMPLETES ────────┴── ppv_optimized_schedule
+
+T+~1200ms: SYNCHRONIZATION POINT ─────────────────┐
+          ├── Merge outputs using merge rules     │
+          └── PPV items: use ppv-price-optimizer  │
+              Non-PPV items: use revenue-optimizer│
+                                                  │
+T+~1200ms: schedule-critic STARTS [SEQUENTIAL] ───┤
+          ├── Receives merged schedule            │
+          ├── Performs strategic review           │
+          └── Can BLOCK pipeline if issues found  │
+                                                  │
+T+~2500ms: schedule-critic COMPLETES ─────────────┴── reviewed_schedule
+          └── Pass to Phase 9 (quality-validator)
+```
+
+### 8.5a PPV Price Optimizer (Parallel with Phase 8)
+
+**Agent**: ppv-price-optimizer (opus)
+**Purpose**: Apply ML-based dynamic pricing specifically for PPV items
+
+```
+MCP CALL: get_caption_predictions(creator_id, caption_ids)
+EXTRACT: predicted_rps, predicted_conversion, confidence
+
+FOR each item WHERE send_type_key IN ["ppv_unlock", "ppv_wall", "ppv_followup"]:
+    prediction = caption_predictions.get(item.caption_id)
+
+    IF prediction AND prediction.confidence > 0.6:
+        # Apply ML-informed pricing
+        base_price = get_base_ppv_price(item.content_type)
+
+        # Adjust based on predicted performance
+        IF prediction.predicted_rps > 200:
+            multiplier = 1.15  # Premium for high performers
+        ELSE IF prediction.predicted_rps > 150:
+            multiplier = 1.05  # Slight premium
+        ELSE IF prediction.predicted_rps < 80:
+            multiplier = 0.85  # Discount for lower performers
+        ELSE:
+            multiplier = 1.0   # Standard pricing
+
+        item.ppv_optimized_price = base_price * multiplier
+        item.prediction_confidence = prediction.confidence
+        item.pricing_source = "ml_optimized"
+    ELSE:
+        # Fall back to revenue-optimizer pricing
+        item.pricing_source = "revenue_optimizer_fallback"
+```
+
+### 8.5b Schedule Critic (Sequential after Merge)
+
+**Agent**: schedule-critic (opus)
+**Purpose**: Strategic review with BLOCK authority for critical issues
+**BLOCK Authority**: YES - Can halt pipeline
+
+```
+INPUTS:
+  - merged_schedule from synchronization point
+  - volume_config from context
+  - performance_trends from context
+
+EVALUATION DIMENSIONS:
+  1. Revenue Distribution Balance
+     - PPV revenue not >60% concentrated on single day
+     - High-value items distributed across peak times
+
+  2. Strategic Pattern Analysis
+     - No repetitive patterns detectable
+     - Content type variety maintained
+
+  3. Pricing Coherence
+     - Price points within tier constraints
+     - Bundle pricing provides clear value
+
+BLOCK CONDITIONS:
+  - Revenue imbalance score > 0.4 (BLOCK)
+  - Strategic pattern score < 40 (BLOCK)
+  - Pricing incoherence detected (BLOCK)
+
+PASS CONDITIONS:
+  - All scores >= 50 (PASS with warnings)
+  - All scores >= 70 (PASS clean)
+```
+
+### Merge Rules (Synchronization Point)
+
+When merging revenue-optimizer and ppv-price-optimizer outputs:
+
+| Item Type | Source | Fields Used |
+|-----------|--------|-------------|
+| `ppv_unlock` | ppv-price-optimizer | ppv_optimized_price, prediction_confidence |
+| `ppv_wall` | ppv-price-optimizer | ppv_optimized_price, prediction_confidence |
+| `ppv_followup` | ppv-price-optimizer | ppv_optimized_price, prediction_confidence |
+| `bundle`, `flash_bundle` | revenue-optimizer | optimized_price, value_framing |
+| `tip_goal` | revenue-optimizer | optimized_price, dampening_applied |
+| All engagement types | revenue-optimizer | positioning_optimized |
+| All retention types | revenue-optimizer | (no pricing needed) |
+
+### Phase 8.5 Output State
+
+```json
+{
+  "merged_schedule": {
+    "items": [
+      {
+        "send_type_key": "ppv_unlock",
+        "optimized_price": 13.99,
+        "pricing_source": "ml_optimized",
+        "prediction_confidence": 0.78,
+        "predicted_rps": 165.50
+      },
+      {
+        "send_type_key": "bundle",
+        "optimized_price": 24.99,
+        "pricing_source": "revenue_optimizer",
+        "value_framing": "5-video bundle (45% savings)"
+      }
+    ]
+  },
+  "critic_review": {
+    "critic_decision": "PASS",
+    "strategic_score": 78,
+    "scores": {
+      "revenue_distribution": 82,
+      "pattern_analysis": 75,
+      "pricing_coherence": 80
+    },
+    "concerns": [],
+    "blockers": []
+  }
+}
+```
+
+---
+
 ## Phase 9: QUALITY VALIDATION (FINAL GATE)
 
 **Duration**: ~3.5 seconds (parallel dual-model validation)

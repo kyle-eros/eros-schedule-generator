@@ -410,9 +410,216 @@ class QueryExecutionResponse(TypedDict):
 
 
 # ============================================================================
-# Error Response Type
+# Error Response Types
 # ============================================================================
 
-class ErrorResponse(TypedDict):
-    """Standard error response."""
+
+class ErrorCode:
+    """Standard error codes for all MCP tools and agents.
+
+    Error codes are organized by category using ranges:
+    - 1000-1999: Input validation errors
+    - 2000-2999: Not found errors
+    - 3000-3999: Database/connection errors
+    - 4000-4999: Rate limiting errors
+    - 5000-5999: Pipeline/agent errors
+    - 6000-6999: Circuit breaker errors
+    """
+
+    # Validation errors (1000-1999)
+    INVALID_INPUT = "ERR_1000_INVALID_INPUT"
+    INVALID_CREATOR_ID = "ERR_1001_INVALID_CREATOR_ID"
+    INVALID_SEND_TYPE = "ERR_1002_INVALID_SEND_TYPE"
+    INVALID_CONTENT_TYPE = "ERR_1003_INVALID_CONTENT_TYPE"
+    INVALID_DATE_RANGE = "ERR_1004_INVALID_DATE_RANGE"
+    INVALID_PRICE = "ERR_1005_INVALID_PRICE"
+    INVALID_CAPTION_ID = "ERR_1006_INVALID_CAPTION_ID"
+    INVALID_JSON = "ERR_1007_INVALID_JSON"
+
+    # Not found errors (2000-2999)
+    CREATOR_NOT_FOUND = "ERR_2000_CREATOR_NOT_FOUND"
+    SEND_TYPE_NOT_FOUND = "ERR_2001_SEND_TYPE_NOT_FOUND"
+    CAPTION_NOT_FOUND = "ERR_2002_CAPTION_NOT_FOUND"
+    SCHEDULE_NOT_FOUND = "ERR_2003_SCHEDULE_NOT_FOUND"
+    CONTENT_TYPE_NOT_FOUND = "ERR_2004_CONTENT_TYPE_NOT_FOUND"
+    PERSONA_NOT_FOUND = "ERR_2005_PERSONA_NOT_FOUND"
+    EXPERIMENT_NOT_FOUND = "ERR_2006_EXPERIMENT_NOT_FOUND"
+
+    # Database errors (3000-3999)
+    DATABASE_ERROR = "ERR_3000_DATABASE_ERROR"
+    CONNECTION_FAILED = "ERR_3001_CONNECTION_FAILED"
+    QUERY_TIMEOUT = "ERR_3002_QUERY_TIMEOUT"
+    TRANSACTION_FAILED = "ERR_3003_TRANSACTION_FAILED"
+    INTEGRITY_ERROR = "ERR_3004_INTEGRITY_ERROR"
+
+    # Rate limiting errors (4000-4999)
+    RATE_LIMIT_EXCEEDED = "ERR_4000_RATE_LIMIT_EXCEEDED"
+    RATE_LIMIT_TOOL = "ERR_4001_RATE_LIMIT_TOOL"
+    RATE_LIMIT_GLOBAL = "ERR_4002_RATE_LIMIT_GLOBAL"
+
+    # Pipeline/Agent errors (5000-5999)
+    PIPELINE_BLOCKED = "ERR_5000_PIPELINE_BLOCKED"
+    PREFLIGHT_FAILED = "ERR_5001_PREFLIGHT_FAILED"
+    VALIDATION_FAILED = "ERR_5002_VALIDATION_FAILED"
+    VAULT_VIOLATION = "ERR_5003_VAULT_VIOLATION"
+    AVOID_TIER_VIOLATION = "ERR_5004_AVOID_TIER_VIOLATION"
+    INSUFFICIENT_DIVERSITY = "ERR_5005_INSUFFICIENT_DIVERSITY"
+    QUALITY_THRESHOLD_NOT_MET = "ERR_5006_QUALITY_THRESHOLD_NOT_MET"
+    CAPTION_POOL_EXHAUSTED = "ERR_5007_CAPTION_POOL_EXHAUSTED"
+    TIMING_CONFLICT = "ERR_5008_TIMING_CONFLICT"
+    CATEGORY_IMBALANCE = "ERR_5009_CATEGORY_IMBALANCE"
+    MCP_CONNECTION_REQUIRED = "ERR_5010_MCP_CONNECTION_REQUIRED"
+
+    # Circuit breaker errors (6000-6999)
+    CIRCUIT_BREAKER_OPEN = "ERR_6000_CIRCUIT_BREAKER_OPEN"
+    CIRCUIT_BREAKER_HALF_OPEN = "ERR_6001_CIRCUIT_BREAKER_HALF_OPEN"
+
+
+class ErrorResponse(TypedDict, total=False):
+    """Standardized error response format for all MCP tools and agents.
+
+    All error responses MUST include 'error' field. The 'error_code' field
+    is strongly recommended for programmatic error handling.
+
+    Attributes:
+        error: Human-readable error message (required)
+        error_code: Machine-readable error code from ErrorCode class
+        recoverable: Whether the error can be recovered from (e.g., retry)
+        retry_after: Seconds until retry is allowed (for rate limits)
+        details: Additional error context (e.g., invalid values, thresholds)
+        remediation: List of suggested fixes or next steps
+
+    Example:
+        {
+            "error": "Creator not found: invalid_creator",
+            "error_code": "ERR_2000_CREATOR_NOT_FOUND",
+            "recoverable": false,
+            "details": {"creator_id": "invalid_creator"},
+            "remediation": ["Check creator_id spelling", "Run get_active_creators()"]
+        }
+    """
+
     error: str
+    error_code: str
+    recoverable: bool
+    retry_after: Optional[float]
+    details: Optional[Dict[str, Any]]
+    remediation: Optional[List[str]]
+
+
+def create_error_response(
+    message: str,
+    error_code: str,
+    recoverable: bool = False,
+    retry_after: Optional[float] = None,
+    details: Optional[Dict[str, Any]] = None,
+    remediation: Optional[List[str]] = None
+) -> ErrorResponse:
+    """Factory function to create standardized error responses.
+
+    Args:
+        message: Human-readable error description
+        error_code: Machine-readable code from ErrorCode class
+        recoverable: Whether the operation can be retried
+        retry_after: Seconds to wait before retry (for rate limits)
+        details: Additional context about the error
+        remediation: Suggested fixes or next steps
+
+    Returns:
+        ErrorResponse dictionary with all provided fields
+
+    Example:
+        >>> error = create_error_response(
+        ...     message="Creator not found: test_creator",
+        ...     error_code=ErrorCode.CREATOR_NOT_FOUND,
+        ...     recoverable=False,
+        ...     details={"creator_id": "test_creator"},
+        ...     remediation=["Check creator_id spelling"]
+        ... )
+        >>> error["error_code"]
+        'ERR_2000_CREATOR_NOT_FOUND'
+    """
+    response: ErrorResponse = {
+        "error": message,
+        "error_code": error_code,
+        "recoverable": recoverable,
+    }
+
+    if retry_after is not None:
+        response["retry_after"] = retry_after
+    if details is not None:
+        response["details"] = details
+    if remediation is not None:
+        response["remediation"] = remediation
+
+    return response
+
+
+def is_error_response(response: Any) -> bool:
+    """Check if a response dictionary is an error response.
+
+    Args:
+        response: Any response object to check
+
+    Returns:
+        True if response is a dict with 'error' key
+    """
+    if not isinstance(response, dict):
+        return False
+    return "error" in response
+
+
+# Mapping of error codes to default remediation suggestions
+DEFAULT_REMEDIATION: Dict[str, List[str]] = {
+    ErrorCode.INVALID_CREATOR_ID: [
+        "Check creator_id format (alphanumeric, underscore, hyphen only)",
+        "Verify creator_id length is under 100 characters",
+        "Run get_active_creators() to list valid IDs",
+    ],
+    ErrorCode.CREATOR_NOT_FOUND: [
+        "Run get_active_creators() to list valid creator IDs",
+        "Check for typos in creator_id",
+    ],
+    ErrorCode.VAULT_VIOLATION: [
+        "Check vault_matrix for creator's available content types",
+        "Run get_vault_availability() to see valid content",
+        "This is a HARD GATE - cannot be overridden",
+    ],
+    ErrorCode.AVOID_TIER_VIOLATION: [
+        "Run get_content_type_rankings() to check tier classification",
+        "Exclude AVOID tier content types from selection",
+        "This is a HARD GATE - cannot be overridden",
+    ],
+    ErrorCode.INSUFFICIENT_DIVERSITY: [
+        "Add captions for underused send types",
+        "Relax freshness threshold from 30 to 20 days",
+        "Check vault_matrix for missing content types",
+    ],
+    ErrorCode.CAPTION_POOL_EXHAUSTED: [
+        "Add more captions for this send type",
+        "Relax freshness threshold to include older captions",
+        "Check if vault_matrix restricts available content",
+    ],
+    ErrorCode.RATE_LIMIT_EXCEEDED: [
+        "Wait for the retry_after period",
+        "Reduce request frequency",
+        "Check if requests are being batched efficiently",
+    ],
+    ErrorCode.CIRCUIT_BREAKER_OPEN: [
+        "Wait for circuit breaker timeout (default 60s)",
+        "Check database connection health",
+        "Review recent error logs for root cause",
+    ],
+}
+
+
+def get_default_remediation(error_code: str) -> List[str]:
+    """Get default remediation suggestions for an error code.
+
+    Args:
+        error_code: An error code from ErrorCode class
+
+    Returns:
+        List of remediation suggestions, or empty list if none defined
+    """
+    return DEFAULT_REMEDIATION.get(error_code, [])

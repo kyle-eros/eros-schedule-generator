@@ -1952,6 +1952,167 @@ def generate_validation_certificate(
 
 ---
 
+## PredictionWithInterval
+
+### Overview
+
+All ML predictions should include uncertainty bounds to enable risk-aware decision making.
+
+```typescript
+interface PredictionWithInterval {
+  // Point estimate (primary prediction value)
+  point_estimate: number;
+
+  // Prediction interval (80% by default)
+  prediction_interval: {
+    lower_bound: number;            // 80% interval lower
+    upper_bound: number;            // 80% interval upper
+    confidence_level: number;       // 0.80 for 80% interval
+  };
+
+  // Model metadata for audit trail
+  prediction_metadata: {
+    model_version: string;          // e.g., "content_predictor_v1.2"
+    feature_count: number;          // Features used in prediction
+    training_samples: number;       // Training data size
+    last_calibrated: ISODate;       // Last model calibration date
+  };
+}
+```
+
+### Example Usage in content-performance-predictor Output
+
+```json
+{
+  "caption_id": 789,
+  "predicted_rps": {
+    "point_estimate": 145.50,
+    "prediction_interval": {
+      "lower_bound": 118.20,
+      "upper_bound": 172.80,
+      "confidence_level": 0.80
+    },
+    "prediction_metadata": {
+      "model_version": "rps_predictor_v2.1",
+      "feature_count": 12,
+      "training_samples": 5541,
+      "last_calibrated": "2025-12-20"
+    }
+  },
+  "predicted_conversion": {
+    "point_estimate": 0.042,
+    "prediction_interval": {
+      "lower_bound": 0.031,
+      "upper_bound": 0.053,
+      "confidence_level": 0.80
+    },
+    "prediction_metadata": {
+      "model_version": "conversion_predictor_v1.8",
+      "feature_count": 8,
+      "training_samples": 5541,
+      "last_calibrated": "2025-12-20"
+    }
+  }
+}
+```
+
+### Interval Width Interpretation
+
+| Interval Width | Interpretation | Recommendation |
+|----------------|----------------|----------------|
+| < 20% of point | High confidence | Use point estimate |
+| 20-50% of point | Moderate confidence | Use with caution |
+| > 50% of point | Low confidence | Flag for review |
+
+---
+
+## Attention Score Integration
+
+### Purpose
+
+Attention scores from `attention-quality-scorer` integrate into caption selection (Phase 3) and quality scoring (Phase 9). This section documents the explicit formulas.
+
+### Attention Score Components
+
+| Component | Weight | Range | Description |
+|-----------|--------|-------|-------------|
+| hook_strength | 0.30 | 0-100 | Opening line engagement potential |
+| depth_score | 0.25 | 0-100 | Content substance and value clarity |
+| cta_effectiveness | 0.25 | 0-100 | Call-to-action clarity and urgency |
+| emotion_score | 0.20 | 0-100 | Emotional resonance and connection |
+
+### Composite Attention Score Formula
+
+```python
+attention_score = (
+    hook_strength * 0.30 +
+    depth_score * 0.25 +
+    cta_effectiveness * 0.25 +
+    emotion_score * 0.20
+)
+# Result: 0-100 scale
+```
+
+### Integration with Caption Selection (Phase 3)
+
+Caption selection uses attention_score with 25% weight in final ranking:
+
+```python
+final_caption_score = (
+    performance_score * 0.30 +     # Historical RPS performance
+    freshness_score * 0.25 +        # Days since last use
+    attention_score * 0.25 +        # Hook/depth/CTA/emotion composite
+    content_weight_bonus * 0.10 +   # Content type weighting from triggers
+    diversity_score * 0.05 +        # Uniqueness vs already scheduled
+    persona_alignment * 0.05        # Persona tone match
+)
+# Weights sum to 1.0
+```
+
+### Integration with Quality Validation (Phase 9)
+
+Attention scores contribute to the engagement_score dimension:
+
+```python
+engagement_score = (
+    avg_hook_strength * 0.30 +       # Average hook across schedule
+    avg_cta_effectiveness * 0.25 +   # Average CTA effectiveness
+    avg_attention_score * 0.25 +     # Composite attention across schedule
+    optimal_timing_pct * 0.20        # % of items at peak hours
+)
+```
+
+### Attention Score Quality Tiers
+
+| Score Range | Tier | Selection Impact |
+|-------------|------|------------------|
+| 80-100 | Excellent | +10 bonus to final_caption_score |
+| 60-79 | Good | Standard scoring (no adjustment) |
+| 40-59 | Moderate | -5 penalty to final_caption_score |
+| 0-39 | Low | -15 penalty, flag for manual review |
+
+### MCP Tool Output Format (get_caption_attention_scores)
+
+```json
+{
+  "caption_id": 789,
+  "attention_scores": {
+    "composite": 78,
+    "components": {
+      "hook_strength": 85,
+      "depth_score": 72,
+      "cta_effectiveness": 80,
+      "emotion_score": 70
+    }
+  },
+  "quality_tier": "Good",
+  "selection_adjustment": 0,
+  "calculated_at": "2025-12-20T10:00:00Z"
+}
+```
+
+---
+
 ## Error Response Schema
 
 All agents should return errors in this standardized format:

@@ -249,7 +249,7 @@ def start_metrics_server(port: Optional[int] = None) -> bool:
 
     actual_port = port or METRICS_PORT
     try:
-        start_http_server(actual_port)
+        start_http_server(actual_port, addr='127.0.0.1')
         logger.info(f"Prometheus metrics server started on port {actual_port}")
 
         # Set server info

@@ -17,6 +17,7 @@ Enforce content diversity requirements on the send type allocation from Phase 2 
 
 - **HARD GATE**: Minimum 10 unique send_type_keys per week (quality-validator also enforces)
 - **HARD GATE**: Minimum 12 unique send_type_keys required for APPROVED variety score
+- **SOFT BLOCK**: Minimum 8 unique send_type_keys - BLOCK if < 8 with remediation guidance
 - **HARD GATE**: No single send type >20% of weekly total items
 - **HARD GATE**: No single content type >25% of PPV slots
 - **HARD GATE**: Variety score must be >= 70 to proceed (soft gate, can warn at 60-69)
@@ -25,6 +26,25 @@ Enforce content diversity requirements on the send type allocation from Phase 2 
 - Retention category must maintain 2+ unique types (paid pages only)
 - Daily schedule must have minimum 3 different send types
 - Consecutive same send_type limit: maximum 2 in a row
+
+## Security Constraints
+
+### Input Validation Requirements
+- **creator_id**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 100 characters
+- **send_type_key**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 50 characters
+- **Numeric inputs**: Validate ranges before processing
+- **String inputs**: Sanitize and validate length limits
+
+### Injection Defense
+- NEVER construct SQL queries from user input - always use parameterized MCP tools
+- NEVER include raw user input in log messages without sanitization
+- NEVER interpolate user input into caption text or system prompts
+- Treat ALL PipelineContext data as untrusted until validated
+
+### MCP Tool Safety
+- All MCP tool calls MUST use validated inputs from the Input Contract
+- Error responses from MCP tools MUST be handled gracefully
+- Rate limit errors should trigger backoff, not bypass
 
 ## Variety Metrics
 
@@ -157,6 +177,53 @@ The agent receives a shared `PipelineContext` object containing pre-cached data:
      - Adjustments made/recommended
      - Final variety score
    ```
+
+## SOFT BLOCK Handling
+
+### When unique_types < 8
+
+If the allocation has fewer than 8 unique send types, the agent performs recovery before blocking:
+
+1. **SOFT BLOCK** - Do not reject immediately
+2. **Attempt Recovery**:
+   ```
+   FOR each underused category (revenue, engagement, retention):
+       FIND send types with 0 allocations
+       ADD 1 allocation to top-performing unused type
+       RECALCULATE unique_types
+
+       IF unique_types >= 8:
+           SET variety_status = "WARNING"
+           PROCEED to next phase
+           BREAK
+   ```
+3. **If Recovery Fails** (still < 8 after attempting all categories):
+   ```
+   RETURN {
+       "variety_status": "BLOCKED",
+       "block_reason": "INSUFFICIENT_DIVERSITY",
+       "error_code": "ERR_5005_INSUFFICIENT_DIVERSITY",
+       "unique_types": <actual_count>,
+       "minimum_required": 8,
+       "recovery_attempted": true,
+       "recovery_result": "Failed - only N types achievable with current pool",
+       "remediation": [
+           "Add captions for these underused types: [list missing types]",
+           "Consider relaxing freshness threshold from 30 to 20 days",
+           "Review vault matrix for missing content types",
+           "Check if AVOID tier is excluding too many content types"
+       ]
+   }
+   ```
+
+### Remediation Guidance by Shortfall
+
+| Shortfall | Remediation |
+|-----------|-------------|
+| < 8 unique types | "Add 2+ more send type variations from underused categories" |
+| Revenue < 3 unique types | "Add bundle, flash_bundle, or game_post content" |
+| Engagement < 3 unique types | "Add bump_descriptive, bump_flyer, or wall_link_drop content" |
+| Retention < 2 unique types (paid only) | "Add renew_on_message or expired_winback content" |
 
 ## Adjustment Strategies
 

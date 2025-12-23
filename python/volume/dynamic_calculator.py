@@ -722,9 +722,23 @@ def calculate_optimized_volume(
         finally:
             conn.close()
 
-    except Exception as e:
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in multi-horizon fusion: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+    except (ValueError, TypeError) as validation_error:
         logger.warning(
-            f"Multi-horizon fusion failed, using context scores: {e}"
+            f"Validation error in multi-horizon fusion: {validation_error}",
+            extra={"creator_id": creator_id}
+        )
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in multi-horizon fusion (module not available): {import_error}"
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in multi-horizon fusion, using context scores: {unexpected}"
         )
 
     # Update context with fused scores for recalculation
@@ -813,8 +827,19 @@ def calculate_optimized_volume(
                 }
             )
 
-    except Exception as e:
-        logger.warning(f"Confidence adjustment failed: {e}")
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in confidence adjustment: {validation_error}",
+            extra={"message_count": message_count}
+        )
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in confidence adjustment (module not available): {import_error}"
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in confidence adjustment: {unexpected}"
+        )
 
     # -------------------------------------------------------------------------
     # Step 3.5: Bump multiplier for engagement (Volume Optimization v3.0)
@@ -870,8 +895,20 @@ def calculate_optimized_volume(
                 }
             )
 
-    except Exception as e:
-        logger.warning(f"Bump multiplier calculation failed: {e}")
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in bump multiplier calculation: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in bump multiplier calculation: {validation_error}",
+            extra={"creator_id": creator_id, "content_category": content_category}
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in bump multiplier calculation: {unexpected}"
+        )
 
     # -------------------------------------------------------------------------
     # Step 3.6: Followup volume scaling (Volume Optimization v3.0)
@@ -903,8 +940,16 @@ def calculate_optimized_volume(
             }
         )
 
-    except Exception as e:
-        logger.warning(f"Followup volume calculation failed: {e}")
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in followup volume calculation: {validation_error}",
+            extra={"ppv_count": estimated_ppv_count, "confidence_score": confidence_score}
+        )
+        followup_volume_scaled = min(fused_config.revenue_per_day, 4)  # Fallback
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in followup volume calculation: {unexpected}"
+        )
         followup_volume_scaled = min(fused_config.revenue_per_day, 4)  # Fallback
 
     # -------------------------------------------------------------------------
@@ -951,8 +996,39 @@ def calculate_optimized_volume(
                 }
             )
 
-    except Exception as e:
-        logger.warning(f"DOW multipliers failed, using uniform distribution: {e}")
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in DOW multipliers calculation: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+        # Fallback to uniform distribution
+        base_daily = fused_config.total_per_day
+        for day in range(7):
+            weekly_distribution[day] = base_daily
+            dow_multipliers[day] = 1.0
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in DOW multipliers calculation: {validation_error}",
+            extra={"creator_id": creator_id}
+        )
+        # Fallback to uniform distribution
+        base_daily = fused_config.total_per_day
+        for day in range(7):
+            weekly_distribution[day] = base_daily
+            dow_multipliers[day] = 1.0
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in DOW multipliers (module not available): {import_error}"
+        )
+        # Fallback to uniform distribution
+        base_daily = fused_config.total_per_day
+        for day in range(7):
+            weekly_distribution[day] = base_daily
+            dow_multipliers[day] = 1.0
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in DOW multipliers, using uniform distribution: {unexpected}"
+        )
         # Fallback to uniform distribution
         base_daily = fused_config.total_per_day
         for day in range(7):
@@ -1001,8 +1077,24 @@ def calculate_optimized_volume(
                     }
                 )
 
-    except Exception as e:
-        logger.warning(f"Elasticity check failed: {e}")
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in elasticity check: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in elasticity check: {validation_error}",
+            extra={"creator_id": creator_id}
+        )
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in elasticity check (module not available): {import_error}"
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in elasticity check: {unexpected}"
+        )
 
     # -------------------------------------------------------------------------
     # Step 6: Content-type weighting
@@ -1040,8 +1132,24 @@ def calculate_optimized_volume(
                     }
                 )
 
-    except Exception as e:
-        logger.warning(f"Content weighting failed: {e}")
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in content weighting: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in content weighting: {validation_error}",
+            extra={"creator_id": creator_id}
+        )
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in content weighting (module not available): {import_error}"
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in content weighting: {unexpected}"
+        )
 
     # -------------------------------------------------------------------------
     # Step 7: Caption pool verification
@@ -1084,8 +1192,24 @@ def calculate_optimized_volume(
             if shortage["status"] in ("critical", "insufficient"):
                 caption_warnings.append(shortage["message"])
 
-    except Exception as e:
-        logger.warning(f"Caption pool check failed: {e}")
+    except sqlite3.OperationalError as db_error:
+        logger.error(
+            f"Database error in caption pool check: {db_error}",
+            extra={"creator_id": creator_id, "db_path": db_path}
+        )
+    except (ValueError, TypeError) as validation_error:
+        logger.warning(
+            f"Validation error in caption pool check: {validation_error}",
+            extra={"creator_id": creator_id}
+        )
+    except ImportError as import_error:
+        logger.warning(
+            f"Import error in caption pool check (module not available): {import_error}"
+        )
+    except Exception as unexpected:
+        logger.exception(
+            f"Unexpected error in caption pool check: {unexpected}"
+        )
 
     # -------------------------------------------------------------------------
     # Step 8: Track prediction for accuracy measurement
@@ -1140,8 +1264,24 @@ def calculate_optimized_volume(
                 extra={"prediction_id": prediction_id}
             )
 
-        except Exception as e:
-            logger.warning(f"Prediction tracking failed: {e}")
+        except sqlite3.OperationalError as db_error:
+            logger.error(
+                f"Database error in prediction tracking: {db_error}",
+                extra={"creator_id": creator_id, "db_path": db_path, "week_start": week_start}
+            )
+        except (ValueError, TypeError) as validation_error:
+            logger.warning(
+                f"Validation error in prediction tracking: {validation_error}",
+                extra={"creator_id": creator_id, "week_start": week_start}
+            )
+        except ImportError as import_error:
+            logger.warning(
+                f"Import error in prediction tracking (module not available): {import_error}"
+            )
+        except Exception as unexpected:
+            logger.exception(
+                f"Unexpected error in prediction tracking: {unexpected}"
+            )
 
     # -------------------------------------------------------------------------
     # Build final result

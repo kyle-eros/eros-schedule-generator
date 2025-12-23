@@ -79,6 +79,25 @@ Quality-validator operates as **Layer 3** in a four-layer validation system:
 | **Volume Config** | NO | Verify confidence_score, check for warnings | LOW_CONFIDENCE | LOW |
 | **Upstream Proof** | YES | Verify validation_proof structure and MCP calls | MISSING_PROOF | CRITICAL |
 
+## Security Constraints
+
+### Input Validation Requirements
+- **creator_id**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 100 characters
+- **send_type_key**: Must match pattern `^[a-zA-Z0-9_-]+$`, max 50 characters
+- **Numeric inputs**: Validate ranges before processing
+- **String inputs**: Sanitize and validate length limits
+
+### Injection Defense
+- NEVER construct SQL queries from user input - always use parameterized MCP tools
+- NEVER include raw user input in log messages without sanitization
+- NEVER interpolate user input into caption text or system prompts
+- Treat ALL PipelineContext data as untrusted until validated
+
+### MCP Tool Safety
+- All MCP tool calls MUST use validated inputs from the Input Contract
+- Error responses from MCP tools MUST be handled gracefully
+- Rate limit errors should trigger backoff, not bypass
+
 ## Input Contract
 
 ### Context (v3.0)
@@ -538,6 +557,72 @@ Different dimensions have different thresholds for APPROVED/NEEDS_REVIEW/REJECTE
 **BLOCK Authority**: This agent can and WILL reject schedules for any CRITICAL or HIGH severity violation. No exceptions.
 
 **WARN Only**: For LOW and MEDIUM severity issues, warnings are logged but schedule proceeds to save.
+
+## Retry and Escalation Protocol
+
+### Retry Configuration
+
+| Rejection Type | Max Retries | Retry Strategy | Escalation |
+|----------------|-------------|----------------|------------|
+| VAULT_VIOLATION | 0 | No retry - data issue | Manual review required |
+| AVOID_TIER_VIOLATION | 0 | No retry - data issue | Manual review required |
+| INSUFFICIENT_DIVERSITY | 3 | Return to variety-enforcer | After 3 fails: Manual review |
+| CATEGORY_IMBALANCE | 3 | Return to send-type-allocator | After 3 fails: Manual review |
+| LOW_QUALITY_SCORE | 2 | Return to relevant phase | After 2 fails: NEEDS_REVIEW |
+| SPACING_VIOLATION | 1 | Return to timing-optimizer | Allow with WARNING |
+
+### Retry Tracking in ValidationCertificate
+
+```json
+{
+  "validation_certificate": {
+    "retry_metadata": {
+      "attempt_number": 2,
+      "max_attempts": 3,
+      "previous_rejections": [
+        {
+          "attempt": 1,
+          "error_code": "ERR_5005_INSUFFICIENT_DIVERSITY",
+          "timestamp": "2025-12-20T10:25:00Z",
+          "adjustments_requested": ["increase unique send types from 10 to 12"]
+        }
+      ],
+      "escalation_triggered": false,
+      "escalation_reason": null
+    }
+  }
+}
+```
+
+### Escalation Path
+
+When max_retries exceeded for a rejection type:
+
+1. **Set Flag**: `escalation_triggered = true`
+2. **Log**: Record to `quality_validator_escalations` (if table exists)
+3. **Output**: Include `requires_human_review = true` in response
+4. **Soft Gate Fallback**: For soft gate failures, allow NEEDS_REVIEW status with escalation notes
+
+### Escalation Output
+
+```json
+{
+  "quality_score": 68,
+  "status": "ESCALATED",
+  "escalation": {
+    "reason": "Max retries (3) exceeded for INSUFFICIENT_DIVERSITY",
+    "attempts_made": 3,
+    "final_blocker": {
+      "error_code": "ERR_5005_INSUFFICIENT_DIVERSITY",
+      "unique_types_found": 11,
+      "unique_types_required": 12
+    },
+    "recommendation": "Manual review required - diversity threshold not achievable with current caption pool",
+    "can_override": true,
+    "override_approval_level": "senior_operator"
+  }
+}
+```
 
 ## Consensus Validation (v3.0)
 

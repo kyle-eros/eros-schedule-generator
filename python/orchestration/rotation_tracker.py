@@ -24,8 +24,11 @@ from enum import Enum, auto
 from typing import Any
 
 import hashlib
+import json
 import random
+import sqlite3
 
+from python.config.database import get_database_path
 from python.logging_config import get_logger, log_fallback
 from python.exceptions import EROSError
 
@@ -271,23 +274,90 @@ class RotationStateData:
 def db_get_creator_rotation_state(creator_id: str) -> dict[str, Any] | None:
     """Load rotation state from database for a creator.
 
-    Placeholder function for database integration. Replace with actual
-    database implementation.
+    Retrieves persisted rotation state from the creator_rotation_state table
+    and transforms it into the format expected by RotationStateData.
 
     Args:
         creator_id: The creator ID to look up
 
     Returns:
-        Dictionary with state data if found, None otherwise
+        Dictionary with state data if found, None otherwise.
+        Dictionary keys match RotationStateData fields:
+        - creator_id, current_pattern_index, current_position,
+        - pattern_start_date, days_on_pattern, state, last_updated
     """
-    # TODO: Implement actual database lookup
-    # Example query:
-    # SELECT * FROM creator_rotation_state WHERE creator_id = ?
     logger.debug(
         "Database lookup for rotation state",
         extra={"creator_id": creator_id, "operation": "db_get_creator_rotation_state"}
     )
-    return None
+
+    try:
+        db_path = get_database_path(validate=True)
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+
+        cursor = conn.execute(
+            """
+            SELECT creator_id, rotation_pattern, pattern_start_date,
+                   days_on_pattern, current_state, updated_at
+            FROM creator_rotation_state
+            WHERE creator_id = ?
+            """,
+            (creator_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if row is None:
+            logger.debug(
+                "No rotation state found in database",
+                extra={"creator_id": creator_id}
+            )
+            return None
+
+        # Parse rotation_pattern JSON to extract pattern_index and position
+        rotation_pattern = json.loads(row["rotation_pattern"])
+
+        # Transform database row to RotationStateData-compatible dict
+        state_data = {
+            "creator_id": row["creator_id"],
+            "current_pattern_index": rotation_pattern.get("pattern_index", 0),
+            "current_position": rotation_pattern.get("position", 0),
+            "pattern_start_date": row["pattern_start_date"],
+            "days_on_pattern": row["days_on_pattern"],
+            "state": row["current_state"],
+            "last_updated": row["updated_at"],
+        }
+
+        logger.info(
+            "Loaded rotation state from database",
+            extra={
+                "creator_id": creator_id,
+                "state": state_data["state"],
+                "pattern_index": state_data["current_pattern_index"],
+            }
+        )
+
+        return state_data
+
+    except FileNotFoundError as e:
+        logger.warning(
+            "Database file not found for rotation state lookup",
+            extra={"creator_id": creator_id, "error": str(e)}
+        )
+        return None
+    except sqlite3.Error as e:
+        logger.error(
+            "Database error during rotation state lookup",
+            extra={"creator_id": creator_id, "error": str(e)}
+        )
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(
+            "Invalid JSON in rotation_pattern column",
+            extra={"creator_id": creator_id, "error": str(e)}
+        )
+        return None
 
 
 def db_save_creator_rotation_state(
@@ -296,28 +366,83 @@ def db_save_creator_rotation_state(
 ) -> bool:
     """Save rotation state to database for a creator.
 
-    Placeholder function for database integration. Replace with actual
-    database implementation.
+    Persists rotation state to the creator_rotation_state table using
+    INSERT OR REPLACE for upsert behavior.
 
     Args:
         creator_id: The creator ID to save for
-        state_data: Dictionary with state data to persist
+        state_data: Dictionary with state data from RotationStateData.to_dict()
+            Expected keys: current_pattern_index, current_position,
+            pattern_start_date, days_on_pattern, state
 
     Returns:
         True if save successful, False otherwise
     """
-    # TODO: Implement actual database save
-    # Example query:
-    # INSERT OR REPLACE INTO creator_rotation_state (creator_id, ...) VALUES (?, ...)
     logger.debug(
         "Database save for rotation state",
         extra={
             "creator_id": creator_id,
             "operation": "db_save_creator_rotation_state",
-            "state_data": state_data
+            "state": state_data.get("state"),
         }
     )
-    return True
+
+    try:
+        db_path = get_database_path(validate=True)
+        conn = sqlite3.connect(db_path, timeout=30.0)
+
+        # Build rotation_pattern JSON from component fields
+        rotation_pattern = json.dumps({
+            "pattern_index": state_data.get("current_pattern_index", 0),
+            "position": state_data.get("current_position", 0),
+        })
+
+        # Extract and normalize state name
+        state_value = state_data.get("state", "initializing")
+        if hasattr(state_value, "name"):
+            state_value = state_value.name
+
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO creator_rotation_state
+            (creator_id, rotation_pattern, pattern_start_date, days_on_pattern,
+             current_state, updated_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            """,
+            (
+                creator_id,
+                rotation_pattern,
+                state_data.get("pattern_start_date", date.today().isoformat()),
+                state_data.get("days_on_pattern", 0),
+                state_value,
+            )
+        )
+        conn.commit()
+        conn.close()
+
+        logger.info(
+            "Saved rotation state to database",
+            extra={
+                "creator_id": creator_id,
+                "state": state_value,
+                "pattern_index": state_data.get("current_pattern_index", 0),
+            }
+        )
+
+        return True
+
+    except FileNotFoundError as e:
+        logger.warning(
+            "Database file not found for rotation state save",
+            extra={"creator_id": creator_id, "error": str(e)}
+        )
+        return False
+    except sqlite3.Error as e:
+        logger.error(
+            "Database error during rotation state save",
+            extra={"creator_id": creator_id, "error": str(e)}
+        )
+        return False
 
 
 # =============================================================================

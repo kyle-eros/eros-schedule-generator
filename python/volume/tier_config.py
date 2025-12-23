@@ -18,9 +18,14 @@ Usage:
     bounds = config.bounds
 """
 
+import logging
 from typing import Dict, Tuple
 
 from python.models.volume import VolumeTier
+
+# Configure module logger
+# Using standard logging for minimal import dependencies during config loading
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Lazy Configuration Loading
@@ -89,9 +94,11 @@ def _ensure_config_loaded() -> None:
 
         _config_loaded = True
 
-    except Exception:
-        # Fallback to hardcoded defaults if config loading fails
-        # This maintains backwards compatibility
+    except Exception as e:
+        logger.warning(
+            f"Config loading failed, using hardcoded defaults: {e}",
+            extra={"fallback_reason": str(e)}
+        )
         _load_hardcoded_defaults()
         _config_loaded = True
 
