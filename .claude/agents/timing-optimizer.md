@@ -98,4 +98,7 @@ interface TimingOutput {
 **Output**: Items with `scheduled_time` and `expires_at` populated, plus `timing_metadata`
 
 ## See Also
-- REFERENCE/SEND_TYPE_TAXONOMY.md (send type constraints and daily limits)
+
+- [TIMING_RULES.md](../skills/eros-schedule-generator/REFERENCE/TIMING_RULES.md) - Complete timing specifications
+- [TOOL_PATTERNS.md](../skills/eros-schedule-generator/REFERENCE/TOOL_PATTERNS.md) - MCP tool invocation patterns
+- [SEND_TYPE_TAXONOMY.md](../skills/eros-schedule-generator/REFERENCE/SEND_TYPE_TAXONOMY.md) - Send type constraints and daily limits

@@ -5,8 +5,8 @@
 AI-powered multi-agent schedule generation system for OnlyFans creators using a 22-type send taxonomy. The system orchestrates **24 specialized agents across 14 phases** to produce optimized weekly schedules that balance revenue generation, audience engagement, and subscriber retention.
 
 **Version**: 3.0.0
-**Database**: SQLite (250MB, 85 tables, 37 active creators)
-**Architecture**: Multi-agent pipeline with MCP database integration (33 tools)
+**Database**: SQLite (119MB, 63 tables, 37 active creators)
+**Architecture**: Multi-agent pipeline with MCP database integration (37 tools)
 
 ## Quick Start
 
@@ -67,7 +67,7 @@ EROS-SD-MAIN-PROJECT/
 │   │   ├── analyze.md
 │   │   ├── validate.md
 │   │   └── creators.md
-│   ├── settings.local.json      # MCP permissions (33 tools)
+│   ├── settings.local.json      # MCP permissions (37 tools)
 │   └── skills/
 │       └── eros-schedule-generator/
 │           ├── SKILL.md              # Entry point (489 lines)
@@ -86,7 +86,8 @@ EROS-SD-MAIN-PROJECT/
 │               ├── TOOL_PATTERNS.md
 │               └── CAPTION_SCORING_RULES.md
 ├── database/
-│   ├── eros_sd_main.db          # Production SQLite (250MB, 85 tables)
+│   ├── eros_sd_main.db          # Production SQLite (119MB, 63 tables)
+│   ├── archive/                 # Archived tables (90-day retention)
 │   ├── migrations/              # Schema migrations (018+)
 │   ├── docs/                    # Database documentation
 │   └── scripts/                 # Utility scripts (vault_matrix_sync.py)
@@ -282,6 +283,30 @@ get_active_volume_triggers(creator_id="your_creator")
 | `CRITIC_BLOCK` | schedule-critic | HIGH | Manual review required |
 | `LOW_CONFIDENCE` | performance-analyst | MEDIUM | Conservative volumes applied |
 | `ANOMALY_DETECTED` | anomaly-detector | WARNING | Review flagged items |
+| `MCP_CONNECTION_FAILED` | skill entry | CRITICAL | Enable eros-db MCP server |
+| `MCP_TOOLS_UNAVAILABLE` | skill entry | CRITICAL | Check MCP server health |
+
+### Database Schema Quick Reference
+
+When writing custom queries via `execute_query()`, use these CORRECT column names:
+
+| Table | WRONG Column | CORRECT Column | Notes |
+|-------|--------------|----------------|-------|
+| `content_categories` | `category_name` | `display_name` | Category display text |
+| `content_types` | `content_type_name` | `type_name` | Content type name |
+| `send_types` | `send_type_name` | `display_name` | Send type display text |
+| `creator_personas` | `tone` | `primary_tone`, `secondary_tone` | Two separate columns |
+| `top_content_types` | `content_type_id` | `content_type` (TEXT) | Stores name directly, not FK |
+| `vault_matrix` | `content_type` (direct) | `content_type_id` (FK) | Must JOIN to content_types |
+| `v_wall_post_best_hours` | `hour_of_day` | `posting_hour` | Hour 0-23 |
+| `volume_assignments` | `weekly_ppv_cap` | N/A | Column does not exist |
+
+**IMPORTANT**:
+- Table `content_type_rankings` does NOT exist. Use `top_content_types` instead.
+- Weekly caps are calculated dynamically by `get_volume_config()`, not stored in `volume_assignments`.
+- Always prefer MCP tools over raw SQL to avoid schema mismatches.
+
+See: `.claude/skills/eros-schedule-generator/REFERENCE/DATABASE_SCHEMA.md` for complete reference.
 
 ## Error Handling
 
@@ -330,12 +355,12 @@ All agents return errors in standardized format:
 2. **retention-risk-analyzer** (opus) - Churn risk analysis and retention recommendations
 
 ### Core Pipeline (Phase 1-9.5)
-3. **performance-analyst** (sonnet) - Saturation/opportunity analysis, volume triggers
-4. **send-type-allocator** (haiku) - Daily send type distribution with DOW multipliers
+3. **performance-analyst** (opus) - Saturation/opportunity analysis, volume triggers
+4. **send-type-allocator** (sonnet) - Daily send type distribution with DOW multipliers
 5. **variety-enforcer** (sonnet) - Content diversity enforcement (12+ unique types)
 6. **content-performance-predictor** (opus) - ML-style RPS/conversion predictions
 7. **caption-selection-pro** (sonnet) - EXPERT caption selection with vault compliance, AVOID tier exclusion, earnings-based rotation
-8. **timing-optimizer** (haiku) - Optimal posting time calculation with jitter
+8. **timing-optimizer** (sonnet) - Optimal posting time calculation with jitter
 9. **followup-generator** (haiku) - Auto-generate PPV followups (80% rate)
 10. **followup-timing-optimizer** (haiku) - Dynamic followup delay optimization
 11. **authenticity-engine** (sonnet) - Validate structure for organic variation
@@ -344,7 +369,7 @@ All agents return errors in standardized format:
 14. **revenue-optimizer** (sonnet) - Price/positioning optimization with tier multipliers
 15. **ppv-price-optimizer** (opus) - Dynamic PPV pricing using predictions
 16. **schedule-critic** (opus) - Strategic review with BLOCK authority
-17. **quality-validator** (sonnet) - FINAL GATE with Four-Layer Defense
+17. **quality-validator** (opus) - FINAL GATE with Four-Layer Defense
 18. **anomaly-detector** (haiku) - Statistical anomaly detection before save
 
 ### Parallel/Async Agents
@@ -357,7 +382,7 @@ All agents return errors in standardized format:
 
 ## MCP Tools Available
 
-All database operations use the `eros-db` MCP server (33 tools):
+All database operations use the `eros-db` MCP server (37 tools):
 
 ### Creator Data (3 tools)
 - **`get_creator_profile`** - Comprehensive creator data including analytics, persona, top content types, and volume configuration
@@ -441,7 +466,13 @@ All database operations use the `eros-db` MCP server (33 tools):
 - Caption Validation: 1 tool [NEW]
 - Earnings-Based Selection: 2 tools [NEW]
 - Deprecated (still functional): 1 tool (`get_volume_assignment`)
-**Total: 33 tools**
+
+**Total: 37 tools**
+
+**Note**: Tool count increased from 33 to 37 in v3.0 with additions:
+- Caption Validation: validate_caption_structure (1 tool)
+- Earnings-Based Selection: get_content_type_earnings_ranking, get_top_captions_by_earnings (2 tools)
+- Attention Scoring: get_attention_metrics, get_caption_attention_scores (2 tools)
 
 **Deprecation Notice**: `get_volume_assignment` remains available for backward compatibility but returns a deprecation warning. New implementations should use `get_volume_config()` which provides dynamic calculation with full `OptimizedVolumeResult` metadata instead of static assignments.
 
@@ -595,7 +626,7 @@ print(f"Rate used: {volume_config['followup_rate_used']}")
 ### Retention (4 types)
 `renew_on_post`, `renew_on_message`, `ppv_followup`, `expired_winback`
 
-**Note**: `ppv_message` has been deprecated and merged into `ppv_unlock`. Transition period ends 2025-01-16.
+**Note**: `ppv_message` has been deprecated (is_active=0) and merged into `ppv_unlock`. Transition period ends 2025-01-16.
 
 ## Critical Constraints
 
@@ -733,3 +764,4 @@ python3 vault_matrix_sync.py import-csv --input vault_matrix_edited.csv
 - `docs/SEND_TYPE_REFERENCE.md` - Complete send type details
 - `database/docs/VAULT_MATRIX_WORKFLOW.md` - Vault matrix import/export guide
 - `database/audit/` - Database quality reports (93/100 score)
+- `database/archive/20251220/` - Archived tables (90-day retention policy)

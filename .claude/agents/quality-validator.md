@@ -96,6 +96,45 @@ The agent receives a shared `PipelineContext` object containing pre-cached data:
 
 ## Execution Flow
 
+### Phase 0: Pipeline Integrity Check (NEW - v3.1)
+
+**CRITICAL**: Before validation begins, verify the schedule was generated through the proper 14-phase pipeline.
+
+```
+CHECK pipeline_metadata in schedule:
+
+1. VERIFY phases_executed:
+   IF pipeline_metadata.phases_executed < 14:
+     REJECT with error_code: "INCOMPLETE_PIPELINE"
+     MESSAGE: "Schedule bypassed required pipeline phases"
+     DETAILS: {
+       "expected_phases": 14,
+       "actual_phases": pipeline_metadata.phases_executed,
+       "missing_phases": [list of skipped phases]
+     }
+
+2. VERIFY MCP tools were used:
+   IF pipeline_metadata.mcp_tools_used == false OR NOT EXISTS:
+     REJECT with error_code: "MCP_BYPASS_DETECTED"
+     MESSAGE: "Schedule generated without MCP tools - Four-Layer Defense compromised"
+     DETAILS: {
+       "reason": "Raw SQL fallback bypasses vault/AVOID filtering",
+       "remediation": "Re-run with MCP tools enabled"
+     }
+
+3. VERIFY preflight passed:
+   IF pipeline_metadata.preflight_status != "READY":
+     REJECT with error_code: "PREFLIGHT_NOT_PASSED"
+     MESSAGE: "Schedule generated without preflight validation"
+
+4. VERIFY upstream validation_proof exists:
+   IF NOT schedule.validation_proof:
+     REJECT with error_code: "MISSING_UPSTREAM_PROOF"
+     MESSAGE: "No validation_proof from caption-selection-pro"
+```
+
+**ZERO TOLERANCE**: Schedules that bypassed the proper pipeline MUST be rejected. This prevents unvalidated schedules from being saved to the database.
+
 ### Phase 1: Load Creator Context
 
 ```
@@ -467,6 +506,9 @@ Different dimensions have different thresholds for APPROVED/NEEDS_REVIEW/REJECTE
 
 | Error Code | Severity | Meaning | Recovery Action |
 |------------|----------|---------|-----------------|
+| INCOMPLETE_PIPELINE | CRITICAL | Schedule skipped required phases | Re-run full 14-phase pipeline |
+| MCP_BYPASS_DETECTED | CRITICAL | Schedule used raw SQL instead of MCP tools | Re-run with MCP tools enabled |
+| PREFLIGHT_NOT_PASSED | CRITICAL | Schedule generated without preflight validation | Run preflight-checker first |
 | VAULT_VIOLATION | CRITICAL | Caption content type not in vault_matrix | Return to caption-selection-pro |
 | AVOID_TIER_VIOLATION | CRITICAL | Caption content type in AVOID tier | Return to caption-selection-pro |
 | INSUFFICIENT_DIVERSITY | CRITICAL | < 12 unique send types | Return to variety-enforcer |
@@ -601,9 +643,10 @@ else:  # REQUIRES_REVIEW
 
 ## See Also
 
+- [VALIDATION_RULES.md](../skills/eros-schedule-generator/REFERENCE/VALIDATION_RULES.md) - Four-Layer Defense architecture
+- [CONFIDENCE_LEVELS.md](../skills/eros-schedule-generator/REFERENCE/CONFIDENCE_LEVELS.md) - Quality score thresholds by confidence
+- [SEND_TYPE_TAXONOMY.md](../skills/eros-schedule-generator/REFERENCE/SEND_TYPE_TAXONOMY.md) - 22 send type constraints
 - quality-validator-expert.md - Expert consensus validator (runs in parallel)
-- REFERENCE/VALIDATION_RULES.md - Four-Layer Defense architecture and complete rejection criteria
-- REFERENCE/SEND_TYPE_TAXONOMY.md - 22-type diversity requirements and page type restrictions
 - DATA_CONTRACTS.md - ValidationCertificate and ValidationProof structure specifications
 - schedule-assembler.md - Upstream agent (Phase 7) that provides assembled schedule
 - anomaly-detector.md - Downstream agent (Phase 9.5) for statistical anomaly detection

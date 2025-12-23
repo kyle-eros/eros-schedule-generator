@@ -1,8 +1,13 @@
+---
+name: EROS Schedule Generator Orchestration
+description: 14-phase pipeline execution flow with 24-agent coordination
+version: 3.0.0
+last_updated: 2025-12-22
+---
+
 # Pipeline Orchestration
 
 Complete technical reference for the EROS Schedule Generator pipeline orchestration.
-
----
 
 ## Table of Contents
 

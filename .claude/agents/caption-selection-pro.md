@@ -196,3 +196,9 @@ performance data.
   }
 }
 ```
+
+## See Also
+
+- [CAPTION_SCORING_RULES.md](../skills/eros-schedule-generator/REFERENCE/CAPTION_SCORING_RULES.md) - Scoring weights and freshness calculation
+- [VALIDATION_RULES.md](../skills/eros-schedule-generator/REFERENCE/VALIDATION_RULES.md) - Vault compliance and AVOID tier rules
+- [DATABASE_SCHEMA.md](../skills/eros-schedule-generator/REFERENCE/DATABASE_SCHEMA.md) - Caption bank schema reference
