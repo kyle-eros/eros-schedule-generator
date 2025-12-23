@@ -54,8 +54,8 @@ logger = logging.getLogger("eros_db_server")
                 "description": "Optional filter by content type name"
             },
             "min_performance": {
-                "type": "number",
-                "description": "Minimum performance_score threshold (default 40)"
+                "type": "integer",
+                "description": "Maximum performance_tier to include (1=ELITE, 2=PROVEN, 3=STANDARD, 4=UNPROVEN). Default 3 includes all but UNPROVEN."
             },
             "limit": {
                 "type": "integer",
@@ -73,7 +73,7 @@ def get_top_captions(
     creator_id: str,
     caption_type: Optional[str] = None,
     content_type: Optional[str] = None,
-    min_performance: float = 40.0,
+    min_performance: int = 3,
     limit: int = 20,
     send_type_key: Optional[str] = None
 ) -> dict[str, Any]:
@@ -90,7 +90,8 @@ def get_top_captions(
         creator_id: The creator_id or page_name.
         caption_type: Optional filter by caption_type.
         content_type: Optional filter by content type name.
-        min_performance: Minimum performance_score threshold (default 40).
+        min_performance: Maximum performance_tier to include (1=ELITE, 2=PROVEN,
+            3=STANDARD, 4=UNPROVEN). Default 3 includes tiers 1-3.
         limit: Maximum number of captions to return (default 20).
         send_type_key: Optional send type to filter by compatible caption types.
 
@@ -143,9 +144,15 @@ def get_top_captions(
                     cb.schedulable_type,
                     cb.caption_type,
                     cb.content_type_id,
-                    cb.tone,
                     cb.is_paid_page_only,
-                    cb.performance_score,
+                    cb.performance_tier,
+                    cb.classification_confidence,
+                    cb.total_earnings AS cb_total_earnings,
+                    cb.total_sends AS cb_total_sends,
+                    cb.avg_view_rate AS cb_avg_view_rate,
+                    cb.avg_purchase_rate AS cb_avg_purchase_rate,
+                    cb.suggested_price,
+                    cb.char_length,
                     ct.type_name AS content_type_name,
                     vm.has_content AS vault_allowed,
                     tct.performance_tier AS content_performance_tier,
@@ -183,8 +190,7 @@ def get_top_captions(
                     ON cb.caption_id = ccp.caption_id
                     AND ccp.creator_id = ?
                 WHERE cb.is_active = 1
-                AND cb.performance_score >= ?
-                AND (cb.creator_id IS NULL OR cb.creator_id = ?)
+                AND cb.performance_tier <= ?
                 AND (tct.performance_tier IS NULL OR tct.performance_tier != 'AVOID')
             """
             params: list[Any] = [resolved_creator_id, send_type_id, resolved_creator_id, resolved_creator_id, resolved_creator_id, min_performance, resolved_creator_id]
@@ -196,9 +202,15 @@ def get_top_captions(
                     cb.schedulable_type,
                     cb.caption_type,
                     cb.content_type_id,
-                    cb.tone,
                     cb.is_paid_page_only,
-                    cb.performance_score,
+                    cb.performance_tier,
+                    cb.classification_confidence,
+                    cb.total_earnings AS cb_total_earnings,
+                    cb.total_sends AS cb_total_sends,
+                    cb.avg_view_rate AS cb_avg_view_rate,
+                    cb.avg_purchase_rate AS cb_avg_purchase_rate,
+                    cb.suggested_price,
+                    cb.char_length,
                     ct.type_name AS content_type_name,
                     vm.has_content AS vault_allowed,
                     tct.performance_tier AS content_performance_tier,
@@ -232,11 +244,10 @@ def get_top_captions(
                     ON cb.caption_id = ccp.caption_id
                     AND ccp.creator_id = ?
                 WHERE cb.is_active = 1
-                AND cb.performance_score >= ?
-                AND (cb.creator_id IS NULL OR cb.creator_id = ?)
+                AND cb.performance_tier <= ?
                 AND (tct.performance_tier IS NULL OR tct.performance_tier != 'AVOID')
             """
-            params = [resolved_creator_id, resolved_creator_id, resolved_creator_id, resolved_creator_id, min_performance, resolved_creator_id]
+            params = [resolved_creator_id, resolved_creator_id, resolved_creator_id, resolved_creator_id, min_performance]
 
         if caption_type is not None:
             query += " AND cb.caption_type = ?"
@@ -246,15 +257,15 @@ def get_top_captions(
             query += " AND ct.type_name = ?"
             params.append(content_type)
 
-        # Order by priority (if send_type provided), then freshness, then performance
+        # Order by priority (if send_type provided), then freshness, then performance tier (lower is better)
         if send_type_id is not None:
             query += """
-                ORDER BY stcr.priority ASC, freshness_score DESC, cb.performance_score DESC
+                ORDER BY stcr.priority ASC, freshness_score DESC, cb.performance_tier ASC
                 LIMIT ?
             """
         else:
             query += """
-                ORDER BY freshness_score DESC, cb.performance_score DESC
+                ORDER BY freshness_score DESC, cb.performance_tier ASC
                 LIMIT ?
             """
         params.append(limit)
@@ -307,8 +318,8 @@ def get_top_captions(
                 "description": "Minimum freshness score threshold (default 30)"
             },
             "min_performance": {
-                "type": "number",
-                "description": "Minimum performance_score threshold (default 40)"
+                "type": "integer",
+                "description": "Maximum performance_tier to include (1=ELITE, 2=PROVEN, 3=STANDARD, 4=UNPROVEN). Default 3 includes all but UNPROVEN."
             },
             "limit": {
                 "type": "integer",
@@ -322,7 +333,7 @@ def get_send_type_captions(
     creator_id: str,
     send_type_key: str,
     min_freshness: float = 30.0,
-    min_performance: float = 40.0,
+    min_performance: int = 3,
     limit: int = 10
 ) -> dict[str, Any]:
     """
@@ -330,7 +341,7 @@ def get_send_type_captions(
 
     Joins caption_bank with send_type_caption_requirements to find captions
     that match the send type's caption requirements. Orders by priority (from
-    mapping table) first, then by performance score.
+    mapping table) first, then by performance tier.
 
     Freshness is calculated as: 100 - (days_since_last_use * 2), capped at 0-100.
 
@@ -338,7 +349,8 @@ def get_send_type_captions(
         creator_id: The creator_id or page_name.
         send_type_key: The send type key to find compatible captions for.
         min_freshness: Minimum freshness score threshold (default 30).
-        min_performance: Minimum performance_score threshold (default 40).
+        min_performance: Maximum performance_tier to include (1=ELITE, 2=PROVEN,
+            3=STANDARD, 4=UNPROVEN). Default 3 includes tiers 1-3.
         limit: Maximum number of captions to return (default 10).
 
     Returns:
@@ -385,9 +397,15 @@ def get_send_type_captions(
                 cb.schedulable_type,
                 cb.caption_type,
                 cb.content_type_id,
-                cb.tone,
                 cb.is_paid_page_only,
-                cb.performance_score,
+                cb.performance_tier,
+                cb.classification_confidence,
+                cb.total_earnings AS cb_total_earnings,
+                cb.total_sends AS cb_total_sends,
+                cb.avg_view_rate AS cb_avg_view_rate,
+                cb.avg_purchase_rate AS cb_avg_purchase_rate,
+                cb.suggested_price,
+                cb.char_length,
                 ct.type_name AS content_type_name,
                 vm.has_content AS vault_allowed,
                 tct.performance_tier AS content_performance_tier,
@@ -425,8 +443,7 @@ def get_send_type_captions(
                 ON cb.caption_id = ccp.caption_id
                 AND ccp.creator_id = ?
             WHERE cb.is_active = 1
-            AND cb.performance_score >= ?
-            AND (cb.creator_id IS NULL OR cb.creator_id = ?)
+            AND cb.performance_tier <= ?
             AND (tct.performance_tier IS NULL OR tct.performance_tier != 'AVOID')
             AND (
                 CASE
@@ -434,7 +451,7 @@ def get_send_type_captions(
                     ELSE MAX(0, MIN(100, 100 - (julianday('now') - julianday(ccp.last_used_date)) * 2))
                 END
             ) >= ?
-            ORDER BY stcr.priority ASC, cb.performance_score DESC
+            ORDER BY stcr.priority ASC, cb.performance_tier ASC
             LIMIT ?
         """
         params: list[Any] = [
@@ -444,7 +461,6 @@ def get_send_type_captions(
             resolved_creator_id,  # For top_content_types subquery
             resolved_creator_id,  # For caption_creator_performance join
             min_performance,
-            resolved_creator_id,
             min_freshness,
             limit
         ]
@@ -654,6 +670,10 @@ def get_content_type_earnings_ranking(
             "min_freshness": {
                 "type": "number",
                 "description": "Minimum freshness score threshold (default 30.0)"
+            },
+            "min_performance": {
+                "type": "integer",
+                "description": "Maximum performance_tier to include (1=ELITE, 2=PROVEN, 3=STANDARD, 4=UNPROVEN). Default 3 includes all but UNPROVEN."
             }
         },
         "required": ["creator_id", "content_type"]
@@ -665,7 +685,8 @@ def get_top_captions_by_earnings(
     send_type_key: Optional[str] = None,
     exclude_caption_ids: Optional[list[int]] = None,
     limit: int = 5,
-    min_freshness: float = 30.0
+    min_freshness: float = 30.0,
+    min_performance: int = 3
 ) -> dict[str, Any]:
     """
     Get top-performing captions for a specific content type ranked by total earnings.
@@ -677,6 +698,7 @@ def get_top_captions_by_earnings(
     Filters by:
     - Vault matrix: Only captions with vault-available content types
     - AVOID tier: Excludes captions with AVOID performance tier content types
+    - Performance tier: Only includes captions at or above tier threshold
     - Content type: Required filter for specific content type
     - Send type: Optional filter by compatible caption types
     - Exclusion list: Optional exclude_caption_ids for rotation
@@ -688,6 +710,8 @@ def get_top_captions_by_earnings(
         exclude_caption_ids: List of caption IDs to exclude (for rotation).
         limit: Maximum number of captions to return (default 5).
         min_freshness: Minimum freshness score threshold (default 30.0).
+        min_performance: Maximum performance_tier to include (1=ELITE, 2=PROVEN,
+            3=STANDARD, 4=UNPROVEN). Default 3 includes tiers 1-3.
 
     Returns:
         Dictionary containing:
@@ -766,9 +790,15 @@ def get_top_captions_by_earnings(
                 cb.schedulable_type,
                 cb.caption_type,
                 cb.content_type_id,
-                cb.tone,
                 cb.is_paid_page_only,
-                cb.performance_score AS caption_performance_score,
+                cb.performance_tier,
+                cb.classification_confidence,
+                cb.total_earnings AS cb_total_earnings,
+                cb.total_sends AS cb_total_sends,
+                cb.avg_view_rate AS cb_avg_view_rate,
+                cb.avg_purchase_rate AS cb_avg_purchase_rate,
+                cb.suggested_price,
+                cb.char_length,
                 ct.type_name AS content_type_name,
                 vm.has_content AS vault_allowed,
                 vm.quantity_available AS vault_quantity,
@@ -817,7 +847,7 @@ def get_top_captions_by_earnings(
         where_clause = """
             WHERE cb.is_active = 1
             AND cb.content_type_id = ?
-            AND (cb.creator_id IS NULL OR cb.creator_id = ?)
+            AND cb.performance_tier <= ?
             AND (tct.performance_tier IS NULL OR tct.performance_tier != 'AVOID')
             AND (
                 CASE
@@ -833,12 +863,12 @@ def get_top_captions_by_earnings(
             placeholders = ",".join(["?" for _ in exclude_caption_ids])
             exclude_clause = f" AND cb.caption_id NOT IN ({placeholders})"
 
-        # Order by EARNINGS (primary), then freshness (secondary), then performance (tertiary)
+        # Order by EARNINGS (primary), then freshness (secondary), then performance tier (tertiary, lower is better)
         order_clause = """
             ORDER BY
                 COALESCE(ccp.total_earnings, 0) DESC,
                 freshness_score DESC,
-                cb.performance_score DESC
+                cb.performance_tier ASC
             LIMIT ?
         """
 
@@ -858,7 +888,7 @@ def get_top_captions_by_earnings(
 
         params.extend([
             content_type_id,      # For content_type_id filter
-            resolved_creator_id,  # For creator_id filter in cb.creator_id check
+            min_performance,      # For performance_tier filter
             min_freshness,        # For freshness threshold
         ])
 

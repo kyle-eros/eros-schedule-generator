@@ -1578,6 +1578,49 @@ else:
 
 ## Version History
 
+### v2.0 (2025-12-22)
+
+**Caption Bank Rebuild**
+
+The caption_bank table was completely rebuilt with a lean schema optimized for quality over quantity.
+
+**Schema Changes**:
+- Reduced from 37 columns to 17 columns (54% reduction)
+- Removed unused columns: `tone`, `emoji_style`, `slang_level`, `creator_id`, etc.
+- Added new columns: `performance_tier`, `classification_confidence`, `suggested_price`, `char_length`
+- Replaced `performance_score` (0-100 float) with `performance_tier` (1-4 integer)
+
+**Performance Tier System**:
+| Tier | Name | Criteria (PPV) | Criteria (Free) |
+|------|------|----------------|-----------------|
+| 1 | ELITE | earnings >= $500 | view_rate >= 40% |
+| 2 | PROVEN | earnings >= $200 | view_rate >= 30% |
+| 3 | STANDARD | earnings >= $100 | view_rate >= 25% |
+| 4 | UNPROVEN | < $100 or new | < 25% or new |
+
+**Caption Pool Changes**:
+- Reduced from 59,405 to 5,541 captions (90.7% reduction)
+- Focus on proven performers: earnings >= $100 (PPV) or view_rate >= 25% (free)
+- Minimum sent count: 500 (statistical significance)
+- Near-duplicate detection using SHA256 hash
+
+**Classification Accuracy**:
+- 5,541 captions classified by content_type and send_type
+- High confidence (>=0.70): 2,279 captions (41.1%)
+- Classification method tracked per caption
+
+**MCP Tool Updates**:
+- `get_top_captions()` now filters by `performance_tier <= N` instead of `performance_score >= N`
+- `get_send_type_captions()` updated for new schema
+- `get_top_captions_by_earnings()` updated for new schema
+
+**Impact on Scoring**:
+- Performance history scoring now uses `performance_tier` (lower is better)
+- New `classification_confidence` available for quality weighting
+- `char_length` column enables efficient length-based filtering
+
+---
+
 ### v1.0 (2025-12-19)
 
 **Initial Release**
@@ -1586,7 +1629,7 @@ else:
 - 160 highest-earning captions analyzed
 - 37 active creators
 - 90-day performance window
-- 59,405 total captions in universal bank
+- 59,405 total captions in universal bank (reduced to 5,541 in v2.0)
 
 **Pattern Categories Created**:
 - Structural Patterns: 15 patterns documented
